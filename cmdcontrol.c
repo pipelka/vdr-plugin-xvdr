@@ -27,6 +27,7 @@
 #include <vdr/timers.h>
 #include <vdr/menu.h>
 
+#include "hash.h"
 #include "config.h"
 #include "cmdcontrol.h"
 #include "connection.h"
@@ -602,7 +603,7 @@ bool cCmdControl::processCHANNELS_GetChannels() /* OPCODE 63 */
 
       m_resp->add_U32(channel->Number());
       m_resp->add_String(m_toUTF8.Convert(channel->Name()));
-      m_resp->add_U32(channel->Sid());
+      m_resp->add_U32(CreateChannelUID(channel));
       m_resp->add_U32(groupIndex);
       m_resp->add_U32(channel->Ca());
 #if APIVERSNUM >= 10701
@@ -611,7 +612,7 @@ bool cCmdControl::processCHANNELS_GetChannels() /* OPCODE 63 */
       m_resp->add_U32(2);
 #endif
 
-      isyslog("channel: %i uid:%i", channel->Number(), channel->Sid());
+      isyslog("channel: %i uid: %u", channel->Number(), CreateChannelUID(channel));
     }
   }
 
@@ -654,7 +655,7 @@ bool cCmdControl::processTIMER_Get() /* OPCODE 81 */
       m_resp->add_U32(timer->Lifetime());
       m_resp->add_U32(timer->Channel()->Number());
       if(m_protocolVersion >= 2) {
-        m_resp->add_U32(timer->Channel()->Sid());
+        m_resp->add_U32(CreateChannelUID(timer->Channel()));
       }
       m_resp->add_U32(timer->StartTime());
       m_resp->add_U32(timer->StopTime());
@@ -694,7 +695,7 @@ bool cCmdControl::processTIMER_GetList() /* OPCODE 82 */
     m_resp->add_U32(timer->Lifetime());
     m_resp->add_U32(timer->Channel()->Number());
     if(m_protocolVersion >= 2) {
-      m_resp->add_U32(timer->Channel()->Sid());
+      m_resp->add_U32(CreateChannelUID(timer->Channel()));
     }
     m_resp->add_U32(timer->StartTime());
     m_resp->add_U32(timer->StopTime());
