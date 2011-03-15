@@ -52,7 +52,7 @@ static uint32_t crc32(const unsigned char *data, int len) {
 #endif
   }
 
-  return ~r;
+  return (~r) & 0x7FFFFFFF; // channeluid is signed
 }
 
 #ifndef USE_CRC32
