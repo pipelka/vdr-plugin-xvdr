@@ -603,7 +603,12 @@ bool cCmdControl::processCHANNELS_GetChannels() /* OPCODE 63 */
 
       m_resp->add_U32(channel->Number());
       m_resp->add_String(m_toUTF8.Convert(channel->Name()));
-      m_resp->add_U32(CreateChannelUID(channel));
+      if(m_protocolVersion >= 2) {
+        m_resp->add_U32(CreateChannelUID(channel));
+      }
+      else {
+        m_resp->add_U32(channel->Sid());
+      }
       m_resp->add_U32(groupIndex);
       m_resp->add_U32(channel->Ca());
 #if APIVERSNUM >= 10701
@@ -611,8 +616,6 @@ bool cCmdControl::processCHANNELS_GetChannels() /* OPCODE 63 */
 #else
       m_resp->add_U32(2);
 #endif
-
-      isyslog("channel: %i uid: %u", channel->Number(), CreateChannelUID(channel));
     }
   }
 
