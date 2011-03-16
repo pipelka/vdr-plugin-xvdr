@@ -1,3 +1,4 @@
 *.o
 .dependencies
 *.so
+libvdr-vnsiserver.so*

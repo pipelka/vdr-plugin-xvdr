@@ -1,0 +1,19 @@
+#! /bin/sh /usr/share/vdr-dev/make-special-vdr.sh
+
+include /usr/share/cdbs/1/rules/debhelper.mk
+include /usr/share/cdbs/1/rules/dpatch.mk
+
+DEB_INSTALL_CHANGELOGS_ALL = HISTORY
+
+MAKE_OPTIONS = DVBDIR=/usr VDRDIR=/usr/include/vdr LIBDIR=.
+
+common-build-arch::
+	$(MAKE) all $(MAKE_OPTIONS)
+
+clean::
+	$(MAKE) -o .dependencies clean $(MAKE_OPTIONS)
+	rm -f libvdr-*.so.*
+
+common-binary-predeb-arch::
+	sh /usr/share/vdr-dev/dependencies.sh
+

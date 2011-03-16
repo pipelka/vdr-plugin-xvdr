@@ -36,11 +36,11 @@
 #include "vdrcommand.h"
 #include "responsepacket.h"
 
-#if VDRVERSNUM < 10713
+/*#if VDRVERSNUM < 10713
 #ifndef PLUGINPARAMPATCHVERSNUM
 #error "You must apply the pluginparam patch for VDR!"
 #endif
-#endif
+#endif*/
 
 static uint64_t get_ticks() {
   uint64_t ticks;
@@ -804,12 +804,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
       resp->finalise();
       m_Socket->write(resp->getPtr(), resp->getLen());
 
-#if VDRVERSNUM < 10713
-      if (m_Channel && m_Channel->IsPlug()) m_IsMPEGPS = true;
-#else
-      // TODO: rework cPvrSourceParams for use with older vdr
       if (m_Channel && ((m_Channel->Source() >> 24) == 'V')) m_IsMPEGPS = true;
-#endif
 
       if (m_NumStreams > 0 && m_Socket)
       {
@@ -1018,12 +1013,7 @@ void cLiveStreamer::sendSignalInfo()
     return;
   }
 
-#if VDRVERSNUM < 10713
-  if (m_Channel && m_Channel->IsPlug())
-#else
-  // TODO: rework cPvrSourceParams for use with older vdr
   if (m_Channel && ((m_Channel->Source() >> 24) == 'V'))
-#endif
   {
     if (m_Frontend < 0)
     {
