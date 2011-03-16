@@ -152,16 +152,8 @@ bool cCmdControl::processPacket()
 
 
     /** OPCODE 60 - 79: VNSI network functions for channel access */
-    case VDR_CHANNELS_GROUPSCOUNT:
-      result = processCHANNELS_GroupsCount();
-      break;
-
     case VDR_CHANNELS_GETCOUNT:
       result = processCHANNELS_ChannelsCount();
-      break;
-
-    case VDR_CHANNELS_GETGROUPS:
-      result = processCHANNELS_GroupList();
       break;
 
     case VDR_CHANNELS_GETCHANNELS:
@@ -208,16 +200,8 @@ bool cCmdControl::processPacket()
       result = processRECORDINGS_GetList();
       break;
 
-    case VDR_RECORDINGS_GETINFO:
-      result = processRECORDINGS_GetInfo();
-      break;
-
     case VDR_RECORDINGS_DELETE:
       result = processRECORDINGS_Delete();
-      break;
-
-    case VDR_RECORDINGS_MOVE:
-      result = processRECORDINGS_Move();
       break;
 
 
@@ -494,74 +478,11 @@ bool cCmdControl::processRecStream_GetIFrame() /* OPCODE 45 */
 
 /** OPCODE 60 - 79: VNSI network functions for channel access */
 
-bool cCmdControl::processCHANNELS_GroupsCount() /* OPCODE 60 */
-{
-  int count = 0;
-  for (int curr = Channels.GetNextGroup(-1); curr >= 0; curr = Channels.GetNextGroup(curr))
-    count++;
-
-  m_resp->add_U32(count);
-
-  m_resp->finalise();
-  m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
-  return true;
-}
-
 bool cCmdControl::processCHANNELS_ChannelsCount() /* OPCODE 61 */
 {
   int count = Channels.MaxNumber();
 
   m_resp->add_U32(count);
-
-  m_resp->finalise();
-  m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
-  return true;
-}
-
-bool cCmdControl::processCHANNELS_GroupList() /* OPCODE 62 */
-{
-  if (m_req->getDataLength() != 4) return false;
-
-  bool radio = m_req->extract_U32();
-
-  int countInGroup = 0;
-  int index        = 0;
-  const cChannel* group = NULL;
-  for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel))
-  {
-    if (channel->GroupSep())
-    {
-      if (countInGroup)
-      {
-        m_resp->add_U32(index);
-        m_resp->add_U32(countInGroup);
-        m_resp->add_String(m_toUTF8.Convert(group->Name()));
-      }
-      group = channel;
-      countInGroup = 0;
-      index++;
-    }
-    else if (group)
-    {
-      if (radio)
-      {
-        if (!channel->Vpid() && channel->Apid(0))
-          countInGroup++;
-      }
-      else
-      {
-        if (channel->Vpid())
-          countInGroup++;
-      }
-    }
-  }
-
-  if (countInGroup)
-  {
-    m_resp->add_U32(index);
-    m_resp->add_U32(countInGroup);
-    m_resp->add_String(group->Name());
-  }
 
   m_resp->finalise();
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
@@ -937,7 +858,10 @@ bool cCmdControl::processRECORDINGS_GetList() /* OPCODE 102 */
   cRecordings Recordings;
   Recordings.Load();
 
-  m_resp->add_String(VideoDirectory);
+  if(m_protocolVersion == 1) {
+    m_resp->add_String(VideoDirectory);
+  }
+
   for (cRecording *recording = Recordings.First(); recording; recording = Recordings.Next(recording))
   {
   #if APIVERSNUM >= 10705
@@ -968,15 +892,30 @@ bool cCmdControl::processRECORDINGS_GetList() /* OPCODE 102 */
     }
     LOGCONSOLE("GRI: RC: recordingStart=%lu recordingDuration=%lu", recordingStart, recordingDuration);
 
+    // recording_time
     m_resp->add_U32(recordingStart);
+
+    // duration
     m_resp->add_U32(recordingDuration);
+
+    // priority
     m_resp->add_U32(recording->priority);
+
+    // lifetime
     m_resp->add_U32(recording->lifetime);
+
+    // channel_name
     m_resp->add_String(recording->Info()->ChannelName() ? m_toUTF8.Convert(recording->Info()->ChannelName()) : "");
-    const char* fullname = recording->Name();
-    const char* recname = strrchr(fullname, '~');
+
+    char* fullname = strdup(recording->Name());
+    char* recname = strrchr(fullname, '~');
+    char* directory = NULL;
+
+    // title
     if(recname != NULL) {
+      *recname = 0;
       recname++;
+      directory = fullname;
       m_resp->add_String(m_toUTF8.Convert(recname));
     }
     else if (!isempty(recording->Info()->Title())) {
@@ -984,128 +923,41 @@ bool cCmdControl::processRECORDINGS_GetList() /* OPCODE 102 */
     }
     else
       m_resp->add_String("");
+
+    // subtitle
     if (!isempty(recording->Info()->ShortText()))
       m_resp->add_String(m_toUTF8.Convert(recording->Info()->ShortText()));
     else
       m_resp->add_String("");
+
+    // description
     if (!isempty(recording->Info()->Description()))
       m_resp->add_String(m_toUTF8.Convert(recording->Info()->Description()));
     else
       m_resp->add_String("");
 
+    // directory
+    if(m_protocolVersion >= 2) {
+      if(directory != NULL) {
+        char* p = directory;
+        while(*p != 0) {
+          if(*p == '~') *p = '/';
+          p++;
+        }
+        while(*directory == '/') directory++;
+      }
+
+      m_resp->add_String((directory == NULL) ? "" : directory);
+    }
+
+    // filename of recording
     m_resp->add_String(m_toUTF8.Convert(recording->FileName()));
+
+    free(fullname);
   }
 
   m_resp->finalise();
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
-  return true;
-}
-
-bool cCmdControl::processRECORDINGS_GetInfo() /* OPCODE 103 */
-{
-  const char *fileName  = m_req->extract_String();
-
-  cRecordings Recordings;
-  Recordings.Load(); // probably have to do this
-
-  cRecording *recording = Recordings.GetByName(fileName);
-#if APIVERSNUM >= 10705
-  const cEvent *event = recording->Info()->GetEvent();
-#else
-  const cEvent *event = NULL;
-#endif
-
-  time_t recordingStart    = 0;
-  int    recordingDuration = 0;
-  if (event)
-  {
-    recordingStart    = event->StartTime();
-    recordingDuration = event->Duration();
-  }
-  else
-  {
-    cRecordControl *rc = cRecordControls::GetRecordControl(recording->FileName());
-    if (rc)
-    {
-      recordingStart    = rc->Timer()->StartTime();
-      recordingDuration = rc->Timer()->StopTime() - recordingStart;
-    }
-    else
-    {
-      recordingStart = recording->start;
-    }
-  }
-  LOGCONSOLE("GRI: RC: recordingStart=%lu recordingDuration=%lu", recordingStart, recordingDuration);
-
-  m_resp->add_U32(recordingStart);
-  m_resp->add_U32(recordingDuration);
-  m_resp->add_U32(recording->priority);
-  m_resp->add_U32(recording->lifetime);
-  m_resp->add_String(recording->Info()->ChannelName() ? m_toUTF8.Convert(recording->Info()->ChannelName()) : "");
-  if (!isempty(recording->Info()->Title()))
-    m_resp->add_String(m_toUTF8.Convert(recording->Info()->Title()));
-  else
-    m_resp->add_String("");
-  if (!isempty(recording->Info()->ShortText()))
-    m_resp->add_String(m_toUTF8.Convert(recording->Info()->ShortText()));
-  else
-    m_resp->add_String("");
-  if (!isempty(recording->Info()->Description()))
-    m_resp->add_String(m_toUTF8.Convert(recording->Info()->Description()));
-  else
-    m_resp->add_String("");
-
-#if APIVERSNUM < 10703
-  m_resp->add_double((double)FRAMESPERSEC);
-#else
-  m_resp->add_double((double)recording->Info()->FramesPerSecond());
-#endif
-
-  if (event != NULL)
-  {
-    if (event->Vps())
-      m_resp->add_U32(event->Vps());
-    else
-      m_resp->add_U32(0);
-  }
-  else
-    m_resp->add_U32(0);
-
-  const cComponents* components = recording->Info()->Components();
-  if (components)
-  {
-    m_resp->add_U32(components->NumComponents());
-
-    tComponent* component;
-    for (int i = 0; i < components->NumComponents(); i++)
-    {
-      component = components->Component(i);
-
-      LOGCONSOLE("GRI: C: %i %u %u %s %s", i, component->stream, component->type, component->language, component->description);
-
-      m_resp->add_U8(component->stream);
-      m_resp->add_U8(component->type);
-
-      if (component->language)
-        m_resp->add_String(component->language);
-      else
-        m_resp->add_String("");
-
-      if (component->description)
-        m_resp->add_String(component->description);
-      else
-        m_resp->add_String("");
-    }
-  }
-  else
-    m_resp->add_U32(0);
-
-  // Done. send it
-  m_resp->finalise();
-  m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
-
-  delete[] fileName;
-  LOGCONSOLE("Written getrecinfo");
   return true;
 }
 
@@ -1156,162 +1008,6 @@ bool cCmdControl::processRECORDINGS_Delete() /* OPCODE 104 */
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
   
   delete[] recName;
-  return true;
-}
-
-bool cCmdControl::processRECORDINGS_Move() /* OPCODE 105 */
-{
-  LOGCONSOLE("Process move recording");
-  const char *fileName  = m_req->extract_String();
-  const char *newPath   = m_req->extract_String();
-
-  cRecordings Recordings;
-  Recordings.Load(); // probably have to do this
-
-  cRecording* recording = Recordings.GetByName(fileName);
-
-  LOGCONSOLE("recording pointer %p", recording);
-
-  if (recording)
-  {
-    cRecordControl *rc = cRecordControls::GetRecordControl(recording->FileName());
-    if (!rc)
-    {
-      LOGCONSOLE("moving recording: %s", recording->Name());
-      LOGCONSOLE("moving recording: %s", recording->FileName());
-      LOGCONSOLE("to: %s", newPath);
-
-      const char* t = recording->FileName();
-
-      char* dateDirName = NULL;   int k;
-      char* titleDirName = NULL;  int j;
-
-      // Find the datedirname
-      for(k = strlen(t) - 1; k >= 0; k--)
-      {
-        if (t[k] == '/')
-        {
-          LOGCONSOLE("l1: %i", strlen(&t[k+1]) + 1);
-          dateDirName = new char[strlen(&t[k+1]) + 1];
-          strcpy(dateDirName, &t[k+1]);
-          break;
-        }
-      }
-
-      // Find the titledirname
-      for(j = k-1; j >= 0; j--)
-      {
-        if (t[j] == '/')
-        {
-          LOGCONSOLE("l2: %i", (k - j - 1) + 1);
-          titleDirName = new char[(k - j - 1) + 1];
-          memcpy(titleDirName, &t[j+1], k - j - 1);
-          titleDirName[k - j - 1] = '\0';
-          break;
-        }
-      }
-
-      LOGCONSOLE("datedirname: %s", dateDirName);
-      LOGCONSOLE("titledirname: %s", titleDirName);
-      LOGCONSOLE("viddir: %s", VideoDirectory);
-
-      char* newPathConv = new char[strlen(newPath)+1];
-      strcpy(newPathConv, newPath);
-      ExchangeChars(newPathConv, true);
-      LOGCONSOLE("EC: %s", newPathConv);
-
-      char* newContainer = new char[strlen(VideoDirectory) + strlen(newPathConv) + strlen(titleDirName) + 1];
-      LOGCONSOLE("l10: %i", strlen(VideoDirectory) + strlen(newPathConv) + strlen(titleDirName) + 1);
-      sprintf(newContainer, "%s%s%s", VideoDirectory, newPathConv, titleDirName);
-      delete[] newPathConv;
-
-      LOGCONSOLE("%s", newContainer);
-
-      struct stat dstat;
-      int statret = stat(newContainer, &dstat);
-      if ((statret == -1) && (errno == ENOENT)) // Dir does not exist
-      {
-        LOGCONSOLE("new dir does not exist");
-        int mkdirret = mkdir(newContainer, 0755);
-        if (mkdirret != 0)
-        {
-          delete[] dateDirName;
-          delete[] titleDirName;
-          delete[] newContainer;
-
-          m_resp->add_U32(VDR_RET_ERROR);
-          m_resp->finalise();
-          m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
-          return true;
-        }
-      }
-      else if ((statret == 0) && (! (dstat.st_mode && S_IFDIR))) // Something exists but it's not a dir
-      {
-        delete[] dateDirName;
-        delete[] titleDirName;
-        delete[] newContainer;
-
-        m_resp->add_U32(VDR_RET_ERROR);
-        m_resp->finalise();
-        m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
-        return true;
-      }
-
-      // Ok, the directory container has been made, or it pre-existed.
-
-      char* newDir = new char[strlen(newContainer) + 1 + strlen(dateDirName) + 1];
-      sprintf(newDir, "%s/%s", newContainer, dateDirName);
-
-      LOGCONSOLE("doing rename '%s' '%s'", t, newDir);
-      int renameret = rename(t, newDir);
-      if (renameret == 0)
-      {
-        // Success. Test for remove old dir containter
-        char* oldTitleDir = new char[k+1];
-        memcpy(oldTitleDir, t, k);
-        oldTitleDir[k] = '\0';
-        LOGCONSOLE("len: %i, cp: %i, strlen: %i, oldtitledir: %s", k+1, k, strlen(oldTitleDir), oldTitleDir);
-        rmdir(oldTitleDir); // can't do anything about a fail result at this point.
-        delete[] oldTitleDir;
-      }
-      if (renameret == 0)
-      {
-        // Tell VDR
-        Recordings.Update();
-        // Success. Send a different packet from just a ulong
-        m_resp->add_U32(VDR_RET_OK); // success
-        m_resp->add_String(newDir);
-      }
-      else
-      {
-        m_resp->add_U32(VDR_RET_ERROR);
-      }
-
-      m_resp->finalise();
-      m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
-
-      delete[] dateDirName;
-      delete[] titleDirName;
-      delete[] newContainer;
-      delete[] newDir;
-    }
-    else
-    {
-      m_resp->add_U32(VDR_RET_DATALOCKED);
-      m_resp->finalise();
-      m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
-    }
-  }
-  else
-  {
-    m_resp->add_U32(VDR_RET_DATAUNKNOWN);
-    m_resp->finalise();
-    m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
-  }
-
-  delete[] fileName;
-  delete[] newPath;
-
   return true;
 }
 

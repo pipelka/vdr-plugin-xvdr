@@ -242,9 +242,6 @@ void cConnection::TimerChange(const cTimer *Timer, eTimerChange Change)
       return;
     }
 
-    resp->add_U32((int)Change);
-    resp->add_String(Timer ? *Timer->ToText(true) : "-");
-
     resp->finalise();
     m_socket.write(resp->getPtr(), resp->getLen());
     delete resp;
