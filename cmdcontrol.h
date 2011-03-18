@@ -72,6 +72,7 @@ private:
   bool processRECORDINGS_GetCount();
   bool processRECORDINGS_GetList();
   bool processRECORDINGS_GetInfo();
+  bool processRECORDINGS_Rename();
   bool processRECORDINGS_Delete();
   bool processRECORDINGS_Move();
 

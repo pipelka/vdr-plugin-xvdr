@@ -70,6 +70,7 @@ const static uint32_t VDR_TIMER_UPDATE          = 85;
 const static uint32_t VDR_RECORDINGS_DISKSIZE   = 100;
 const static uint32_t VDR_RECORDINGS_GETCOUNT   = 101;
 const static uint32_t VDR_RECORDINGS_GETLIST    = 102;
+const static uint32_t VDR_RECORDINGS_RENAME     = 103;
 const static uint32_t VDR_RECORDINGS_DELETE     = 104;
 
 /* OPCODE 120 - 139: VNSI network functions for epg access and manipulating */

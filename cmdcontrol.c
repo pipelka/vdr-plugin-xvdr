@@ -20,12 +20,14 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <vdr/recording.h>
 #include <vdr/channels.h>
 #include <vdr/videodir.h>
 #include <vdr/plugin.h>
 #include <vdr/timers.h>
 #include <vdr/menu.h>
+#include <vdr/videodir.h>
 
 #include "hash.h"
 #include "config.h"
@@ -198,6 +200,10 @@ bool cCmdControl::processPacket()
 
     case VDR_RECORDINGS_GETLIST:
       result = processRECORDINGS_GetList();
+      break;
+
+    case VDR_RECORDINGS_RENAME:
+      result = processRECORDINGS_Rename();
       break;
 
     case VDR_RECORDINGS_DELETE:
@@ -958,6 +964,71 @@ bool cCmdControl::processRECORDINGS_GetList() /* OPCODE 102 */
 
   m_resp->finalise();
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
+  return true;
+}
+
+bool cCmdControl::processRECORDINGS_Rename() /* OPCODE 103 */
+{
+  const char* filename     = m_req->extract_String();
+  const char* olddirectory = m_req->extract_String();
+  const char* oldtitle     = m_req->extract_String();
+  const char* newdirectory = m_req->extract_String();
+  const char* newtitle     = m_req->extract_String();
+
+  char* filename_old = new char[512];
+  filename_old[0] = 0;
+  char* filename_new = new char[512];
+  filename_new[0] = 0;
+
+  int r = 0;
+
+  // just rewrite info if directory is empty
+  if(isempty(olddirectory)) {
+    isyslog("rewriting of recordinginfo currently not supported !");
+  }
+
+  // physically move the recording
+  else
+  {
+    // add video directory
+    strncat(filename_new, VideoDirectory, 512);
+    if(!endswith(filename_new, "/")) {
+      strncat(filename_new, "/", 512);
+    }
+
+    strcpy(filename_old, filename_new);
+
+    // add directory old
+    if(!isempty(olddirectory)) {
+      strncat(filename_old, olddirectory, 512);
+      strncat(filename_old, "/", 512);
+    }
+
+    // add title old
+    strncat(filename_old, oldtitle, 512);
+
+    // add directory new
+    if(!isempty(newdirectory)) {
+      strncat(filename_new, newdirectory, 512);
+      strncat(filename_new, "/", 512);
+    }
+
+    // add title new
+    strncat(filename_new, newtitle, 512);
+
+    // replace spaces with '_'
+    strreplace(filename_new, ' ', '_');
+
+    isyslog("moving recording '%s' to '%s'", filename_old, filename_new);
+
+    r = rename(filename_old, filename_new);
+  }
+
+
+  m_resp->add_U32(r);
+  m_resp->finalise();
+  m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
+
   return true;
 }
 
