@@ -972,7 +972,7 @@ bool cCmdControl::processRECORDINGS_Rename() /* OPCODE 103 */
 
   if(recording != NULL) {
     // get filename and remove last part (recording time)
-    const char* filename_old = recording->FileName();
+    char* filename_old = strdup((const char*)recording->FileName());
     char* sep = strrchr(filename_old, '/');
     if(sep != NULL) {
       *sep = 0;
@@ -992,6 +992,9 @@ bool cCmdControl::processRECORDINGS_Rename() /* OPCODE 103 */
     isyslog("renaming recording '%s' to '%s'", filename_old, filename_new);
     r = rename(filename_old, filename_new);
     Recordings.Update();
+
+    free(filename_old);
+    delete[] filename_new;
   }
 
   m_resp->add_U32(r);
