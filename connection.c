@@ -59,6 +59,7 @@ cConnection::cConnection(cServer *server, int fd, unsigned int id, const char *C
   m_ClientAddress           = ClientAdr;
   m_StatusInterfaceEnabled  = false;
   m_OSDInterfaceEnabled     = false;
+  m_RecPlayer               = NULL;
 
   m_socket.set_handle(fd);
 

@@ -23,6 +23,7 @@
 #define CMD_CONTROL_H
 
 #include <queue>
+#include <map>
 #include <vdr/thread.h>
 
 #include "responsepacket.h"

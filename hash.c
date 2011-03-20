@@ -64,12 +64,11 @@ static uint8_t EncodeCharacter(char c) {
   return 0;
 }
 
-uint32_t CreateChannelUID(const cChannel* channel) {
+uint32_t CreateStringHash(const cString& string) {
   static uint32_t m = 246944297;
   uint32_t h = 0;
 
-  cString channelid = channel->GetChannelID().ToString();
-  const char* p = channelid;
+  const char* p = string;
 
   while(*p != 0) {
     uint8_t c = EncodeCharacter(*p++);
@@ -78,13 +77,17 @@ uint32_t CreateChannelUID(const cChannel* channel) {
 
   return h;
 }
-#else
-uint32_t CreateChannelUID(const cChannel* channel) {
-  cString channelid = channel->GetChannelID().ToString();
 
-  const char* p = channelid;
+#else
+uint32_t CreateStringHash(const cString& string) {
+  const char* p = string;
   int len = strlen(p);
 
   return crc32((const unsigned char*)p, len);
 }
 #endif
+
+uint32_t CreateChannelUID(const cChannel* channel) {
+  cString channelid = channel->GetChannelID().ToString();
+  return CreateStringHash(channelid);
+}

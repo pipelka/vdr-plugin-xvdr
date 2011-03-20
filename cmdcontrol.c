@@ -35,6 +35,7 @@
 #include "connection.h"
 #include "recplayer.h"
 #include "vdrcommand.h"
+#include "recordingscache.h"
 #include "wirbelscanservice.h" /// copied from modified wirbelscan plugin
                                /// must be hold up to date with wirbelscan
 
@@ -333,12 +334,19 @@ bool cCmdControl::process_EnableOSDInterface()
 
 bool cCmdControl::processRecStream_Open() /* OPCODE 40 */
 {
-  const char *fileName  = m_req->extract_String();
-  cRecording *recording = Recordings.GetByName(fileName);
+  cRecording *recording = NULL;
 
-  LOGCONSOLE("%s: recording pointer %p", fileName, recording);
+  if(m_protocolVersion >= 2) {
+    uint32_t uid = m_req->extract_U32();
+    recording = cRecordingsCache::GetInstance().Lookup(uid);
+  }
+  else {
+    const char *fileName = m_req->extract_String();
+    recording = Recordings.GetByName(fileName);
+    delete[] fileName;
+  }
 
-  if (recording)
+  if (recording && m_req->getClient()->m_RecPlayer == NULL)
   {
     m_req->getClient()->m_RecPlayer = new cRecPlayer(recording);
 
@@ -351,19 +359,15 @@ bool cCmdControl::processRecStream_Open() /* OPCODE 40 */
 #else
     m_resp->add_U8(recording->IsPesRecording());//added for TS
 #endif
-
-    LOGCONSOLE("written totalLength");
   }
   else
   {
     m_resp->add_U32(VDR_RET_DATAUNKNOWN);
-
-    LOGCONSOLE("recording '%s' not found", fileName);
+    esyslog("%s - unable to start recording !", __FUNCTION__);
   }
 
   m_resp->finalise();
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
-  delete[] fileName;
 
   return true;
 }
@@ -399,8 +403,6 @@ bool cCmdControl::processRecStream_GetBlock() /* OPCODE 42 */
   uint64_t position  = m_req->extract_U64();
   uint32_t amount    = m_req->extract_U32();
 
-//  LOGCONSOLE("getblock pos = %llu length = %lu", position, amount);
-
   uint8_t* p = m_resp->reserve(amount);
   uint32_t amountReceived = m_req->getClient()->m_RecPlayer->getBlock(p, position, amount);
 
@@ -414,7 +416,6 @@ bool cCmdControl::processRecStream_GetBlock() /* OPCODE 42 */
 
   m_resp->finalise();
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
-//  LOGCONSOLE("Finished getblock, have sent %lu", m_resp->getLen());
   return true;
 }
 
@@ -843,16 +844,8 @@ bool cCmdControl::processRECORDINGS_GetDiskSpace() /* OPCODE 100 */
 
 bool cCmdControl::processRECORDINGS_GetCount() /* OPCODE 101 */
 {
-  int count = 0;
-  bool recordings = Recordings.Load();
-  Recordings.Sort();
-  if (recordings)
-  {
-    cRecording *recording = Recordings.Last();
-    count = recording->Index() + 1;
-  }
-
-  m_resp->add_U32(count);
+  Recordings.Load();
+  m_resp->add_U32(Recordings.Count());
 
   m_resp->finalise();
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
@@ -861,9 +854,6 @@ bool cCmdControl::processRECORDINGS_GetCount() /* OPCODE 101 */
 
 bool cCmdControl::processRECORDINGS_GetList() /* OPCODE 102 */
 {
-  cRecordings Recordings;
-  Recordings.Load();
-
   if(m_protocolVersion == 1) {
     m_resp->add_String(VideoDirectory);
   }
@@ -917,18 +907,17 @@ bool cCmdControl::processRECORDINGS_GetList() /* OPCODE 102 */
     char* recname = strrchr(fullname, '~');
     char* directory = NULL;
 
-    // title
-    if(recname != NULL) {
+    if(recname == NULL) {
+      recname = fullname;
+    }
+    else {
       *recname = 0;
       recname++;
       directory = fullname;
-      m_resp->add_String(m_toUTF8.Convert(recname));
     }
-    else if (!isempty(recording->Info()->Title())) {
-      m_resp->add_String(m_toUTF8.Convert(recording->Info()->Title()));
-    }
-    else
-      m_resp->add_String("");
+
+    // title
+    m_resp->add_String(m_toUTF8.Convert(recname));
 
     // subtitle
     if (!isempty(recording->Info()->ShortText()))
@@ -953,11 +942,18 @@ bool cCmdControl::processRECORDINGS_GetList() /* OPCODE 102 */
         while(*directory == '/') directory++;
       }
 
-      m_resp->add_String((directory == NULL) ? "" : directory);
+      m_resp->add_String((isempty(directory)) ? "" : m_toUTF8.Convert(directory));
     }
 
-    // filename of recording
-    m_resp->add_String(m_toUTF8.Convert(recording->FileName()));
+    // filename / uid of recording
+    if(m_protocolVersion >= 2) {
+      uint32_t uid = cRecordingsCache::GetInstance().Register(recording);
+      m_resp->add_U32(uid);
+    }
+    else {
+      cString filename = recording->FileName();
+      m_resp->add_String(filename);
+    }
 
     free(fullname);
   }
@@ -969,61 +965,34 @@ bool cCmdControl::processRECORDINGS_GetList() /* OPCODE 102 */
 
 bool cCmdControl::processRECORDINGS_Rename() /* OPCODE 103 */
 {
-  const char* filename     = m_req->extract_String();
-  const char* olddirectory = m_req->extract_String();
-  const char* oldtitle     = m_req->extract_String();
-  const char* newdirectory = m_req->extract_String();
-  const char* newtitle     = m_req->extract_String();
+  uint32_t    uid          = m_req->extract_U32();
+  char*       newtitle     = m_req->extract_String();
+  cRecording* recording    = cRecordingsCache::GetInstance().Lookup(uid);
+  int         r            = VDR_RET_DATAINVALID;
 
-  char* filename_old = new char[512];
-  filename_old[0] = 0;
-  char* filename_new = new char[512];
-  filename_new[0] = 0;
-
-  int r = 0;
-
-  // just rewrite info if directory is empty
-  if(isempty(olddirectory)) {
-    isyslog("rewriting of recordinginfo currently not supported !");
-  }
-
-  // physically move the recording
-  else
-  {
-    // add video directory
-    strncat(filename_new, VideoDirectory, 512);
-    if(!endswith(filename_new, "/")) {
-      strncat(filename_new, "/", 512);
+  if(recording != NULL) {
+    // get filename and remove last part (recording time)
+    const char* filename_old = recording->FileName();
+    char* sep = strrchr(filename_old, '/');
+    if(sep != NULL) {
+      *sep = 0;
     }
 
-    strcpy(filename_old, filename_new);
-
-    // add directory old
-    if(!isempty(olddirectory)) {
-      strncat(filename_old, olddirectory, 512);
-      strncat(filename_old, "/", 512);
+    // replace spaces in newtitle
+    strreplace(newtitle, ' ', '_');
+    char* filename_new = new char[512];
+    strncpy(filename_new, filename_old, 512);
+    sep = strrchr(filename_new, '/');
+    if(sep != NULL) {
+      sep++;
+      *sep = 0;
     }
-
-    // add title old
-    strncat(filename_old, oldtitle, 512);
-
-    // add directory new
-    if(!isempty(newdirectory)) {
-      strncat(filename_new, newdirectory, 512);
-      strncat(filename_new, "/", 512);
-    }
-
-    // add title new
     strncat(filename_new, newtitle, 512);
 
-    // replace spaces with '_'
-    strreplace(filename_new, ' ', '_');
-
-    isyslog("moving recording '%s' to '%s'", filename_old, filename_new);
-
+    isyslog("renaming recording '%s' to '%s'", filename_old, filename_new);
     r = rename(filename_old, filename_new);
+    Recordings.Update();
   }
-
 
   m_resp->add_U32(r);
   m_resp->finalise();
@@ -1034,14 +1003,20 @@ bool cCmdControl::processRECORDINGS_Rename() /* OPCODE 103 */
 
 bool cCmdControl::processRECORDINGS_Delete() /* OPCODE 104 */
 {
-  const char *recName = m_req->extract_String();
+  cString recName;
+  cRecording* recording = NULL;
 
-  cRecordings Recordings;
-  Recordings.Load(); // probably have to do this
+  if(m_protocolVersion >= 2) {
+    uint32_t uid = m_req->extract_U32();
+    recording = cRecordingsCache::GetInstance().Lookup(uid);
+  }
+  else {
+    const char* temp = m_req->extract_String();
+    recName = temp;
+    recording = Recordings.GetByName(recName);
+    delete[] temp;
+  }
 
-  cRecording* recording = Recordings.GetByName(recName);
-
-  LOGCONSOLE("recording pointer %p", recording);
 
   if (recording)
   {
@@ -1071,14 +1046,13 @@ bool cCmdControl::processRECORDINGS_Delete() /* OPCODE 104 */
   }
   else
   {
-    esyslog("VNSI-Error: Error in recording name \"%s\"", recName);
+    esyslog("VNSI-Error: Error in recording name \"%s\"", (const char*)recName);
     m_resp->add_U32(VDR_RET_DATAUNKNOWN);
   }
 
   m_resp->finalise();
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
-  
-  delete[] recName;
+
   return true;
 }
 
