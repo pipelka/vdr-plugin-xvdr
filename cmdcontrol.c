@@ -294,6 +294,9 @@ bool cCmdControl::process_GetTime() /* OPCODE 2 */
   struct tm* timeStruct = localtime(&timeNow);
   int timeOffset        = timeStruct->tm_gmtoff;
 
+  // we should return the local time
+  timeNow += timeOffset;
+
   m_resp->add_U32(timeNow);
   m_resp->add_S32(timeOffset);
   m_resp->finalise();
