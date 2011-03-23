@@ -26,12 +26,14 @@
 
 #include "recplayer.h"
 #include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 cRecPlayer::cRecPlayer(cRecording* rec)
 {
-  m_file          = NULL;
+  m_file          = -1;
   m_fileOpen      = -1;
-  m_lastPosition  = 0;
   m_recordingFilename = strdup(rec->FileName());
 
   // FIXME find out max file path / name lengths
@@ -40,7 +42,7 @@ cRecPlayer::cRecPlayer(cRecording* rec)
   m_indexFile = new cIndexFile(m_recordingFilename, false);
 #else
   m_pesrecording = rec->IsPesRecording();
-  if(m_pesrecording) esyslog("recording '%s' is a PES recording", m_recordingFilename);
+  if(m_pesrecording) isyslog("recording '%s' is a PES recording", m_recordingFilename);
   m_indexFile = new cIndexFile(m_recordingFilename, false, m_pesrecording);
 #endif
 
@@ -56,17 +58,34 @@ void cRecPlayer::cleanup() {
 
 void cRecPlayer::scan()
 {
-  if (m_file) fclose(m_file);
+  struct stat s;
+
+  closeFile();
+
   m_totalLength = 0;
   m_fileOpen    = -1;
   m_totalFrames = 0;
 
   cleanup();
 
-  for(int i = 0; i < 65535; i++) // i think we only need one possible loop
+  for(int i = 0; ; i++) // i think we only need one possible loop
   {
     fileNameFromIndex(i);
-    isyslog("FILENAME: %s", m_fileName);
+
+    if(stat(m_fileName, &s) == -1) {
+      break;
+    }
+
+    cSegment* segment = new cSegment();
+    segment->start = m_totalLength;
+    segment->end = segment->start + s.st_size;
+
+    m_segments.Append(segment);
+
+    m_totalLength += s.st_size;
+    isyslog("File %i found, size: %llu, totalLength now %llu", i, s.st_size, m_totalLength);
+
+    /*
     m_file = fopen(m_fileName, "r");
     if (!m_file) break;
 
@@ -79,15 +98,17 @@ void cRecPlayer::scan()
     m_segments.Append(s);
     isyslog("File %i found, totalLength now %llu, numFrames = %u", i, m_totalLength, m_totalFrames);
     fclose(m_file);
+    */
   }
 
-  m_file = NULL;
+  m_totalFrames = m_indexFile->Last();
+  isyslog("total frames: %u", m_totalFrames);
 }
 
 cRecPlayer::~cRecPlayer()
 {
   cleanup();
-  if (m_file) fclose(m_file);
+  closeFile();
   free(m_recordingFilename);
 }
 
@@ -99,15 +120,17 @@ char* cRecPlayer::fileNameFromIndex(int index) {
 
   return m_fileName;
 }
+
 bool cRecPlayer::openFile(int index)
 {
-  if (m_file) fclose(m_file);
+  if (index == m_fileOpen) return true;
+  closeFile();
 
   fileNameFromIndex(index);
   isyslog("openFile called for index %i string:%s", index, m_fileName);
 
-  m_file = fopen(m_fileName, "r");
-  if (!m_file)
+  m_file = open(m_fileName, O_RDONLY | O_NOATIME);
+  if (m_file == -1)
   {
     isyslog("file failed to open");
     m_fileOpen = -1;
@@ -115,6 +138,19 @@ bool cRecPlayer::openFile(int index)
   }
   m_fileOpen = index;
   return true;
+}
+
+void cRecPlayer::closeFile()
+{
+  if(m_file == -1) {
+    return;
+  }
+
+  isyslog("file closed");
+  close(m_file);
+
+  m_file = -1;
+  m_fileOpen = -1;
 }
 
 uint64_t cRecPlayer::getLengthBytes()
@@ -127,86 +163,64 @@ uint32_t cRecPlayer::getLengthFrames()
   return m_totalFrames;
 }
 
-unsigned long cRecPlayer::getBlock(unsigned char* buffer, uint64_t position, unsigned long amount)
+int cRecPlayer::getBlock(unsigned char* buffer, uint64_t position, int amount)
 {
-  if ((amount > m_totalLength) || (amount > 500000))
-  {
-    LOGCONSOLE("Amount %lu requested and rejected", amount);
-    return 0;
-  }
+  // dont let the block be larger than 256 kb
+  if (amount > 256*1024)
+    amount = 256*1024;
+
+  if ((uint64_t)amount > m_totalLength)
+    amount = m_totalLength;
 
   if (position >= m_totalLength)
+    return 0;
+
+  if ((position + amount) > m_totalLength)
+    amount = m_totalLength - position;
+
+  // work out what block "position" is in
+  int segmentNumber = -1;
+  for(int i = 0; i < m_segments.Size(); i++)
   {
-    LOGCONSOLE("Client asked for data starting past end of recording!");
+    if ((position >= m_segments[i]->start) && (position < m_segments[i]->end)) {
+      segmentNumber = i;
+      break;
+    }
+  }
+
+  // segment not found / invalid position
+  if (segmentNumber == -1) return 0;
+
+  // open file (if not already open)
+  if (!openFile(segmentNumber)) return 0;
+
+  // work out position in current file
+  uint64_t filePosition = position - m_segments[segmentNumber]->start;
+
+  // seek to position
+  if(lseek(m_file, filePosition, SEEK_SET) == -1) {
+    esyslog("unable to seek to position: %llu", filePosition);
     return 0;
   }
 
-  if ((position + amount) > m_totalLength)
-  {
-    LOGCONSOLE("Client asked for some data past the end of recording, adjusting amount");
-    amount = m_totalLength - position;
+  // try to read the block
+  int bytes_read = read(m_file, buffer, amount);
+  isyslog("read %i bytes from file %i at position %llu", bytes_read, segmentNumber, filePosition);
+
+  if(bytes_read <= 0) {
+    return 0;
   }
 
-  // work out what block position is in
-  int segmentNumber;
-  for(segmentNumber = 0; segmentNumber < m_segments.Size(); segmentNumber++)
-  {
-    if ((position >= m_segments[segmentNumber]->start) && (position < m_segments[segmentNumber]->end)) break;
-    // position is in this block
+  // Tell linux not to bother keeping the data in the FS cache
+  posix_fadvise(m_file, filePosition, bytes_read, POSIX_FADV_DONTNEED);
+
+  // divide and conquer
+  if(bytes_read < amount) {
+    bytes_read += getBlock(&buffer[bytes_read], position + bytes_read, amount - bytes_read);
   }
 
-  // we could be seeking around
-  if (segmentNumber != m_fileOpen)
-  {
-    if (!openFile(segmentNumber)) return 0;
-  }
-
-  uint64_t currentPosition = position;
-  uint32_t yetToGet = amount;
-  uint32_t got = 0;
-  uint32_t getFromThisSegment = 0;
-  uint32_t filePosition;
-
-  while(got < amount)
-  {
-    if (got)
-    {
-      // if(got) then we have already got some and we are back around
-      // advance the file pointer to the next file
-      if (!openFile(++segmentNumber)) return 0;
-    }
-
-    // is the request completely in this block?
-    if ((currentPosition + yetToGet) <= m_segments[segmentNumber]->end)
-      getFromThisSegment = yetToGet;
-    else
-      getFromThisSegment = m_segments[segmentNumber]->end - currentPosition;
-
-    filePosition = currentPosition - m_segments[segmentNumber]->start;
-    fseek(m_file, filePosition, SEEK_SET);
-    fread(&buffer[got], getFromThisSegment, 1, m_file);
-
-    // Tell linux not to bother keeping the data in the FS cache
-    posix_fadvise(m_file->_fileno, filePosition, getFromThisSegment, POSIX_FADV_DONTNEED);
-
-    got += getFromThisSegment;
-    currentPosition += getFromThisSegment;
-    yetToGet -= getFromThisSegment;
-  }
-
-  m_lastPosition = position;
-  return got;
+  return bytes_read;
 }
-
-uint64_t cRecPlayer::getLastPosition()
-{
-  return m_lastPosition;
-}
-
-/*cRecording* cRecPlayer::getCurrentRecording()
-{
-  return NULL;
-}*/
 
 uint64_t cRecPlayer::positionFromFrameNumber(uint32_t frameNumber)
 {
@@ -224,16 +238,12 @@ uint64_t cRecPlayer::positionFromFrameNumber(uint32_t frameNumber)
 
 
   if (!m_indexFile->Get((int)frameNumber, &retFileNumber, &retFileOffset, &retPicType, &retLength))
-  {
     return 0;
-  }
 
-//  LOGCONSOLE("FN: %u FO: %i", retFileNumber, retFileOffset);
-  if (retFileNumber >= m_segments.Size()) return 0;
-//  if (!m_segments[retFileNumber]) return 0;
+  if (retFileNumber >= m_segments.Size()) 
+    return 0;
+
   uint64_t position = m_segments[retFileNumber]->start + retFileOffset;
-//  LOGCONSOLE("Pos: %llu", position);
-
   return position;
 }
 
@@ -244,15 +254,22 @@ uint32_t cRecPlayer::frameNumberFromPosition(uint64_t position)
   if (position >= m_totalLength)
   {
     LOGCONSOLE("Client asked for data starting past end of recording!");
-    return 0;
+    return m_totalFrames;
   }
 
-  unsigned char segmentNumber;
-  for(segmentNumber = 0; segmentNumber < m_segments.Size(); segmentNumber++)
+  int segmentNumber = -1;
+  for(int i = 0; i < m_segments.Size(); i++)
   {
-    if ((position >= m_segments[segmentNumber]->start) && (position < m_segments[segmentNumber]->end)) break;
-    // position is in this block
+    if ((position >= m_segments[i]->start) && (position < m_segments[i]->end)) {
+      segmentNumber = i;
+      break;
+    }
   }
+
+  if(segmentNumber == -1) {
+    return m_totalFrames;
+  }
+
   uint32_t askposition = position - m_segments[segmentNumber]->start;
   return m_indexFile->Get((int)segmentNumber, askposition);
 }

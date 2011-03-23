@@ -47,9 +47,11 @@ public:
   ~cRecPlayer();
   uint64_t getLengthBytes();
   uint32_t getLengthFrames();
-  unsigned long getBlock(unsigned char* buffer, uint64_t position, unsigned long amount);
+  int getBlock(unsigned char* buffer, uint64_t position, int amount);
+
   bool openFile(int index);
-  uint64_t getLastPosition();
+  void closeFile();
+
   void scan();
   uint64_t positionFromFrameNumber(uint32_t frameNumber);
   uint32_t frameNumberFromPosition(uint64_t position);
@@ -62,11 +64,10 @@ private:
 
   char        m_fileName[512];
   cIndexFile *m_indexFile;
-  FILE       *m_file;
+  int         m_file;
   int         m_fileOpen;
   cVector<cSegment*> m_segments;
   uint64_t    m_totalLength;
-  uint64_t    m_lastPosition;
   uint32_t    m_totalFrames;
   char       *m_recordingFilename;
   bool        m_pesrecording;
