@@ -940,6 +940,7 @@ bool cCmdControl::processRECORDINGS_GetList() /* OPCODE 102 */
         char* p = directory;
         while(*p != 0) {
           if(*p == '~') *p = '/';
+          if(*p == '_') *p = ' ';
           p++;
         }
         while(*directory == '/') directory++;
