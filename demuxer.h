@@ -23,6 +23,7 @@
 #define VNSIDEMUXER_H
 
 #include <vdr/device.h>
+#include <queue>
 
 #define DVD_TIME_BASE 1000000
 #define DVD_NOPTS_VALUE    (-1LL<<52) // should be possible to represent in both double and __int64
@@ -210,6 +211,7 @@ public:
 
   int ParsePESHeader(uint8_t *buf, size_t len);
   void SendPacket(sStreamPacket *pkt);
+  void BufferPacket(sStreamPacket *pkt);
   int64_t Rescale(int64_t a);
 
   cLiveStreamer *m_Streamer;
@@ -224,6 +226,8 @@ public:
 
 protected:
   bool        m_FoundFrame;
+
+  std::queue<sStreamPacket*> m_queue;
 };
 
 

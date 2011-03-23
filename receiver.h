@@ -70,6 +70,7 @@ private:
   cString           m_DeviceString;                 /*!> The name of the receiving device */
   bool              m_streamchangeSent;             /*!> Is false until the stream change message is sendet (no packets are sendet until this is set) */
   bool              m_streamReady;                  /*!> Set by the video demuxer after we got video information */
+  bool              m_startup;
   bool              m_IsAudioOnly;                  /*!> Set to true if streams contains only audio */
   bool              m_IsMPEGPS;                     /*!> TS Stream contains MPEG PS data like from pvrinput */
   cResponsePacket*  m_packetEmpty;                  /*!> Empty stream packet */
@@ -95,7 +96,8 @@ public:
 
   bool StreamChannel(const cChannel *channel, int priority, cxSocket *Socket, cResponsePacket *resp);
   void SetReady() { m_streamReady = true; }
-  bool IsReady() { return m_streamReady; }
+  bool IsReady() { return m_streamReady && (m_NumStreams > 0); }
+  bool IsStarting() { return m_startup; }
   bool IsAudioOnly() { return m_IsAudioOnly; }
   bool IsMPEGPS() { return m_IsMPEGPS; }
   int HaveStreamDemuxer(int Pid, eStreamType streamType);

@@ -164,23 +164,58 @@ int cParser::ParsePESHeader(uint8_t *buf, size_t len)
   return hdr_len;
 }
 
+void cParser::BufferPacket(sStreamPacket *pkt)
+{
+  // create new packet
+  sStreamPacket* p = new sStreamPacket(*pkt);
+
+  // copy payload
+  p->data = (uint8_t*)malloc(pkt->size);
+  memcpy(p->data, pkt->data, pkt->size);
+
+  // push to queue
+  m_queue.push(p);
+}
+
 void cParser::SendPacket(sStreamPacket *pkt)
 {
-  if (!m_Streamer->IsReady())
-    return;
-
   if(pkt->dts == DVD_NOPTS_VALUE) return;
   if(pkt->pts == DVD_NOPTS_VALUE) return;
 
   int64_t dts = pkt->dts;
   int64_t pts = pkt->pts;
 
-  /* Rescale for XBMC */
+  // Rescale for XBMC
   pkt->dts      = Rescale(dts);
   pkt->pts      = Rescale(pts);
   pkt->duration = Rescale(pkt->duration);
 
-  m_Streamer->sendStreamPacket(pkt);
+  // buffer packets if we are not ready to send
+  if (m_Streamer->IsStarting()) {
+    BufferPacket(pkt);
+    return;
+  }
+
+  // stream packet if queue is empty
+  if(m_queue.size() == 0) {
+    m_Streamer->sendStreamPacket(pkt);
+    return;
+  }
+
+  BufferPacket(pkt);
+
+  // send buffered data first
+  isyslog("sending %i buffered packets", m_queue.size());
+
+  while(m_queue.size() > 0) {
+    sStreamPacket* p = m_queue.front();
+    if(p != NULL) {
+      m_Streamer->sendStreamPacket(p);
+      free(p->data);
+      delete p;
+    }
+    m_queue.pop();
+  }
 }
 
 

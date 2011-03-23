@@ -515,7 +515,7 @@ cLiveStreamer::cLiveStreamer()
  , cRingBufferLinear(MEGABYTE(3), TS_SIZE, true)
 {
   m_Channel         = NULL;
-  m_Priority        = NULL;
+  m_Priority        = 0;
   m_Socket          = NULL;
   m_Device          = NULL;
   m_Receiver        = NULL;
@@ -526,6 +526,7 @@ cLiveStreamer::cLiveStreamer()
   m_IsAudioOnly     = false;
   m_IsMPEGPS        = false;
   m_streamchangeSent= false;
+  m_startup         = true;
 
   m_packetEmpty = new cResponsePacket;
   m_packetEmpty->initStream(VDR_STREAM_MUXPKT, 0, 0, 0, 0);
@@ -608,9 +609,9 @@ void cLiveStreamer::Action(void)
   int size              = 0;
   int used              = 0;
   unsigned char *buf    = NULL;
-  bool startup          = true;
   uint64_t last_info    = last_data;
   uint64_t starttime    = last_data;
+  m_startup             = true;
 
   while (Running())
   {
@@ -658,13 +659,13 @@ void cLiveStreamer::Action(void)
     }
 
     // Send stream information as the first packet on startup
-    if (startup && m_NumStreams > 0 && IsReady())
+    if (IsStarting() && m_NumStreams > 0 && IsReady())
     {
       isyslog("VNSI: streaming of channel started");
       last_info = get_ticks();
       sendStreamInfo();
       sendSignalInfo();
-      startup = false;
+      m_startup = false;
     }
 
     while (size >= TS_SIZE)
