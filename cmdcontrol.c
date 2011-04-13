@@ -645,7 +645,7 @@ bool cCmdControl::processTIMER_Add() /* OPCODE 83 */
   uint32_t flags      = m_req->extract_U32() > 0 ? tfActive : tfNone;
   uint32_t priority   = m_req->extract_U32();
   uint32_t lifetime   = m_req->extract_U32();
-  uint32_t number     = m_req->extract_U32();
+  uint32_t channelid  = m_req->extract_U32();
   time_t startTime    = m_req->extract_U32();
   time_t stopTime     = m_req->extract_U32();
   time_t day          = m_req->extract_U32();
@@ -661,7 +661,16 @@ bool cCmdControl::processTIMER_Add() /* OPCODE 83 */
   time = localtime_r(&stopTime, &tm_r);
   int stop = time->tm_hour * 100 + time->tm_min;
 
-  cString buffer = cString::sprintf("%u:%i:%s:%04d:%04d:%d:%d:%s:%s\n", flags, number, *cTimer::PrintDay(day, weekdays, true), start, stop, priority, lifetime, file, aux);
+  cString buffer;
+  if(m_protocolVersion == 1) {
+    buffer = cString::sprintf("%u:%i:%s:%04d:%04d:%d:%d:%s:%s\n", flags, channelid, *cTimer::PrintDay(day, weekdays, true), start, stop, priority, lifetime, file, aux);
+  }
+  else {
+    const cChannel* channel = FindChannelByUID(channelid);
+    if(channel != NULL) {
+      buffer = cString::sprintf("%u:%s:%s:%04d:%04d:%d:%d:%s:%s\n", flags, (const char*)channel->GetChannelID().ToString(), *cTimer::PrintDay(day, weekdays, true), start, stop, priority, lifetime, file, aux);
+    }
+  } 
 
   delete[] file;
   delete[] aux;
@@ -784,7 +793,7 @@ bool cCmdControl::processTIMER_Update() /* OPCODE 85 */
     uint32_t flags      = active ? tfActive : tfNone;
     uint32_t priority   = m_req->extract_U32();
     uint32_t lifetime   = m_req->extract_U32();
-    uint32_t number     = m_req->extract_U32();
+    uint32_t channelid  = m_req->extract_U32();
     time_t startTime    = m_req->extract_U32();
     time_t stopTime     = m_req->extract_U32();
     time_t day          = m_req->extract_U32();
@@ -800,8 +809,18 @@ bool cCmdControl::processTIMER_Update() /* OPCODE 85 */
     time = localtime_r(&stopTime, &tm_r);
     int stop = time->tm_hour * 100 + time->tm_min;
 
-    cString buffer = cString::sprintf("%u:%i:%s:%04d:%04d:%d:%d:%s:%s\n", flags, number, *cTimer::PrintDay(day, weekdays, true), start, stop, priority, lifetime, file, aux);
-    
+    //cString buffer = cString::sprintf("%u:%i:%s:%04d:%04d:%d:%d:%s:%s\n", flags, number, *cTimer::PrintDay(day, weekdays, true), start, stop, priority, lifetime, file, aux);
+    cString buffer;
+    if(m_protocolVersion == 1) {
+      buffer = cString::sprintf("%u:%i:%s:%04d:%04d:%d:%d:%s:%s\n", flags, channelid, *cTimer::PrintDay(day, weekdays, true), start, stop, priority, lifetime, file, aux);
+    }
+    else {
+      const cChannel* channel = FindChannelByUID(channelid);
+      if(channel != NULL) {
+        buffer = cString::sprintf("%u:%s:%s:%04d:%04d:%d:%d:%s:%s\n", flags, (const char*)channel->GetChannelID().ToString(), *cTimer::PrintDay(day, weekdays, true), start, stop, priority, lifetime, file, aux);
+      }
+    }
+
     delete[] file;
     delete[] aux;
 
