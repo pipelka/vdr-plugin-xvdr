@@ -34,6 +34,7 @@
 #include <arpa/inet.h>
 
 #include <vdr/plugin.h>
+#include <vdr/shutdown.h>
 
 #include "server.h"
 #include "connection.h"
@@ -203,6 +204,12 @@ void cServer::Action(void)
 	  i++;
 	}
       }
+
+      // reset inactivity timeout as long as there are clients connected
+      if(m_Connections.size() > 0) {
+        ShutdownHandler.SetUserInactiveTimeout();
+      }
+
       continue;
     }
 
