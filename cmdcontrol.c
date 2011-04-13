@@ -1065,20 +1065,39 @@ bool cCmdControl::processRECORDINGS_Delete() /* OPCODE 104 */
 
 bool cCmdControl::processEPG_GetForChannel() /* OPCODE 120 */
 {
-  uint32_t channelNumber  = m_req->extract_U32();
+  uint32_t channelNumber  = 0;
+  uint32_t channelUID  = 0;
+
+  if(m_protocolVersion == 1) {
+    channelNumber = m_req->extract_U32();
+  }
+  else {
+    channelUID = m_req->extract_U32();
+  }
+
   uint32_t startTime      = m_req->extract_U32();
   uint32_t duration       = m_req->extract_U32();
 
-  isyslog("get schedule called for channel %u", channelNumber);
+  const cChannel* channel = NULL;
 
-  cChannel* channel = Channels.GetByNumber(channelNumber);
+  if(m_protocolVersion == 1) {
+    channel = Channels.GetByNumber(channelNumber);
+    isyslog("get schedule called for channel %u", channelNumber);
+  }
+  else {
+    channel = FindChannelByUID(channelUID);
+    if(channel != NULL) {
+      isyslog("get schedule called for channel '%s'", (const char*)channel->GetChannelID().ToString());
+    }
+  }
+
   if (!channel)
   {
     m_resp->add_U32(0);
     m_resp->finalise();
     m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
 
-    LOGCONSOLE("written 0 because channel = NULL");
+    esyslog("written 0 because channel = NULL");
     return true;
   }
 

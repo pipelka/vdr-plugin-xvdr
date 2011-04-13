@@ -1,4 +1,6 @@
 #include <vdr/tools.h>
+#include <vdr/channels.h>
+
 #include "hash.h"
 
 #define USE_CRC32
@@ -90,4 +92,23 @@ uint32_t CreateStringHash(const cString& string) {
 uint32_t CreateChannelUID(const cChannel* channel) {
   cString channelid = channel->GetChannelID().ToString();
   return CreateStringHash(channelid);
+}
+
+const cChannel* FindChannelByUID(uint32_t channelUID) {
+  cChannel* result = NULL;
+
+  Channels.Lock(false);
+
+  // maybe we need to use a lookup table
+  for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel)) {
+    cString channelid = channel->GetChannelID().ToString();
+    if(channelUID == CreateStringHash(channelid)) {
+      result = channel;
+      break;
+    }
+  }
+
+  Channels.Unlock();
+
+  return result;
 }
