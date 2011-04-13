@@ -280,9 +280,9 @@ bool cCmdControl::process_Login() /* OPCODE 1 */
   m_resp->add_String("VDR-Network-Streaming-Interface (VNSI) Server");
   m_resp->add_String(VNSI_SERVER_VERSION);
   m_resp->finalise();
+  m_req->getClient()->SetLoggedIn(true);
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
 
-  m_req->getClient()->SetLoggedIn(true);
   delete[] clientName;
 
   return true;
