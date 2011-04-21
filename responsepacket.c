@@ -103,11 +103,11 @@ bool cResponsePacket::initStream(uint32_t opCode, uint32_t streamID, uint32_t du
   initBuffers();
 
   *(uint32_t*)&buffer[0]  = htonl(CHANNEL_STREAM); // stream channel
-  *(uint32_t*)&buffer[4]  = htonl(opCode);        // Stream packet operation code
-  *(uint32_t*)&buffer[8]  = htonl(streamID);              // Stream ID (unused here)
-  *(uint32_t*)&buffer[12] = htonl(duration);              // Duration (unused here)
-  *(int64_t*) &buffer[16] = htonl(dts);              // DTS (unused here)
-  *(int64_t*) &buffer[24] = htonl(pts);              // PTS (unused here)
+  *(uint32_t*)&buffer[4]  = htonl(opCode);         // Stream packet operation code
+  *(uint32_t*)&buffer[8]  = htonl(streamID);       // Stream ID
+  *(uint32_t*)&buffer[12] = htonl(duration);       // Duration
+  *(int64_t*) &buffer[16] = __cpu_to_be64(dts);    // DTS
+  *(int64_t*) &buffer[24] = __cpu_to_be64(pts);    // PTS
   *(uint32_t*)&buffer[userDataLenPosStream] = 0;
   bufUsed = headerLengthStream;
 
