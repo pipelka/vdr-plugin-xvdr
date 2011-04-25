@@ -3,9 +3,6 @@
 
 #include "hash.h"
 
-#define USE_CRC32
-#define POLYNOMIAL 0x04c11db7
-
 static uint32_t crc32_tab[] = {
 	0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f,
 	0xe963a535, 0x9e6495a3,	0x0edb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988,
@@ -63,37 +60,12 @@ uint32_t crc32(const unsigned char *buf, size_t size)
 	return (crc ^ ~0U) & 0x7FFFFFFF; // channeluid is signed
 }
 
-#ifndef USE_CRC32
-static uint8_t EncodeCharacter(char c) {
-  static const char* alphabet = ".0123456789SCTEW";
-  for(int i=0; i<16; i++) {
-    if(alphabet[i] == c) return i;
-  }
-  return 0;
-}
-
-uint32_t CreateStringHash(const cString& string) {
-  static uint32_t m = 246944297;
-  uint32_t h = 0;
-
-  const char* p = string;
-
-  while(*p != 0) {
-    uint8_t c = EncodeCharacter(*p++);
-    h = ((h << 4) + c) % m;
-  }
-
-  return h;
-}
-
-#else
 uint32_t CreateStringHash(const cString& string) {
   const char* p = string;
   int len = strlen(p);
 
   return crc32((const unsigned char*)p, len);
 }
-#endif
 
 uint32_t CreateChannelUID(const cChannel* channel) {
   cString channelid = channel->GetChannelID().ToString();
