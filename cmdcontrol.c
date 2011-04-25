@@ -29,8 +29,8 @@
 #include <vdr/menu.h>
 #include <vdr/videodir.h>
 
-#include "hash.h"
 #include "config.h"
+#include "hash.h"
 #include "cmdcontrol.h"
 #include "connection.h"
 #include "recplayer.h"
@@ -67,7 +67,6 @@ void cCmdControl::Action(void)
 {
   while (Running())
   {
-    LOGCONSOLE("threadMethod waiting");
     m_Wait.Wait(500);  // unlocks, waits, relocks
 
     m_mutex.Lock();
@@ -84,7 +83,7 @@ void cCmdControl::Action(void)
 
       if (!processPacket())
       {
-        esyslog("VNSI-Error: Response handler failed during processPacket, exiting thread");
+        ERRORLOG("Response handler failed during processPacket, exiting thread");
         continue;
       }
     }
@@ -96,7 +95,7 @@ bool cCmdControl::processPacket()
   m_resp = new cResponsePacket();
   if (!m_resp->init(m_req->getRequestID()))
   {
-    esyslog("VNSI-Error: Response packet init fail");
+    ERRORLOG("Response packet init fail");
     delete m_resp;
     delete m_req;
     m_resp = NULL;
@@ -262,12 +261,12 @@ bool cCmdControl::process_Login() /* OPCODE 1 */
 
   if (m_protocolVersion > VNSIProtocolVersion)
   {
-    esyslog("VNSI-Error: Client '%s' have a not allowed protocol version '%u', terminating client", clientName, m_protocolVersion);
+    ERRORLOG("Client '%s' have a not allowed protocol version '%u', terminating client", clientName, m_protocolVersion);
     delete[] clientName;
     return false;
   }
 
-  isyslog("VNSI: Welcome client '%s' with protocol version '%u'", clientName, m_protocolVersion);
+  INFOLOG("Welcome client '%s' with protocol version '%u'", clientName, m_protocolVersion);
 
   // Send the login reply
   time_t timeNow        = time(NULL);
@@ -363,7 +362,7 @@ bool cCmdControl::processRecStream_Open() /* OPCODE 40 */
   else
   {
     m_resp->add_U32(VDR_RET_DATAUNKNOWN);
-    esyslog("%s - unable to start recording !", __FUNCTION__);
+    ERRORLOG("%s - unable to start recording !", __FUNCTION__);
   }
 
   m_resp->finalise();
@@ -390,13 +389,13 @@ bool cCmdControl::processRecStream_GetBlock() /* OPCODE 42 */
 {
   if (m_req->getClient()->IsStreaming())
   {
-    esyslog("VNSI-Error: Get block called during live streaming");
+    ERRORLOG("Get block called during live streaming");
     return false;
   }
 
   if (!m_req->getClient()->m_RecPlayer)
   {
-    esyslog("VNSI-Error: Get block called when no recording open");
+    ERRORLOG("Get block called when no recording open");
     return false;
   }
 
@@ -411,7 +410,7 @@ bool cCmdControl::processRecStream_GetBlock() /* OPCODE 42 */
   if (!amountReceived)
   {
     m_resp->add_U32(0);
-    LOGCONSOLE("written 4(0) as getblock got 0");
+    DEBUGLOG("written 4(0) as getblock got 0");
   }
 
   m_resp->finalise();
@@ -431,7 +430,7 @@ bool cCmdControl::processRecStream_PositionFromFrameNumber() /* OPCODE 43 */
   m_resp->finalise();
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
 
-  LOGCONSOLE("Wrote posFromFrameNum reply to client");
+  DEBUGLOG("Wrote posFromFrameNum reply to client");
   return true;
 }
 
@@ -447,7 +446,7 @@ bool cCmdControl::processRecStream_FrameNumberFromPosition() /* OPCODE 44 */
   m_resp->finalise();
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
 
-  LOGCONSOLE("Wrote frameNumFromPos reply to client");
+  DEBUGLOG("Wrote frameNumFromPos reply to client");
   return true;
 }
 
@@ -478,7 +477,7 @@ bool cCmdControl::processRecStream_GetIFrame() /* OPCODE 45 */
   m_resp->finalise();
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
 
-  LOGCONSOLE("Wrote GNIF reply to client %llu %lu %lu", rfilePosition, rframeNumber, rframeLength);
+  DEBUGLOG("Wrote GNIF reply to client %llu %u %u", rfilePosition, rframeNumber, rframeLength);
   return true;
 }
 
@@ -690,7 +689,7 @@ bool cCmdControl::processTIMER_Add() /* OPCODE 83 */
     {
       Timers.Add(timer);
       Timers.SetModified();
-      isyslog("VNSI: Timer %s added", *timer->ToDescr());
+      INFOLOG("Timer %s added", *timer->ToDescr());
       m_resp->add_U32(VDR_RET_OK);
       m_resp->finalise();
       m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
@@ -698,13 +697,13 @@ bool cCmdControl::processTIMER_Add() /* OPCODE 83 */
     }
     else
     {
-      esyslog("VNSI-Error: Timer already defined: %d %s", t->Index() + 1, *t->ToText());
+      ERRORLOG("Timer already defined: %d %s", t->Index() + 1, *t->ToText());
       m_resp->add_U32(VDR_RET_DATALOCKED);
     }
   }
   else
   {
-    esyslog("VNSI-Error: Error in timer settings");
+    ERRORLOG("Error in timer settings");
     m_resp->add_U32(VDR_RET_DATAINVALID);
   }
 
@@ -722,7 +721,7 @@ bool cCmdControl::processTIMER_Delete() /* OPCODE 84 */
 
   if (number <= 0 || number > (uint32_t)Timers.Count())
   {
-    esyslog("VNSI-Error: Unable to delete timer - invalid timer identifier");
+    ERRORLOG("Unable to delete timer - invalid timer identifier");
     m_resp->add_U32(VDR_RET_DATAINVALID);
   }
   else
@@ -741,27 +740,27 @@ bool cCmdControl::processTIMER_Delete() /* OPCODE 84 */
           }
           else
           {
-            esyslog("VNSI-Error: Timer \"%i\" is recording and can be deleted (use force=1 to stop it)", number);
+            ERRORLOG("Timer \"%i\" is recording and can be deleted (use force=1 to stop it)", number);
             m_resp->add_U32(VDR_RET_RECRUNNING);
             m_resp->finalise();
             m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
             return true;
           }
         }
-        isyslog("VNSI: Deleting timer %s", *timer->ToDescr());
+        INFOLOG("Deleting timer %s", *timer->ToDescr());
         Timers.Del(timer);
         Timers.SetModified();
         m_resp->add_U32(VDR_RET_OK);
       }
       else
       {
-        esyslog("VNSI-Error: Unable to delete timer - timers being edited at VDR");
+        ERRORLOG("Unable to delete timer - timers being edited at VDR");
         m_resp->add_U32(VDR_RET_DATALOCKED);
       }
     }
     else
     {
-      esyslog("VNSI-Error: Unable to delete timer - invalid timer identifier");
+      ERRORLOG("Unable to delete timer - invalid timer identifier");
       m_resp->add_U32(VDR_RET_DATAINVALID);
     }
   }
@@ -779,7 +778,7 @@ bool cCmdControl::processTIMER_Update() /* OPCODE 85 */
   cTimer *timer = Timers.Get(index - 1);
   if (!timer)
   {
-    esyslog("VNSI-Error: Timer \"%u\" not defined", index);
+    ERRORLOG("Timer \"%u\" not defined", index);
     m_resp->add_U32(VDR_RET_DATAUNKNOWN);
     m_resp->finalise();
     m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
@@ -816,7 +815,6 @@ bool cCmdControl::processTIMER_Update() /* OPCODE 85 */
     time = localtime_r(&stopTime, &tm_r);
     int stop = time->tm_hour * 100 + time->tm_min;
 
-    //cString buffer = cString::sprintf("%u:%i:%s:%04d:%04d:%d:%d:%s:%s\n", flags, number, *cTimer::PrintDay(day, weekdays, true), start, stop, priority, lifetime, file, aux);
     cString buffer;
     if(m_protocolVersion == 1) {
       buffer = cString::sprintf("%u:%i:%s:%04d:%04d:%d:%d:%s:%s\n", flags, channelid, *cTimer::PrintDay(day, weekdays, true), start, stop, priority, lifetime, file, aux);
@@ -833,7 +831,7 @@ bool cCmdControl::processTIMER_Update() /* OPCODE 85 */
 
     if (!t.Parse(buffer))
     {
-      esyslog("VNSI-Error: Error in timer settings");
+      ERRORLOG("Error in timer settings");
       m_resp->add_U32(VDR_RET_DATAINVALID);
       m_resp->finalise();
       m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
@@ -886,11 +884,11 @@ bool cCmdControl::processRECORDINGS_GetList() /* OPCODE 102 */
 
   for (cRecording *recording = Recordings.First(); recording; recording = Recordings.Next(recording))
   {
-  #if APIVERSNUM >= 10705
+#if APIVERSNUM >= 10705
     const cEvent *event = recording->Info()->GetEvent();
-  #else
+#else
     const cEvent *event = NULL;
-  #endif
+#endif
 
     time_t recordingStart    = 0;
     int    recordingDuration = 0;
@@ -912,7 +910,7 @@ bool cCmdControl::processRECORDINGS_GetList() /* OPCODE 102 */
         recordingStart = recording->start;
       }
     }
-    LOGCONSOLE("GRI: RC: recordingStart=%lu recordingDuration=%lu", recordingStart, recordingDuration);
+    DEBUGLOG("GRI: RC: recordingStart=%lu recordingDuration=%i", recordingStart, recordingDuration);
 
     // recording_time
     m_resp->add_U32(recordingStart);
@@ -1031,7 +1029,7 @@ bool cCmdControl::processRECORDINGS_Rename() /* OPCODE 103 */
     }
     strncat(filename_new, newtitle, 512);
 
-    isyslog("renaming recording '%s' to '%s'", filename_old, filename_new);
+    INFOLOG("renaming recording '%s' to '%s'", filename_old, filename_new);
     r = rename(filename_old, filename_new);
     Recordings.Update();
 
@@ -1065,7 +1063,7 @@ bool cCmdControl::processRECORDINGS_Delete() /* OPCODE 104 */
 
   if (recording)
   {
-    LOGCONSOLE("deleting recording: %s", recording->Name());
+    DEBUGLOG("deleting recording: %s", recording->Name());
 
     cRecordControl *rc = cRecordControls::GetRecordControl(recording->FileName());
     if (!rc)
@@ -1074,24 +1072,24 @@ bool cCmdControl::processRECORDINGS_Delete() /* OPCODE 104 */
       {
         // Copy svdrdeveldevelp's way of doing this, see if it works
         Recordings.DelByName(recording->FileName());
-        isyslog("VNSI: Recording \"%s\" deleted", recording->FileName());
+        INFOLOG("Recording \"%s\" deleted", recording->FileName());
         m_resp->add_U32(VDR_RET_OK);
       }
       else
       {
-        esyslog("VNSI-Error: Error while deleting recording!");
+        ERRORLOG("Error while deleting recording!");
         m_resp->add_U32(VDR_RET_ERROR);
       }
     }
     else
     {
-      esyslog("VNSI-Error: Recording \"%s\" is in use by timer %d", recording->Name(), rc->Timer()->Index() + 1);
+      ERRORLOG("Recording \"%s\" is in use by timer %d", recording->Name(), rc->Timer()->Index() + 1);
       m_resp->add_U32(VDR_RET_DATALOCKED);
     }
   }
   else
   {
-    esyslog("VNSI-Error: Error in recording name \"%s\"", (const char*)recName);
+    ERRORLOG("Error in recording name \"%s\"", (const char*)recName);
     m_resp->add_U32(VDR_RET_DATAUNKNOWN);
   }
 
@@ -1125,12 +1123,12 @@ bool cCmdControl::processEPG_GetForChannel() /* OPCODE 120 */
 
   if(m_protocolVersion == 1) {
     channel = Channels.GetByNumber(channelNumber);
-    isyslog("get schedule called for channel %u", channelNumber);
+    DEBUGLOG("get schedule called for channel %u", channelNumber);
   }
   else {
     channel = FindChannelByUID(channelUID);
     if(channel != NULL) {
-      isyslog("get schedule called for channel '%s'", (const char*)channel->GetChannelID().ToString());
+      DEBUGLOG("get schedule called for channel '%s'", (const char*)channel->GetChannelID().ToString());
     }
   }
 
@@ -1141,7 +1139,7 @@ bool cCmdControl::processEPG_GetForChannel() /* OPCODE 120 */
     m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
     Channels.Unlock();
 
-    esyslog("written 0 because channel = NULL");
+    ERRORLOG("written 0 because channel = NULL");
     return true;
   }
 
@@ -1154,7 +1152,7 @@ bool cCmdControl::processEPG_GetForChannel() /* OPCODE 120 */
     m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
     Channels.Unlock();
 
-    LOGCONSOLE("written 0 because Schedule!s! = NULL");
+    DEBUGLOG("written 0 because Schedule!s! = NULL");
     return true;
   }
 
@@ -1166,7 +1164,7 @@ bool cCmdControl::processEPG_GetForChannel() /* OPCODE 120 */
     m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
     Channels.Unlock();
 
-    LOGCONSOLE("written 0 because Schedule = NULL");
+    DEBUGLOG("written 0 because Schedule = NULL");
     return true;
   }
 
@@ -1227,18 +1225,18 @@ bool cCmdControl::processEPG_GetForChannel() /* OPCODE 120 */
   }
 
   Channels.Unlock();
-  LOGCONSOLE("Got all event data");
+  DEBUGLOG("Got all event data");
 
   if (!atLeastOneEvent)
   {
     m_resp->add_U32(0);
-    LOGCONSOLE("Written 0 because no data");
+    DEBUGLOG("Written 0 because no data");
   }
 
   m_resp->finalise();
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
 
-  LOGCONSOLE("written schedules packet");
+  DEBUGLOG("written schedules packet");
 
   return true;
 }

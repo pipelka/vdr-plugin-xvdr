@@ -70,7 +70,7 @@ ssize_t cxSocket::write(const void *buffer, size_t size, int timeout_ms, bool mo
   {
     if(!m_pollerWrite->Poll(timeout_ms))
     {
-      esyslog("VNSI-Error: cxSocket::write: poll() failed");
+      ERRORLOG("cxSocket::write: poll() failed");
       return written-size;
     }
 
@@ -80,10 +80,10 @@ ssize_t cxSocket::write(const void *buffer, size_t size, int timeout_ms, bool mo
     {
       if (errno == EINTR || errno == EAGAIN)
       {
-        dsyslog("VNSI: cxSocket::write: EINTR during write(), retrying");
+        DEBUGLOG("cxSocket::write: EINTR during write(), retrying");
         continue;
       }
-      esyslog("VNSI-Error: cxSocket::write: write() error");
+      ERRORLOG("cxSocket::write: write() error");
       return p;
     }
 
@@ -97,9 +97,9 @@ ssize_t cxSocket::write(const void *buffer, size_t size, int timeout_ms, bool mo
 ssize_t cxSocket::read(void *buffer, size_t size, int timeout_ms)
 {
   cMutexLock CmdLock((cMutex*)&m_MutexRead);
-  
+
   int retryCounter = 0;
-  
+
   if(m_fd == -1) return -1;
 
   ssize_t missing = (ssize_t)size;
@@ -109,7 +109,7 @@ ssize_t cxSocket::read(void *buffer, size_t size, int timeout_ms)
   {
     if(!m_pollerRead->Poll(timeout_ms))
     {
-      esyslog("VNSI-Error: cxSocket::read: poll() failed at %d/%d", (int)(size-missing), (int)size);
+      ERRORLOG("cxSocket::read: poll() failed at %d/%d", (int)(size-missing), (int)size);
       return size-missing;
     }
 
@@ -119,15 +119,14 @@ ssize_t cxSocket::read(void *buffer, size_t size, int timeout_ms)
     {
       if (retryCounter < 10 && (errno == EINTR || errno == EAGAIN))
       {
-        dsyslog("VNSI: cxSocket::read: EINTR/EAGAIN during read(), retrying");
+        DEBUGLOG("cxSocket::read: EINTR/EAGAIN during read(), retrying");
         retryCounter++;
         continue;
       }
-      
-      esyslog("VNSI-Error: cxSocket::read: read() error at %d/%d", (int)(size-missing), (int)size);
+      ERRORLOG("cxSocket::read: read() error at %d/%d", (int)(size-missing), (int)size);
       return size-missing;
     }
-    
+
     retryCounter = 0;
     ptr  += p;
     missing -= p;

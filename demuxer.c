@@ -205,7 +205,7 @@ void cParser::SendPacket(sStreamPacket *pkt)
   BufferPacket(pkt);
 
   // send buffered data first
-  isyslog("sending %i buffered packets", m_queue.size());
+  INFOLOG("sending %i buffered packets", m_queue.size());
 
   while(m_queue.size() > 0) {
     sStreamPacket* p = m_queue.front();
@@ -261,7 +261,7 @@ cTSDemuxer::cTSDemuxer(cLiveStreamer *streamer, int id, eStreamType type, int pi
     m_pesParser = new cParserSubtitle(this, m_Streamer, m_streamID);
   else
   {
-    esyslog("VNSI-Error: Unrecognised type %i inside stream %i", m_streamType, m_streamID);
+    ERRORLOG("Unrecognised type %i inside stream %i", m_streamType, m_streamID);
     return;
   }
 }
@@ -288,13 +288,13 @@ bool cTSDemuxer::ProcessTSPacket(unsigned char *data)
 
   if (TsError(data))
   {
-    dsyslog("VNSI-Error: transport error");
+    ERRORLOG("transport error");
     return false;
   }
 
   if (!TsHasPayload(data))
   {
-    LOGCONSOLE("VNSI-Error: no payload, size %d", bytes);
+    ERRORLOG("no payload, size %d", bytes);
     return true;
   }
 

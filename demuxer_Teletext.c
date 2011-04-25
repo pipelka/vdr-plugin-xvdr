@@ -59,7 +59,7 @@ void cParserTeletext::Parse(unsigned char *data, int size, bool pusi)
   {
     if (!PesIsPS1Packet(data))
     {
-      esyslog("VNSI-Error: Teletext PES packet contains no valid private stream 1, ignored this packet");
+      ERRORLOG("Teletext PES packet contains no valid private stream 1, ignored this packet");
       m_firstPUSIseen = false;
       return;
     }
@@ -74,7 +74,7 @@ void cParserTeletext::Parse(unsigned char *data, int size, bool pusi)
 
     if (data[0] < 0x10 || data[0] > 0x1F)
     {
-      esyslog("VNSI-Error: Teletext PES packet contains no valid identifier, ignored this packet");
+      ERRORLOG("Teletext PES packet contains no valid identifier, ignored this packet");
       m_firstPUSIseen = false;
       return;
     }

@@ -27,11 +27,14 @@
 
 #include <vdr/config.h>
 
-#if CONSOLEDEBUG
-  #define LOGCONSOLE(x...) do{ fprintf(stderr, "VERBOSE %s - ", __FUNCTION__); fprintf(stderr, x); fprintf(stderr, "\n"); } while(0)
+#ifdef DEBUG
+#define DEBUGLOG(x...) dsyslog("VNSI: "x)
 #else
-  #define LOGCONSOLE(x...)
+#define DEBUGLOG(x...)
 #endif
+
+#define INFOLOG(x...) isyslog("VNSI: "x)
+#define ERRORLOG(x...) esyslog("VNSI-Error: "x)
 
 #define ALLOWED_HOSTS_FILE  "allowed_hosts.conf"
 #define FRONTEND_DEVICE     "/dev/dvb/adapter%d/frontend%d"

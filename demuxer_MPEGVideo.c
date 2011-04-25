@@ -182,7 +182,7 @@ bool cParserMPEG2Video::Parse_MPEG2Video(size_t len, uint32_t next_startcode, in
 
       if (m_StreamPacket != NULL)
       {
-        esyslog("VNSI-Error: MPEG2 Video got a new picture start code with already openend steam packed");
+        ERRORLOG("MPEG2 Video got a new picture start code with already openend steam packed");
       }
 
       m_StreamPacket = new sStreamPacket;

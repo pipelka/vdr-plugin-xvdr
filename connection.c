@@ -68,12 +68,12 @@ cConnection::cConnection(cServer *server, int fd, unsigned int id, const char *C
 
 cConnection::~cConnection()
 {
-  isyslog("VNSI: cConnection::~cConnection()");
+  DEBUGLOG("%s", __FUNCTION__);
   StopChannelStreaming();
   m_socket.close(); // force closing connection
-  isyslog("VNSI: stopping cConnection thread ...");
+  DEBUGLOG("stopping cConnection thread ...");
   Cancel(10);
-  isyslog("VNSI: done");
+  DEBUGLOG("done");
 }
 
 void cConnection::Action(void)
@@ -102,7 +102,7 @@ void cConnection::Action(void)
       dataLength = ntohl(dataLength);
       if (dataLength > 200000) // a random sanity limit
       {
-        esyslog("VNSI-Error: dataLength > 200000!");
+        ERRORLOG("dataLength > 200000!");
         break;
       }
 
@@ -111,13 +111,13 @@ void cConnection::Action(void)
         data = (uint8_t*)malloc(dataLength);
         if (!data)
         {
-          esyslog("VNSI-Error: Extra data buffer malloc error");
+          ERRORLOG("Extra data buffer malloc error");
           break;
         }
 
         if (!m_socket.read(data, dataLength, 10000))
         {
-          esyslog("VNSI-Error: Could not read data");
+          ERRORLOG("Could not read data");
           free(data);
           break;
         }
@@ -127,11 +127,11 @@ void cConnection::Action(void)
         data = NULL;
       }
 
-      //LOGCONSOLE("Received chan=%lu, ser=%lu, op=%lu, edl=%lu", channelID, requestID, opcode, dataLength);
+      DEBUGLOG("Received chan=%u, ser=%u, op=%u, edl=%u", channelID, requestID, opcode, dataLength);
 
       if (!m_loggedIn && (opcode != 1))
       {
-        esyslog("VNSI-Error: Not logged in and opcode != 1");
+        ERRORLOG("Not logged in and opcode != 1");
         if (data) free(data);
         break;
       }
@@ -142,7 +142,7 @@ void cConnection::Action(void)
         cResponsePacket *resp = new cResponsePacket();
         if (!resp->init(requestID))
         {
-          esyslog("VNSI-Error: response packet init fail");
+          ERRORLOG("response packet init fail");
           delete resp;
           continue;
         }
@@ -167,19 +167,19 @@ void cConnection::Action(void)
         {
           if (StartChannelStreaming(channel, resp))
           {
-            isyslog("VNSI: Started streaming of channel %s", channel->Name());
+            INFOLOG("Started streaming of channel %s", channel->Name());
             Channels.Unlock();
             continue;
           }
           else
           {
-            LOGCONSOLE("Can't stream channel %s", channel->Name());
+            DEBUGLOG("Can't stream channel %s", channel->Name());
             resp->add_U32(VDR_RET_DATALOCKED);
           }
         }
         else
         {
-          esyslog("VNSI-Error: Can't find channel %08x", uid);
+          ERRORLOG("Can't find channel %08x", uid);
           resp->add_U32(VDR_RET_DATAINVALID);
         }
 
@@ -208,13 +208,13 @@ void cConnection::Action(void)
       *(uint32_t*)&buffer[4] = htonl(kaTimeStamp);
       if (!m_socket.write(buffer, 8))
       {
-        esyslog("VNSI-Error: Could not send back KA reply");
+        ERRORLOG("Could not send back KA reply");
         break;
       }
     }
     else
     {
-      esyslog("VNSI-Error: Incoming channel number unknown");
+      ERRORLOG("Incoming channel number unknown");
       break;
     }
   }

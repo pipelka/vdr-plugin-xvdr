@@ -18,6 +18,7 @@
  *
  */
 
+#include "config.h"
 #include "recordingscache.h"
 #include "hash.h"
 
@@ -37,7 +38,7 @@ uint32_t cRecordingsCache::Register(cRecording* recording) {
   uint32_t uid = CreateStringHash(filename);
 
   m_mutex.Lock();
-  isyslog("%s - uid: %08x '%s'", __FUNCTION__, uid, (const char*)filename);
+  DEBUGLOG("%s - uid: %08x '%s'", __FUNCTION__, uid, (const char*)filename);
   m_recordings[uid] = filename;
   m_mutex.Unlock();
 
@@ -45,17 +46,19 @@ uint32_t cRecordingsCache::Register(cRecording* recording) {
 }
 
 cRecording* cRecordingsCache::Lookup(uint32_t uid) {
-  isyslog("%s - lookup uid: %08x", __FUNCTION__, uid);
+  DEBUGLOG("%s - lookup uid: %08x", __FUNCTION__, uid);
+
   if(m_recordings.find(uid) == m_recordings.end()) {
-    isyslog("%s - not found !", __FUNCTION__);
+    DEBUGLOG("%s - not found !", __FUNCTION__);
     return NULL;
   }
 
   m_mutex.Lock();
   cString filename = m_recordings[uid];
-  isyslog("%s - filename: %s", __FUNCTION__, (const char*)filename);
+  DEBUGLOG("%s - filename: %s", __FUNCTION__, (const char*)filename);
+
   cRecording* r = Recordings.GetByName(filename);
-  isyslog("%s - recording %s", __FUNCTION__, (r == NULL) ? "not found !" : "found");
+  DEBUGLOG("%s - recording %s", __FUNCTION__, (r == NULL) ? "not found !" : "found");
   m_mutex.Unlock();
 
   return r;

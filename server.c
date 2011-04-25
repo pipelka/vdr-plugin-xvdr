@@ -48,11 +48,11 @@ public:
   {
     if (!Load(AllowedHostsFile, true, true))
     {
-      isyslog("VNSI-Error: Invalid or missing '%s'. falling back to 'svdrphosts.conf'.", *AllowedHostsFile);
+      ERRORLOG("Invalid or missing '%s'. falling back to 'svdrphosts.conf'.", *AllowedHostsFile);
       cString Base = cString::sprintf("%s/../svdrphosts.conf", *VNSIServerConfig.ConfigDirectory);
       if (!Load(Base, true, true))
       {
-        esyslog("VNSI-Error: Invalid or missing %s. Adding 127.0.0.1 to list of allowed hosts.", *Base);
+        ERRORLOG("Invalid or missing %s. Adding 127.0.0.1 to list of allowed hosts.", *Base);
         cSVDRPhost *localhost = new cSVDRPhost;
         if (localhost->Parse("127.0.0.1"))
           Add(localhost);
@@ -74,7 +74,7 @@ cServer::cServer(int listenPort) : cThread("VDR VNSI Server")
   }
   else
   {
-    esyslog("VNSI-Error: cServer: missing ConfigDirectory!");
+    ERRORLOG("cServer: missing ConfigDirectory!");
     m_AllowedHostsFile = cString::sprintf("/video/" ALLOWED_HOSTS_FILE);
   }
 
@@ -96,7 +96,7 @@ cServer::cServer(int listenPort) : cThread("VDR VNSI Server")
   if (x < 0)
   {
     close(m_ServerFD);
-    isyslog("VNSI: Unable to start VNSI Server, port already in use ?");
+    INFOLOG("Unable to start VNSI Server, port already in use ?");
     m_ServerFD = -1;
     return;
   }
@@ -105,8 +105,8 @@ cServer::cServer(int listenPort) : cThread("VDR VNSI Server")
 
   Start();
 
-  isyslog("VNSI: VNSI Server started");
-  isyslog("VNSI: Channel streaming timeout: %i seconds", VNSIServerConfig.stream_timeout);
+  INFOLOG("VNSI Server started");
+  INFOLOG("Channel streaming timeout: %i seconds", VNSIServerConfig.stream_timeout);
   return;
 }
 
@@ -119,7 +119,7 @@ cServer::~cServer()
   }
   m_Connections.erase(m_Connections.begin(), m_Connections.end());
   Cancel();
-  isyslog("VNSI: VNSI Server stopped");
+  INFOLOG("VNSI Server stopped");
 }
 
 void cServer::NewClientConnected(int fd)
@@ -130,7 +130,7 @@ void cServer::NewClientConnected(int fd)
 
   if (getpeername(fd, (struct sockaddr *)&sin, &len))
   {
-    esyslog("VNSI-Error: getpeername() failed, dropping new incoming connection %d", m_IdCnt);
+    ERRORLOG("getpeername() failed, dropping new incoming connection %d", m_IdCnt);
     close(fd);
     return;
   }
@@ -138,14 +138,14 @@ void cServer::NewClientConnected(int fd)
   cAllowedHosts AllowedHosts(m_AllowedHostsFile);
   if (!AllowedHosts.Acceptable(sin.sin_addr.s_addr))
   {
-    esyslog("VNSI: Address not allowed to connect (%s)", *m_AllowedHostsFile);
+    ERRORLOG("Address not allowed to connect (%s)", *m_AllowedHostsFile);
     close(fd);
     return;
   }
 
   if (fcntl(fd, F_SETFL, fcntl (fd, F_GETFL) | O_NONBLOCK) == -1)
   {
-    esyslog("VNSI-Error: Error setting control socket to nonblocking mode");
+    ERRORLOG("Error setting control socket to nonblocking mode");
     close(fd);
     return;
   }
@@ -165,7 +165,7 @@ void cServer::NewClientConnected(int fd)
   val = 1;
   setsockopt(fd, SOL_TCP, TCP_NODELAY, &val, sizeof(val));
 
-  isyslog("VNSI: Client with ID %d connected: %s", m_IdCnt, cxSocket::ip2txt(sin.sin_addr.s_addr, sin.sin_port, buf));
+  INFOLOG("Client with ID %d connected: %s", m_IdCnt, cxSocket::ip2txt(sin.sin_addr.s_addr, sin.sin_port, buf));
   cConnection *connection = new cConnection(this, fd, m_IdCnt, cxSocket::ip2txt(sin.sin_addr.s_addr, sin.sin_port, buf));
   m_Connections.push_back(connection);
   m_IdCnt++;
@@ -175,19 +175,19 @@ void cServer::Action(void)
 {
   fd_set fds;
   struct timeval tv;
-    
+
   while (Running())
   {
     FD_ZERO(&fds);
     FD_SET(m_ServerFD, &fds);
-    
+
     tv.tv_sec = 5;
     tv.tv_usec = 0;
-    
+
     int r = select(m_ServerFD + 1, &fds, NULL, NULL, &tv);
     if (r == -1)
     {
-      esyslog("VNSI-Error: failed during select");
+      ERRORLOG("failed during select");
       continue;
     }
     if (r == 0)
@@ -196,13 +196,13 @@ void cServer::Action(void)
       {
         if (!(*i)->Active())
         {
-          isyslog("VNSI: Client with ID %u seems to be disconnected, removing from client list", (*i)->GetID());
+          INFOLOG("Client with ID %u seems to be disconnected, removing from client list", (*i)->GetID());
           delete (*i);
           i = m_Connections.erase(i);
         }
-	else {
-	  i++;
-	}
+        else {
+          i++;
+        }
       }
 
       // reset inactivity timeout as long as there are clients connected
@@ -220,7 +220,7 @@ void cServer::Action(void)
     }
     else
     {
-      esyslog("VNSI-Error: accept failed");
+      ERRORLOG("accept failed");
     }
   }
   return;

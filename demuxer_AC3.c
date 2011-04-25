@@ -155,7 +155,7 @@ void cParserAC3::Parse(unsigned char *data, int size, bool pusi)
   {
     if (!PesIsPS1Packet(data))
     {
-      esyslog("VNSI-Error: AC3 PES packet contains no valid private stream 1, ignored this packet");
+      ERRORLOG("AC3 PES packet contains no valid private stream 1, ignored this packet");
       m_firstPUSIseen = false;
       return;
     }

@@ -42,7 +42,7 @@ cRecPlayer::cRecPlayer(cRecording* rec)
   m_indexFile = new cIndexFile(m_recordingFilename, false);
 #else
   m_pesrecording = rec->IsPesRecording();
-  if(m_pesrecording) isyslog("recording '%s' is a PES recording", m_recordingFilename);
+  if(m_pesrecording) INFOLOG("recording '%s' is a PES recording", m_recordingFilename);
   m_indexFile = new cIndexFile(m_recordingFilename, false, m_pesrecording);
 #endif
 
@@ -83,26 +83,11 @@ void cRecPlayer::scan()
     m_segments.Append(segment);
 
     m_totalLength += s.st_size;
-    isyslog("File %i found, size: %llu, totalLength now %llu", i, s.st_size, m_totalLength);
-
-    /*
-    m_file = fopen(m_fileName, "r");
-    if (!m_file) break;
-
-    cSegment* s = new cSegment();
-    s->start = m_totalLength;
-    fseek(m_file, 0, SEEK_END);
-    m_totalLength += ftell(m_file);
-    m_totalFrames = m_indexFile->Last();
-    s->end = m_totalLength;
-    m_segments.Append(s);
-    isyslog("File %i found, totalLength now %llu, numFrames = %u", i, m_totalLength, m_totalFrames);
-    fclose(m_file);
-    */
+    INFOLOG("File %i found, size: %llu, totalLength now %llu", i, s.st_size, m_totalLength);
   }
 
   m_totalFrames = m_indexFile->Last();
-  isyslog("total frames: %u", m_totalFrames);
+  INFOLOG("total frames: %u", m_totalFrames);
 }
 
 cRecPlayer::~cRecPlayer()
@@ -127,12 +112,12 @@ bool cRecPlayer::openFile(int index)
   closeFile();
 
   fileNameFromIndex(index);
-  isyslog("openFile called for index %i string:%s", index, m_fileName);
+  INFOLOG("openFile called for index %i string:%s", index, m_fileName);
 
   m_file = open(m_fileName, O_RDONLY | O_NOATIME);
   if (m_file == -1)
   {
-    isyslog("file failed to open");
+    INFOLOG("file failed to open");
     m_fileOpen = -1;
     return false;
   }
@@ -146,7 +131,7 @@ void cRecPlayer::closeFile()
     return;
   }
 
-  isyslog("file closed");
+  INFOLOG("file closed");
   close(m_file);
 
   m_file = -1;
@@ -199,13 +184,13 @@ int cRecPlayer::getBlock(unsigned char* buffer, uint64_t position, int amount)
 
   // seek to position
   if(lseek(m_file, filePosition, SEEK_SET) == -1) {
-    esyslog("unable to seek to position: %llu", filePosition);
+    ERRORLOG("unable to seek to position: %llu", filePosition);
     return 0;
   }
 
   // try to read the block
   int bytes_read = read(m_file, buffer, amount);
-  isyslog("read %i bytes from file %i at position %llu", bytes_read, segmentNumber, filePosition);
+  INFOLOG("read %i bytes from file %i at position %llu", bytes_read, segmentNumber, filePosition);
 
   if(bytes_read <= 0) {
     return 0;
@@ -253,7 +238,7 @@ uint32_t cRecPlayer::frameNumberFromPosition(uint64_t position)
 
   if (position >= m_totalLength)
   {
-    LOGCONSOLE("Client asked for data starting past end of recording!");
+    DEBUGLOG("Client asked for data starting past end of recording!");
     return m_totalFrames;
   }
 
@@ -294,7 +279,7 @@ bool cRecPlayer::getNextIFrame(uint32_t frameNumber, uint32_t direction, uint64_
   int indexReturnFrameNumber;
 
   indexReturnFrameNumber = (uint32_t)m_indexFile->GetNextIFrame(frameNumber, (direction==1 ? true : false), &waste1, &waste2, &iframeLength);
-  LOGCONSOLE("GNIF input framenumber:%lu, direction=%lu, output:framenumber=%i, framelength=%i", frameNumber, direction, indexReturnFrameNumber, iframeLength);
+  DEBUGLOG("GNIF input framenumber:%u, direction=%u, output:framenumber=%i, framelength=%i", frameNumber, direction, indexReturnFrameNumber, iframeLength);
 
   if (indexReturnFrameNumber == -1) return false;
 

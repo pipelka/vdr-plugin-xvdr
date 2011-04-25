@@ -83,13 +83,13 @@ cLiveReceiver::cLiveReceiver(cLiveStreamer *Streamer, const cChannel *channel, i
  : cReceiver(channel, Priority)
  , m_Streamer(Streamer)
 {
-  LOGCONSOLE("Starting live receiver");
+  DEBUGLOG("Starting live receiver");
 }
 #endif
 
 cLiveReceiver::~cLiveReceiver()
 {
-  LOGCONSOLE("Killing live receiver");
+  DEBUGLOG("Killing live receiver");
 }
 
 void cLiveReceiver::Receive(uchar *Data, int Length)
@@ -126,7 +126,7 @@ public:
 
 cLivePatFilter::cLivePatFilter(cLiveStreamer *Streamer, const cChannel *Channel)
 {
-  LOGCONSOLE("cStreamdevPatFilter(\"%s\")", Channel->Name());
+  DEBUGLOG("cStreamdevPatFilter(\"%s\")", Channel->Name());
   m_Channel     = Channel;
   m_Streamer    = Streamer;
   m_pmtPid      = 0;
@@ -192,14 +192,14 @@ int cLivePatFilter::GetPid(SI::PMT::Stream& stream, eStreamType *type, char *lan
     case 0x01: // ISO/IEC 11172 Video
     case 0x02: // ISO/IEC 13818-2 Video
     case 0x80: // ATSC Video MPEG2 (ATSC DigiCipher QAM)
-      LOGCONSOLE("cStreamdevPatFilter PMT scanner adding PID %d (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()]);
+      DEBUGLOG("cStreamdevPatFilter PMT scanner adding PID %d (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()]);
       *type = stMPEG2VIDEO;
       return stream.getPid();
     case 0x03: // ISO/IEC 11172 Audio
     case 0x04: // ISO/IEC 13818-3 Audio
       *type   = stMPEG2AUDIO;
       GetLanguage(stream, langs);
-      LOGCONSOLE("cStreamdevPatFilter PMT scanner adding PID %d (%s) (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], langs);
+      DEBUGLOG("cStreamdevPatFilter PMT scanner adding PID %d (%s) (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], langs);
       return stream.getPid();
 #if 1
     case 0x07: // ISO/IEC 13512 MHEG
@@ -213,10 +213,10 @@ int cLivePatFilter::GetPid(SI::PMT::Stream& stream, eStreamType *type, char *lan
     case 0x0f: // ISO/IEC 13818-7 Audio with ADTS transport syntax
     case 0x10: // ISO/IEC 14496-2 Visual (MPEG-4)
     case 0x11: // ISO/IEC 14496-3 Audio with LATM transport syntax
-      LOGCONSOLE("cStreamdevPatFilter PMT scanner: Not adding PID %d (%s) (skipped)\n", stream.getPid(), psStreamTypes[stream.getStreamType()]);
+      DEBUGLOG("cStreamdevPatFilter PMT scanner: Not adding PID %d (%s) (skipped)\n", stream.getPid(), psStreamTypes[stream.getStreamType()]);
       break;
     case 0x1b: // ISO/IEC 14496-10 Video (MPEG-4 part 10/AVC, aka H.264)
-      LOGCONSOLE("cStreamdevPatFilter PMT scanner adding PID %d (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()]);
+      DEBUGLOG("cStreamdevPatFilter PMT scanner adding PID %d (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()]);
       *type = stH264;
       return stream.getPid();
     case 0x05: // ISO/IEC 13818-1 private sections
@@ -226,31 +226,31 @@ int cLivePatFilter::GetPid(SI::PMT::Stream& stream, eStreamType *type, char *lan
         switch (d->getDescriptorTag())
         {
           case SI::AC3DescriptorTag:
-            LOGCONSOLE("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "AC3", langs);
+            DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "AC3", langs);
             *type = stAC3;
             GetLanguage(stream, langs);
             delete d;
             return stream.getPid();
           case SI::EnhancedAC3DescriptorTag:
-            LOGCONSOLE("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "EAC3", langs);
+            DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "EAC3", langs);
             *type = stEAC3;
             GetLanguage(stream, langs);
             delete d;
             return stream.getPid();
           case SI::DTSDescriptorTag:
-            LOGCONSOLE("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "DTS", langs);
+            DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "DTS", langs);
             *type = stDTS;
             GetLanguage(stream, langs);
             delete d;
             return stream.getPid();
           case SI::AACDescriptorTag:
-            LOGCONSOLE("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "AAC", langs);
+            DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "AAC", langs);
             *type = stAAC;
             GetLanguage(stream, langs);
             delete d;
             return stream.getPid();
           case SI::TeletextDescriptorTag:
-            LOGCONSOLE("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "Teletext");
+            DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "Teletext");
             *type = stTELETEXT;
             delete d;
             return stream.getPid();
@@ -281,11 +281,11 @@ int cLivePatFilter::GetPid(SI::PMT::Stream& stream, eStreamType *type, char *lan
               }
             }
             delete d;
-            LOGCONSOLE("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "DVBSUB");
+            DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "DVBSUB");
             return stream.getPid();
           }
           default:
-            LOGCONSOLE("cStreamdevPatFilter PMT scanner: NOT adding PID %d (%s) %s (%i)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "UNKNOWN", d->getDescriptorTag());
+            DEBUGLOG("cStreamdevPatFilter PMT scanner: NOT adding PID %d (%s) %s (%i)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "UNKNOWN", d->getDescriptorTag());
             break;
         }
         delete d;
@@ -314,7 +314,7 @@ int cLivePatFilter::GetPid(SI::PMT::Stream& stream, eStreamType *type, char *lan
                   rawdata[2] == 'A' && rawdata[3] == 'C' &&
                   rawdata[4] == '-' && rawdata[5] == '3')
               {
-                LOGCONSOLE("cStreamdevPatFilter PMT scanner: Adding pid %d (type 0x%x) RegDesc len %d (%c%c%c%c)\n",
+                DEBUGLOG("cStreamdevPatFilter PMT scanner: Adding pid %d (type 0x%x) RegDesc len %d (%c%c%c%c)\n",
                             stream.getPid(), stream.getStreamType(), d->getLength(), rawdata[2], rawdata[3], rawdata[4], rawdata[5]);
                 *type = stAC3;
                 delete d;
@@ -329,10 +329,10 @@ int cLivePatFilter::GetPid(SI::PMT::Stream& stream, eStreamType *type, char *lan
         }
         if (!found)
         {
-          LOGCONSOLE("NOT adding PID %d (type 0x%x) RegDesc not found -> UNKNOWN\n", stream.getPid(), stream.getStreamType());
+          DEBUGLOG("NOT adding PID %d (type 0x%x) RegDesc not found -> UNKNOWN\n", stream.getPid(), stream.getStreamType());
         }
       }
-      LOGCONSOLE("cStreamdevPatFilter PMT scanner: NOT adding PID %d (%s) %s\n", stream.getPid(), psStreamTypes[stream.getStreamType()<0x1c?stream.getStreamType():0], "UNKNOWN");
+      DEBUGLOG("cStreamdevPatFilter PMT scanner: NOT adding PID %d (%s) %s\n", stream.getPid(), psStreamTypes[stream.getStreamType()<0x1c?stream.getStreamType():0], "UNKNOWN");
       break;
   }
   *type = stNone;
@@ -423,7 +423,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
     {
       if (m_Streamer->m_Receiver)
       {
-        LOGCONSOLE("Detaching Live Receiver");
+        DEBUGLOG("Detaching Live Receiver");
         m_Streamer->m_Device->Detach(m_Streamer->m_Receiver);
         DELETENULL(m_Streamer->m_Receiver);
       }
@@ -508,8 +508,8 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
             m_Streamer->m_NumStreams++;
             break;
           }
-	  default:
-	    break;
+          default:
+            break;
         }
       }
 
@@ -519,7 +519,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
       m_Streamer->m_Receiver  = new cLiveReceiver(m_Streamer, m_Channel, m_Streamer->m_Priority);
 #endif
       m_Streamer->m_Device->AttachReceiver(m_Streamer->m_Receiver);
-      isyslog("VNSI: Currently unknown new streams found, receiver and demuxers reinited\n");
+      INFOLOG("Currently unknown new streams found, receiver and demuxers reinited\n");
     }
   }
 }
@@ -559,7 +559,7 @@ cLiveStreamer::cLiveStreamer()
 
 cLiveStreamer::~cLiveStreamer()
 {
-  LOGCONSOLE("Started to delete live streamer");
+  DEBUGLOG("Started to delete live streamer");
 
   Cancel(-1);
 
@@ -567,29 +567,29 @@ cLiveStreamer::~cLiveStreamer()
   {
     if (m_Receiver)
     {
-      LOGCONSOLE("Detaching Live Receiver");
+      DEBUGLOG("Detaching Live Receiver");
       m_Device->Detach(m_Receiver);
     }
     else
     {
-      LOGCONSOLE("No live receiver present");
+      DEBUGLOG("No live receiver present");
     }
 
     if (m_PatFilter)
     {
-      LOGCONSOLE("Detaching Live Filter");
+      DEBUGLOG("Detaching Live Filter");
       m_Device->Detach(m_PatFilter);
     }
     else
     {
-      LOGCONSOLE("No live filter present");
+      DEBUGLOG("No live filter present");
     }
 
     for (int idx = 0; idx < MAXRECEIVEPIDS; ++idx)
     {
       if (m_Streams[idx])
       {
-        LOGCONSOLE("Deleting stream demuxer %i for pid=%i and type=%i", m_Streams[idx]->GetStreamID(), m_Streams[idx]->GetPID(), m_Streams[idx]->Type());
+        DEBUGLOG("Deleting stream demuxer %i for pid=%i and type=%i", m_Streams[idx]->GetStreamID(), m_Streams[idx]->GetPID(), m_Streams[idx]->Type());
         DELETENULL(m_Streams[idx]);
         m_Pids[idx] = 0;
       }
@@ -597,13 +597,13 @@ cLiveStreamer::~cLiveStreamer()
 
     if (m_Receiver)
     {
-      LOGCONSOLE("Deleting Live Receiver");
+      DEBUGLOG("Deleting Live Receiver");
       DELETENULL(m_Receiver);
     }
 
     if (m_PatFilter)
     {
-      LOGCONSOLE("Deleting Live Filter");
+      DEBUGLOG("Deleting Live Filter");
       DELETENULL(m_PatFilter);
     }
   }
@@ -615,7 +615,7 @@ cLiveStreamer::~cLiveStreamer()
 
   delete m_packetEmpty;
 
-  LOGCONSOLE("Finished to delete live streamer");
+  DEBUGLOG("Finished to delete live streamer");
 }
 
 void cLiveStreamer::Action(void)
@@ -637,14 +637,14 @@ void cLiveStreamer::Action(void)
 
     if (!m_Receiver->IsAttached())
     {
-      isyslog("VNSI: returning from streamer thread, receiver is no more attached");
+      INFOLOG("returning from streamer thread, receiver is no more attached");
       break;
     }
 
     // prevent inifinite loop on encrypted channels
     uint64_t tick = get_ticks();
     if(!IsReady() && (tick - starttime >= (uint64_t)(VNSIServerConfig.stream_timeout*1000))) {
-      isyslog("VNSI: returning from streamer thread, timout on starting streaming");
+      INFOLOG("returning from streamer thread, timout on starting streaming");
       break;
     }
 
@@ -653,7 +653,7 @@ void cLiveStreamer::Action(void)
     {
       // timeout
       if(tick - last_data >= (uint64_t)(VNSIServerConfig.stream_timeout*1000)) {
-        isyslog("VNSI: returning from streamer thread, timout on reading data");
+        INFOLOG("returning from streamer thread, timout on reading data");
         break;
       }
       // keep client going
@@ -677,7 +677,7 @@ void cLiveStreamer::Action(void)
     // Send stream information as the first packet on startup
     if (IsStarting() && m_NumStreams > 0 && IsReady())
     {
-      isyslog("VNSI: streaming of channel started");
+      INFOLOG("streaming of channel started");
       last_info = get_ticks();
       sendStreamInfo();
       sendSignalInfo();
@@ -719,7 +719,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
 {
   if (channel == NULL)
   {
-    esyslog("VNSI-Error: Starting streaming of channel without valid channel");
+    ERRORLOG("Starting streaming of channel without valid channel");
     return false;
   }
 
@@ -730,7 +730,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
 
   if (m_Device != NULL)
   {
-    dsyslog("VNSI: Successfully found following device: %p (%d) for receiving", m_Device, m_Device ? m_Device->CardIndex() + 1 : 0);
+    DEBUGLOG("Successfully found following device: %p (%d) for receiving", m_Device, m_Device ? m_Device->CardIndex() + 1 : 0);
 
     if (m_Device->SwitchChannel(m_Channel, false))
     {
@@ -836,17 +836,17 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
         m_Device->AttachFilter(m_PatFilter);
       }
 
-      isyslog("VNSI: Successfully switched to channel %i - %s", m_Channel->Number(), m_Channel->Name());
+      INFOLOG("Successfully switched to channel %i - %s", m_Channel->Number(), m_Channel->Name());
       return true;
     }
     else
     {
-      dsyslog("VNSI: Can't switch to channel %i - %s", m_Channel->Number(), m_Channel->Name());
+      ERRORLOG("Can't switch to channel %i - %s", m_Channel->Number(), m_Channel->Name());
     }
   }
   else
   {
-    esyslog("VNSI-Error: Can't get device for channel %i - %s", m_Channel->Number(), m_Channel->Name());
+    ERRORLOG("Can't get device for channel %i - %s", m_Channel->Number(), m_Channel->Name());
   }
   return false;
 }
@@ -873,20 +873,20 @@ inline void cLiveStreamer::Activate(bool On)
 {
   if (On)
   {
-    LOGCONSOLE("VDR active, sending stream start message");
+    DEBUGLOG("VDR active, sending stream start message");
     m_streamchangeSent = false;
     Start();
   }
   else
   {
-    LOGCONSOLE("VDR inactive, sending stream end message");
+    DEBUGLOG("VDR inactive, sending stream end message");
     Cancel(5);
   }
 }
 
 void cLiveStreamer::Attach(void)
 {
-  LOGCONSOLE("cLiveStreamer::Attach()");
+  DEBUGLOG("%s", __FUNCTION__);
   if (m_Device)
   {
     if (m_Receiver)
@@ -899,7 +899,7 @@ void cLiveStreamer::Attach(void)
 
 void cLiveStreamer::Detach(void)
 {
-  LOGCONSOLE("cLiveStreamer::Detach()");
+  DEBUGLOG("%s", __FUNCTION__);
   if (m_Device)
   {
     if (m_Receiver)
@@ -937,7 +937,7 @@ void cLiveStreamer::sendStreamChange()
   cResponsePacket *resp = new cResponsePacket();
   if (!resp->initStream(VDR_STREAM_CHANGE, 0, 0, 0, 0))
   {
-    esyslog("VNSI-Error: stream response packet init fail");
+    ERRORLOG("stream response packet init fail");
     delete resp;
     return;
   }
@@ -1016,7 +1016,7 @@ void cLiveStreamer::sendSignalInfo()
     cResponsePacket *resp = new cResponsePacket();
     if (!resp->initStream(VDR_STREAM_SIGNALINFO, 0, 0, 0, 0))
     {
-      esyslog("VNSI-Error: stream response packet init fail");
+      ERRORLOG("stream response packet init fail");
       delete resp;
       return;
     }
@@ -1046,7 +1046,7 @@ void cLiveStreamer::sendSignalInfo()
         {
           if (ioctl(m_Frontend, VIDIOC_QUERYCAP, &m_vcap) < 0)
           {
-            esyslog("VNSI-Error: cannot read analog frontend info.");
+            ERRORLOG("cannot read analog frontend info.");
             close(m_Frontend);
             m_Frontend = -1;
             memset(&m_vcap, 0, sizeof(m_vcap));
@@ -1064,7 +1064,7 @@ void cLiveStreamer::sendSignalInfo()
       cResponsePacket *resp = new cResponsePacket();
       if (!resp->initStream(VDR_STREAM_SIGNALINFO, 0, 0, 0, 0))
       {
-        esyslog("VNSI-Error: stream response packet init fail");
+        ERRORLOG("stream response packet init fail");
         delete resp;
         return;
       }
@@ -1090,7 +1090,7 @@ void cLiveStreamer::sendSignalInfo()
       {
         if (ioctl(m_Frontend, FE_GET_INFO, &m_FrontendInfo) < 0)
         {
-          esyslog("VNSI-Error: cannot read frontend info.");
+          ERRORLOG("cannot read frontend info.");
           close(m_Frontend);
           m_Frontend = -2;
           memset(&m_FrontendInfo, 0, sizeof(m_FrontendInfo));
@@ -1104,7 +1104,7 @@ void cLiveStreamer::sendSignalInfo()
       cResponsePacket *resp = new cResponsePacket();
       if (!resp->initStream(VDR_STREAM_SIGNALINFO, 0, 0, 0, 0))
       {
-        esyslog("VNSI-Error: stream response packet init fail");
+        ERRORLOG("stream response packet init fail");
         delete resp;
         return;
       }
@@ -1162,7 +1162,7 @@ void cLiveStreamer::sendStreamInfo()
   cResponsePacket *resp = new cResponsePacket();
   if (!resp->initStream(VDR_STREAM_CONTENTINFO, 0, 0, 0, 0))
   {
-    esyslog("VNSI-Error: stream response packet init fail");
+    ERRORLOG("stream response packet init fail");
     delete resp;
     return;
   }

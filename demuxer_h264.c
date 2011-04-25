@@ -369,9 +369,9 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len)
   m_Width  /* mbs */ = bs.readGolombUE() + 1;
   m_Height /* mbs */ = bs.readGolombUE() + 1;
   frame_mbs_only     = bs.readBits1();
-  LOGCONSOLE("H.264 SPS: pic_width:  %u mbs", (unsigned) m_Width);
-  LOGCONSOLE("H.264 SPS: pic_height: %u mbs", (unsigned) m_Height);
-  LOGCONSOLE("H.264 SPS: frame only flag: %d", frame_mbs_only);
+  DEBUGLOG("H.264 SPS: pic_width:  %u mbs", (unsigned) m_Width);
+  DEBUGLOG("H.264 SPS: pic_height: %u mbs", (unsigned) m_Height);
+  DEBUGLOG("H.264 SPS: frame only flag: %d", frame_mbs_only);
 
   m_Width  *= 16;
   m_Height *= 16 * (2-frame_mbs_only);
@@ -379,7 +379,7 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len)
   if (!frame_mbs_only)
   {
     if (bs.readBits1())     /* mb_adaptive_frame_field_flag */
-      LOGCONSOLE("H.264 SPS: MBAFF");
+      DEBUGLOG("H.264 SPS: MBAFF");
   }
   bs.skipBits(1);           /* direct_8x8_inference_flag    */
   if (bs.readBits1())       /* frame_cropping_flag */
@@ -388,7 +388,7 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len)
     uint32_t crop_right  = bs.readGolombUE();
     uint32_t crop_top    = bs.readGolombUE();
     uint32_t crop_bottom = bs.readGolombUE();
-    LOGCONSOLE("H.264 SPS: cropping %d %d %d %d", crop_left, crop_top, crop_right, crop_bottom);
+    DEBUGLOG("H.264 SPS: cropping %d %d %d %d", crop_left, crop_top, crop_right, crop_bottom);
 
     m_Width -= 2*(crop_left + crop_right);
     if (frame_mbs_only)
@@ -404,13 +404,13 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len)
     if (bs.readBits1())  /* aspect_ratio_info_present */
     {
       uint32_t aspect_ratio_idc = bs.readBits(8);
-      LOGCONSOLE("H.264 SPS: aspect_ratio_idc %d", aspect_ratio_idc);
+      DEBUGLOG("H.264 SPS: aspect_ratio_idc %d", aspect_ratio_idc);
 
       if (aspect_ratio_idc == 255 /* Extended_SAR */)
       {
         m_PixelAspect.num = bs.readBits(16); /* sar_width */
         m_PixelAspect.den = bs.readBits(16); /* sar_height */
-        LOGCONSOLE("H.264 SPS: -> sar %dx%d", m_PixelAspect.num, m_PixelAspect.den);
+        DEBUGLOG("H.264 SPS: -> sar %dx%d", m_PixelAspect.num, m_PixelAspect.den);
       }
       else
       {
@@ -426,17 +426,17 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len)
         if (aspect_ratio_idc < sizeof(aspect_ratios)/sizeof(aspect_ratios[0]))
         {
           memcpy(&m_PixelAspect, &aspect_ratios[aspect_ratio_idc], sizeof(mpeg_rational_t));
-          LOGCONSOLE("H.264 SPS: -> aspect ratio %d / %d", m_PixelAspect.num, m_PixelAspect.den);
+          DEBUGLOG("H.264 SPS: -> aspect ratio %d / %d", m_PixelAspect.num, m_PixelAspect.den);
         }
         else
         {
-          LOGCONSOLE("H.264 SPS: aspect_ratio_idc out of range !");
+          DEBUGLOG("H.264 SPS: aspect_ratio_idc out of range !");
         }
       }
     }
   }
 
-  LOGCONSOLE("H.264 SPS: -> video size %dx%d, aspect %d:%d", m_Width, m_Height, m_PixelAspect.num, m_PixelAspect.den);
+  DEBUGLOG("H.264 SPS: -> video size %dx%d, aspect %d:%d", m_Width, m_Height, m_PixelAspect.num, m_PixelAspect.den);
   return true;
 }
 
