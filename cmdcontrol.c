@@ -515,12 +515,12 @@ bool cCmdControl::processCHANNELS_GetChannels() /* OPCODE 63 */
     {
       bool isRadio = false;
 
-      if (channel->Vpid())
+      // assume channels without VPID & APID are video channels
+      if (channel->Vpid() == 0 && channel->Apid(0) == 0)
         isRadio = false;
-      else if (channel->Apid(0))
+      // channels without VPID are radio channels
+      else if (channel->Vpid() == 0)
         isRadio = true;
-      else
-        continue;
 
       if (radio != isRadio)
         continue;
