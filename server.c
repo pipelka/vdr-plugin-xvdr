@@ -192,6 +192,7 @@ void cServer::Action(void)
     }
     if (r == 0)
     {
+      // remove disconnected clients
       for (Connections::iterator i = m_Connections.begin(); i != m_Connections.end();)
       {
         if (!(*i)->Active())
@@ -203,6 +204,19 @@ void cServer::Action(void)
         else {
           i++;
         }
+      }
+
+      // trigger clients to reload the modified channel list
+      if(m_Connections.size() > 0)
+      {
+        Channels.Lock(false);
+        if(Channels.Modified() != 0)
+        {
+          INFOLOG("Requesting clients to reload channel list");
+          for (Connections::iterator i = m_Connections.begin(); i != m_Connections.end(); i++)
+            (*i)->ChannelChange();
+        }
+        Channels.Unlock();
       }
 
       // reset inactivity timeout as long as there are clients connected

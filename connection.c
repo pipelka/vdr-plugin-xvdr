@@ -258,6 +258,23 @@ void cConnection::TimerChange(const cTimer *Timer, eTimerChange Change)
   }
 }
 
+void cConnection::ChannelChange()
+{
+  if (!m_StatusInterfaceEnabled)
+    return;
+
+  cResponsePacket *resp = new cResponsePacket();
+  if (!resp->initStatus(VDR_STATUS_CHANNELCHANGE))
+  {
+    delete resp;
+    return;
+  }
+
+  resp->finalise();
+  m_socket.write(resp->getPtr(), resp->getLen());
+  delete resp;
+}
+
 //void cConnection::ChannelSwitch(const cDevice *Device, int ChannelNumber)
 //{
 //

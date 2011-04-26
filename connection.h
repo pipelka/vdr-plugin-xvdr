@@ -82,6 +82,7 @@ public:
   cConnection(cServer *server, int fd, unsigned int id, const char *ClientAdr);
   virtual ~cConnection();
 
+  void ChannelChange();
   unsigned int GetID() { return m_Id; }
   void SetLoggedIn(bool yesNo) { m_loggedIn = yesNo; }
   void SetStatusInterface(bool yesNo) { m_StatusInterfaceEnabled = yesNo; }
