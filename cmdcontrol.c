@@ -487,7 +487,9 @@ bool cCmdControl::processRecStream_GetIFrame() /* OPCODE 45 */
 
 bool cCmdControl::processCHANNELS_ChannelsCount() /* OPCODE 61 */
 {
+  Channels.Lock(false);
   int count = Channels.MaxNumber();
+  Channels.Unlock();
 
   m_resp->add_U32(count);
 
@@ -504,6 +506,9 @@ bool cCmdControl::processCHANNELS_GetChannels() /* OPCODE 63 */
 
   int groupIndex = 0;
   const cChannel* group = NULL;
+
+  Channels.Lock(false);
+
   for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel))
   {
     if (channel->GroupSep())
@@ -546,6 +551,8 @@ bool cCmdControl::processCHANNELS_GetChannels() /* OPCODE 63 */
 #endif
     }
   }
+
+  Channels.Unlock();
 
   m_resp->finalise();
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
@@ -1112,6 +1119,8 @@ bool cCmdControl::processEPG_GetForChannel() /* OPCODE 120 */
   uint32_t startTime      = m_req->extract_U32();
   uint32_t duration       = m_req->extract_U32();
 
+  Channels.Lock(false);
+
   const cChannel* channel = NULL;
 
   if(m_protocolVersion == 1) {
@@ -1130,6 +1139,7 @@ bool cCmdControl::processEPG_GetForChannel() /* OPCODE 120 */
     m_resp->add_U32(0);
     m_resp->finalise();
     m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
+    Channels.Unlock();
 
     esyslog("written 0 because channel = NULL");
     return true;
@@ -1142,6 +1152,7 @@ bool cCmdControl::processEPG_GetForChannel() /* OPCODE 120 */
     m_resp->add_U32(0);
     m_resp->finalise();
     m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
+    Channels.Unlock();
 
     LOGCONSOLE("written 0 because Schedule!s! = NULL");
     return true;
@@ -1153,6 +1164,7 @@ bool cCmdControl::processEPG_GetForChannel() /* OPCODE 120 */
     m_resp->add_U32(0);
     m_resp->finalise();
     m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
+    Channels.Unlock();
 
     LOGCONSOLE("written 0 because Schedule = NULL");
     return true;
@@ -1214,6 +1226,7 @@ bool cCmdControl::processEPG_GetForChannel() /* OPCODE 120 */
     atLeastOneEvent = true;
   }
 
+  Channels.Unlock();
   LOGCONSOLE("Got all event data");
 
   if (!atLeastOneEvent)

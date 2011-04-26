@@ -75,8 +75,6 @@ uint32_t CreateChannelUID(const cChannel* channel) {
 const cChannel* FindChannelByUID(uint32_t channelUID) {
   cChannel* result = NULL;
 
-  Channels.Lock(false);
-
   // maybe we need to use a lookup table
   for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel)) {
     cString channelid = channel->GetChannelID().ToString();
@@ -85,8 +83,6 @@ const cChannel* FindChannelByUID(uint32_t channelUID) {
       break;
     }
   }
-
-  Channels.Unlock();
 
   return result;
 }
