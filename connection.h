@@ -52,7 +52,6 @@ private:
   bool            m_StatusInterfaceEnabled;
   bool            m_OSDInterfaceEnabled;
   cLiveStreamer  *m_Streamer;
-  const cChannel *m_Channel;
   bool            m_isStreaming;
   cString         m_ClientAddress;
   cRecPlayer     *m_RecPlayer;

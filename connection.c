@@ -48,6 +48,7 @@
 #include "vdrcommand.h"
 #include "recplayer.h"
 #include "responsepacket.h"
+#include "hash.h"
 
 cConnection::cConnection(cServer *server, int fd, unsigned int id, const char *ClientAdr)
 {
@@ -55,7 +56,6 @@ cConnection::cConnection(cServer *server, int fd, unsigned int id, const char *C
   m_server                  = server;
   m_Streamer                = NULL;
   m_isStreaming             = false;
-  m_Channel                 = NULL;
   m_ClientAddress           = ClientAdr;
   m_StatusInterfaceEnabled  = false;
   m_OSDInterfaceEnabled     = false;
@@ -147,32 +147,43 @@ void cConnection::Action(void)
           continue;
         }
 
-        uint32_t number = ntohl(*(uint32_t*)&data[0]);
+        uint32_t uid = ntohl(*(uint32_t*)&data[0]);
         free(data);
 
         if (m_isStreaming)
           StopChannelStreaming();
 
-        const cChannel *channel = Channels.GetByNumber(number);
+        Channels.Lock(false);
+        const cChannel *channel = NULL;
+
+        // try to find channel by uid first
+        channel = FindChannelByUID(uid);
+
+        // try channelnumber
+        if (channel == NULL)
+          channel = Channels.GetByNumber(uid);
+
         if (channel != NULL)
         {
           if (StartChannelStreaming(channel, resp))
           {
-            isyslog("VNSI: Started streaming of channel %i - %s", number, channel->Name());
+            isyslog("VNSI: Started streaming of channel %s", channel->Name());
+            Channels.Unlock();
             continue;
           }
           else
           {
-            LOGCONSOLE("Can't stream channel %i - %s", number, channel->Name());
+            LOGCONSOLE("Can't stream channel %s", channel->Name());
             resp->add_U32(VDR_RET_DATALOCKED);
           }
         }
         else
         {
-          esyslog("VNSI-Error: Can't find channel %i", number);
+          esyslog("VNSI-Error: Can't find channel %08x", uid);
           resp->add_U32(VDR_RET_DATAINVALID);
         }
 
+        Channels.Unlock();
         resp->finalise();
         m_socket.write(resp->getPtr(), resp->getLen());
       }
@@ -215,9 +226,8 @@ void cConnection::Action(void)
 
 bool cConnection::StartChannelStreaming(const cChannel *channel, cResponsePacket *resp)
 {
-  m_Channel     = channel;
   m_Streamer    = new cLiveStreamer;
-  m_isStreaming = m_Streamer->StreamChannel(m_Channel, 50, &m_socket, resp);
+  m_isStreaming = m_Streamer->StreamChannel(channel, 50, &m_socket, resp);
   return m_isStreaming;
 }
 
@@ -228,7 +238,6 @@ void cConnection::StopChannelStreaming()
   {
     delete m_Streamer;
     m_Streamer = NULL;
-    m_Channel  = NULL;
   }
 }
 
