@@ -36,20 +36,6 @@
 #include "vdrcommand.h"
 #include "responsepacket.h"
 
-/*#if VDRVERSNUM < 10713
-#ifndef PLUGINPARAMPATCHVERSNUM
-#error "You must apply the pluginparam patch for VDR!"
-#endif
-#endif*/
-
-static uint64_t get_ticks() {
-  uint64_t ticks;
-  struct timespec now;
-  clock_gettime(CLOCK_MONOTONIC, &now);
-  ticks = now.tv_sec * 1000 + now.tv_nsec / 1000000;
-  return ticks;
-}
-
 // --- cLiveReceiver -------------------------------------------------
 
 class cLiveReceiver: public cReceiver
@@ -620,14 +606,14 @@ cLiveStreamer::~cLiveStreamer()
 
 void cLiveStreamer::Action(void)
 {
-  uint64_t last_data    = get_ticks();
-  uint64_t last_tick    = last_data;
   int size              = 0;
   int used              = 0;
   unsigned char *buf    = NULL;
-  uint64_t last_info    = last_data;
-  uint64_t starttime    = last_data;
   m_startup             = true;
+
+  cTimeMs last_tick;
+  cTimeMs last_info;
+  cTimeMs starttime;
 
   while (Running())
   {
@@ -642,8 +628,7 @@ void cLiveStreamer::Action(void)
     }
 
     // prevent inifinite loop on encrypted channels
-    uint64_t tick = get_ticks();
-    if(!IsReady() && (tick - starttime >= (uint64_t)(VNSIServerConfig.stream_timeout*1000))) {
+    if(!IsReady() && (starttime.Elapsed() >= (uint64_t)(VNSIServerConfig.stream_timeout*1000))) {
       INFOLOG("returning from streamer thread, timout on starting streaming");
       break;
     }
@@ -651,15 +636,10 @@ void cLiveStreamer::Action(void)
     // no data
     if (buf == NULL || size <= TS_SIZE)
     {
-      // timeout
-      if(tick - last_data >= (uint64_t)(VNSIServerConfig.stream_timeout*1000)) {
-        INFOLOG("returning from streamer thread, timout on reading data");
-        break;
-      }
       // keep client going
-      else if(tick - last_tick >= 500 && !IsReady()) {
+      if(last_tick.Elapsed() >= 1000 && !IsReady()) {
         m_Socket->write(m_packetEmpty->getPtr(), m_packetEmpty->getLen());
-        last_tick = tick;
+        last_tick.Set(0);
       }
       continue;
     }
@@ -678,7 +658,7 @@ void cLiveStreamer::Action(void)
     if (IsStarting() && m_NumStreams > 0 && IsReady())
     {
       INFOLOG("streaming of channel started");
-      last_info = get_ticks();
+      last_info.Set(0);
       sendStreamInfo();
       sendSignalInfo();
       m_startup = false;
@@ -696,8 +676,6 @@ void cLiveStreamer::Action(void)
       if (demuxer)
       {
         demuxer->ProcessTSPacket(buf);
-        last_data = get_ticks();
-        last_tick = last_data;
       }
 
       buf += TS_SIZE;
@@ -706,9 +684,9 @@ void cLiveStreamer::Action(void)
     }
     Del(used);
 
-    if(get_ticks() - last_info >= 2*1000)
+    if(last_info.Elapsed() >= 5*1000)
     {
-      last_info = get_ticks();
+      last_info.Set(0);
       sendSignalInfo();
       sendStreamInfo();
     }
