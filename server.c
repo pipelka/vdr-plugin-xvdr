@@ -181,6 +181,11 @@ void cServer::Action(void)
   cTimeMs recStateTime;
   Recordings.StateChanged(recState);
 
+  // get initial state of the timers
+  int timerState = -1;
+  cTimeMs timerStateTime;
+  Timers.Modified(timerState);
+
   while (Running())
   {
     FD_ZERO(&fds);
@@ -234,7 +239,7 @@ void cServer::Action(void)
       {
         INFOLOG("Recordings state changed (%i)", recState);
 
-        if(recStateTime.Elapsed() >= 60*1000)
+        if(recStateTime.Elapsed() >= 10*1000)
         {
           INFOLOG("Requesting clients to reload recordings list");
           for (Connections::iterator i = m_Connections.begin(); i != m_Connections.end(); i++)
@@ -245,6 +250,21 @@ void cServer::Action(void)
         }
       }
 
+      // update timers
+      if(Timers.Modified(timerState))
+      {
+        INFOLOG("Timers state changed (%i)", timerState);
+
+        if(timerStateTime.Elapsed() >= 10*1000)
+        {
+          INFOLOG("Requesting clients to reload timers");
+          for (Connections::iterator i = m_Connections.begin(); i != m_Connections.end(); i++)
+          {
+            (*i)->TimerChange();
+          }
+          timerStateTime.Set(0);
+        }
+      }
       continue;
     }
 

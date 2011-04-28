@@ -38,8 +38,11 @@ uint32_t cRecordingsCache::Register(cRecording* recording) {
   uint32_t uid = CreateStringHash(filename);
 
   m_mutex.Lock();
-  DEBUGLOG("%s - uid: %08x '%s'", __FUNCTION__, uid, (const char*)filename);
-  m_recordings[uid] = filename;
+  if(m_recordings.find(uid) == m_recordings.end())
+  {
+    DEBUGLOG("%s - uid: %08x '%s'", __FUNCTION__, uid, (const char*)filename);
+    m_recordings[uid] = filename;
+  }
   m_mutex.Unlock();
 
   return uid;

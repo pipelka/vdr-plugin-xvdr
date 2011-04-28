@@ -243,6 +243,11 @@ void cConnection::StopChannelStreaming()
 
 void cConnection::TimerChange(const cTimer *Timer, eTimerChange Change)
 {
+  TimerChange();
+}
+
+void cConnection::TimerChange()
+{
   if (m_StatusInterfaceEnabled)
   {
     cResponsePacket *resp = new cResponsePacket();

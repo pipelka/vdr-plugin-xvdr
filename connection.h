@@ -84,6 +84,7 @@ public:
 
   void ChannelChange();
   void RecordingsChange();
+  void TimerChange();
 
   unsigned int GetID() { return m_Id; }
   void SetLoggedIn(bool yesNo) { m_loggedIn = yesNo; }
