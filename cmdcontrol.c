@@ -940,20 +940,6 @@ bool cCmdControl::processRECORDINGS_GetList() /* OPCODE 102 */
       directory = fullname;
     }
 
-    // try filename to get directory
-    char* filename = strdup(recording->FileName());
-    if(directory == NULL) {
-      char* tmpStart = strstr(filename, VideoDirectory);
-      if (tmpStart != NULL) {
-        tmpStart += strlen(VideoDirectory) + 1;
-        while(*tmpStart == '/') tmpStart++;
-        char *tmpEnd = strchr(tmpStart, '/');
-        if (tmpEnd != NULL)
-          *tmpEnd = 0;
-        directory = tmpStart;
-      }
-    }
-
     // title
     m_resp->add_String(m_toUTF8.Convert(recname));
 
@@ -995,7 +981,6 @@ bool cCmdControl::processRECORDINGS_GetList() /* OPCODE 102 */
     }
 
     free(fullname);
-    free(filename);
   }
 
   m_resp->finalise();
