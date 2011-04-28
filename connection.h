@@ -83,6 +83,8 @@ public:
   virtual ~cConnection();
 
   void ChannelChange();
+  void RecordingsChange();
+
   unsigned int GetID() { return m_Id; }
   void SetLoggedIn(bool yesNo) { m_loggedIn = yesNo; }
   void SetStatusInterface(bool yesNo) { m_StatusInterfaceEnabled = yesNo; }

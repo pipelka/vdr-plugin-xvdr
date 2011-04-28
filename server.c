@@ -176,6 +176,11 @@ void cServer::Action(void)
   fd_set fds;
   struct timeval tv;
 
+  // get initial state of the recordings
+  int recState = -1;
+  cTimeMs recStateTime;
+  Recordings.StateChanged(recState);
+
   while (Running())
   {
     FD_ZERO(&fds);
@@ -222,6 +227,22 @@ void cServer::Action(void)
       // reset inactivity timeout as long as there are clients connected
       if(m_Connections.size() > 0) {
         ShutdownHandler.SetUserInactiveTimeout();
+      }
+
+      // update recordings
+      if(Recordings.StateChanged(recState))
+      {
+        INFOLOG("Recordings state changed (%i)", recState);
+
+        if(recStateTime.Elapsed() >= 60*1000)
+        {
+          INFOLOG("Requesting clients to reload recordings list");
+          for (Connections::iterator i = m_Connections.begin(); i != m_Connections.end(); i++)
+          {
+            (*i)->RecordingsChange();
+          }
+          recStateTime.Set(0);
+        }
       }
 
       continue;

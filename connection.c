@@ -275,6 +275,23 @@ void cConnection::ChannelChange()
   delete resp;
 }
 
+void cConnection::RecordingsChange()
+{
+  if (!m_StatusInterfaceEnabled)
+    return;
+
+  cResponsePacket *resp = new cResponsePacket();
+  if (!resp->initStatus(VDR_STATUS_RECORDINGSCHANGE))
+  {
+    delete resp;
+    return;
+  }
+
+  resp->finalise();
+  m_socket.write(resp->getPtr(), resp->getLen());
+  delete resp;
+}
+
 //void cConnection::ChannelSwitch(const cDevice *Device, int ChannelNumber)
 //{
 //
