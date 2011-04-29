@@ -928,7 +928,11 @@ bool cCmdControl::processRECORDINGS_GetList() /* OPCODE 102 */
     m_resp->add_String(recording->Info()->ChannelName() ? m_toUTF8.Convert(recording->Info()->ChannelName()) : "");
 
     char* fullname = strdup(recording->Name());
+#if APIVERSNUM >= 10701
     char* recname = strrchr(fullname, FOLDERDELIMCHAR);
+#else
+    char* recname = strrchr(fullname, '~');
+#endif
     char* directory = NULL;
 
     if(recname == NULL) {
