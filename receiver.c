@@ -629,7 +629,7 @@ void cLiveStreamer::Action(void)
 
     // prevent inifinite loop on encrypted channels
     if(!IsReady() && (starttime.Elapsed() >= (uint64_t)(VNSIServerConfig.stream_timeout*1000))) {
-      INFOLOG("returning from streamer thread, timout on starting streaming");
+      INFOLOG("returning from streamer thread, timeout on starting streaming");
       break;
     }
 

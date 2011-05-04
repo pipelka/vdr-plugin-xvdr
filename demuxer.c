@@ -294,7 +294,7 @@ bool cTSDemuxer::ProcessTSPacket(unsigned char *data)
 
   if (!TsHasPayload(data))
   {
-    ERRORLOG("no payload, size %d", bytes);
+    DEBUGLOG("no payload, size %d", bytes);
     return true;
   }
 
