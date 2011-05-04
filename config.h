@@ -43,6 +43,10 @@
 #define LISTEN_PORT_S    "34890"
 #define DISCOVERY_PORT    34890
 
+#if APIVERSNUM < 10701
+#define FOLDERDELIMCHAR '~'
+#endif
+
 class cVNSIServerConfig
 {
 public:
