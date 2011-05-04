@@ -78,6 +78,7 @@ private:
   int             m_vbvDelay;       /* -1 if CBR */
   int             m_vbvSize;        /* Video buffer size (in bytes) */
   bool            m_firstPUSIseen;
+  bool            m_firstIFrame;
 
   bool Parse_H264(size_t len, uint32_t next_startcode, int sc_offset);
   bool Parse_PPS(uint8_t *buf, int len);

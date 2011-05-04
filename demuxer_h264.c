@@ -64,6 +64,7 @@ cParserH264::cParserH264(cTSDemuxer *demuxer, cLiveStreamer *streamer, int strea
   m_vbvDelay          = -1;
   m_vbvSize           = 0;
   m_firstPUSIseen     = false;
+  m_firstIFrame       = false;
   m_PixelAspect.den   = 1;
   m_PixelAspect.num   = 1;
   memset(&m_streamData, 0, sizeof(m_streamData));
@@ -189,6 +190,10 @@ bool cParserH264::Parse_H264(size_t len, uint32_t next_startcode, int sc_offset)
     m_StreamPacket.frametype  = pkttype;
     m_StreamPacket.duration   = m_FrameDuration;
     m_FoundFrame = true;
+
+    if (pkttype == PKT_I_FRAME)
+      m_firstIFrame = true;
+
     break;
   }
 
@@ -203,7 +208,7 @@ bool cParserH264::Parse_H264(size_t len, uint32_t next_startcode, int sc_offset)
       return true;
 
     /* Discard Packets until we have the picture size (XBMC can't enable VDPAU without it) */
-    if (!m_Width)
+    if (!m_firstIFrame || !m_Width)
       return true;
     else
       m_Streamer->SetReady();
