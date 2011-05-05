@@ -205,7 +205,7 @@ void cParser::SendPacket(sStreamPacket *pkt)
   BufferPacket(pkt);
 
   // send buffered data first
-  INFOLOG("sending %i buffered packets", m_queue.size());
+  INFOLOG("sending %uibuffered packets", (int)m_queue.size());
 
   while(m_queue.size() > 0) {
     sStreamPacket* p = m_queue.front();

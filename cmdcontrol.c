@@ -34,7 +34,7 @@
 #include "cmdcontrol.h"
 #include "connection.h"
 #include "recplayer.h"
-#include "vdrcommand.h"
+#include "vnsicommand.h"
 #include "recordingscache.h"
 #include "wirbelscanservice.h" /// copied from modified wirbelscan plugin
                                /// must be hold up to date with wirbelscan
@@ -106,19 +106,19 @@ bool cCmdControl::processPacket()
   switch(m_req->getOpCode())
   {
     /** OPCODE 1 - 19: VNSI network functions for general purpose */
-    case VDR_LOGIN:
+    case VNSI_LOGIN:
       result = process_Login();
       break;
 
-    case VDR_GETTIME:
+    case VNSI_GETTIME:
       result = process_GetTime();
       break;
 
-    case VDR_ENABLESTATUSINTERFACE:
+    case VNSI_ENABLESTATUSINTERFACE:
       result = process_EnableStatusInterface();
       break;
 
-    case VDR_ENABLEOSDINTERFACE:
+    case VNSI_ENABLEOSDINTERFACE:
       result = process_EnableOSDInterface();
       break;
 
@@ -128,113 +128,113 @@ bool cCmdControl::processPacket()
 
 
     /** OPCODE 40 - 59: VNSI network functions for recording streaming */
-    case VDR_RECSTREAM_OPEN:
+    case VNSI_RECSTREAM_OPEN:
       result = processRecStream_Open();
       break;
 
-    case VDR_RECSTREAM_CLOSE:
+    case VNSI_RECSTREAM_CLOSE:
       result = processRecStream_Close();
       break;
 
-    case VDR_RECSTREAM_GETBLOCK:
+    case VNSI_RECSTREAM_GETBLOCK:
       result = processRecStream_GetBlock();
       break;
 
-    case VDR_RECSTREAM_POSTOFRAME:
+    case VNSI_RECSTREAM_POSTOFRAME:
       result = processRecStream_PositionFromFrameNumber();
       break;
 
-    case VDR_RECSTREAM_FRAMETOPOS:
+    case VNSI_RECSTREAM_FRAMETOPOS:
       result = processRecStream_FrameNumberFromPosition();
       break;
 
-    case VDR_RECSTREAM_GETIFRAME:
+    case VNSI_RECSTREAM_GETIFRAME:
       result = processRecStream_GetIFrame();
       break;
 
 
     /** OPCODE 60 - 79: VNSI network functions for channel access */
-    case VDR_CHANNELS_GETCOUNT:
+    case VNSI_CHANNELS_GETCOUNT:
       result = processCHANNELS_ChannelsCount();
       break;
 
-    case VDR_CHANNELS_GETCHANNELS:
+    case VNSI_CHANNELS_GETCHANNELS:
       result = processCHANNELS_GetChannels();
       break;
 
 
     /** OPCODE 80 - 99: VNSI network functions for timer access */
-    case VDR_TIMER_GETCOUNT:
+    case VNSI_TIMER_GETCOUNT:
       result = processTIMER_GetCount();
       break;
 
-    case VDR_TIMER_GET:
+    case VNSI_TIMER_GET:
       result = processTIMER_Get();
       break;
 
-    case VDR_TIMER_GETLIST:
+    case VNSI_TIMER_GETLIST:
       result = processTIMER_GetList();
       break;
 
-    case VDR_TIMER_ADD:
+    case VNSI_TIMER_ADD:
       result = processTIMER_Add();
       break;
 
-    case VDR_TIMER_DELETE:
+    case VNSI_TIMER_DELETE:
       result = processTIMER_Delete();
       break;
 
-    case VDR_TIMER_UPDATE:
+    case VNSI_TIMER_UPDATE:
       result = processTIMER_Update();
       break;
 
 
     /** OPCODE 100 - 119: VNSI network functions for recording access */
-    case VDR_RECORDINGS_DISKSIZE:
+    case VNSI_RECORDINGS_DISKSIZE:
       result = processRECORDINGS_GetDiskSpace();
       break;
 
-    case VDR_RECORDINGS_GETCOUNT:
+    case VNSI_RECORDINGS_GETCOUNT:
       result = processRECORDINGS_GetCount();
       break;
 
-    case VDR_RECORDINGS_GETLIST:
+    case VNSI_RECORDINGS_GETLIST:
       result = processRECORDINGS_GetList();
       break;
 
-    case VDR_RECORDINGS_RENAME:
+    case VNSI_RECORDINGS_RENAME:
       result = processRECORDINGS_Rename();
       break;
 
-    case VDR_RECORDINGS_DELETE:
+    case VNSI_RECORDINGS_DELETE:
       result = processRECORDINGS_Delete();
       break;
 
 
     /** OPCODE 120 - 139: VNSI network functions for epg access and manipulating */
-    case VDR_EPG_GETFORCHANNEL:
+    case VNSI_EPG_GETFORCHANNEL:
       result = processEPG_GetForChannel();
       break;
 
 
     /** OPCODE 140 - 159: VNSI network functions for channel scanning */
-    case VDR_SCAN_SUPPORTED:
+    case VNSI_SCAN_SUPPORTED:
       result = processSCAN_ScanSupported();
       break;
 
-    case VDR_SCAN_GETCOUNTRIES:
+    case VNSI_SCAN_GETCOUNTRIES:
       result = processSCAN_GetCountries();
       break;
 
-    case VDR_SCAN_GETSATELLITES:
+    case VNSI_SCAN_GETSATELLITES:
       result = processSCAN_GetSatellites();
       break;
 
-    case VDR_SCAN_START:
+    case VNSI_SCAN_START:
       result = processSCAN_Start();
       break;
 
-    case VDR_SCAN_STOP:
+    case VNSI_SCAN_STOP:
       result = processSCAN_Stop();
       break;
   }
@@ -259,7 +259,7 @@ bool cCmdControl::process_Login() /* OPCODE 1 */
                            m_req->extract_U8();
   const char *clientName = m_req->extract_String();
 
-  if (m_protocolVersion > VNSIProtocolVersion)
+  if (m_protocolVersion > VNSI_PROTOCOLVERSION)
   {
     ERRORLOG("Client '%s' have a not allowed protocol version '%u', terminating client", clientName, m_protocolVersion);
     delete[] clientName;
@@ -273,7 +273,7 @@ bool cCmdControl::process_Login() /* OPCODE 1 */
   struct tm* timeStruct = localtime(&timeNow);
   int timeOffset        = timeStruct->tm_gmtoff;
 
-  m_resp->add_U32(VNSIProtocolVersion);
+  m_resp->add_U32(VNSI_PROTOCOLVERSION);
   m_resp->add_U32(timeNow);
   m_resp->add_S32(timeOffset);
   m_resp->add_String("VDR-Network-Streaming-Interface (VNSI) Server");
@@ -306,7 +306,7 @@ bool cCmdControl::process_EnableStatusInterface()
 
   m_req->getClient()->SetStatusInterface(enabled);
 
-  m_resp->add_U32(VDR_RET_OK);
+  m_resp->add_U32(VNSI_RET_OK);
   m_resp->finalise();
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
   return true;
@@ -318,7 +318,7 @@ bool cCmdControl::process_EnableOSDInterface()
 
   m_req->getClient()->SetOSDInterface(enabled);
 
-  m_resp->add_U32(VDR_RET_OK);
+  m_resp->add_U32(VNSI_RET_OK);
   m_resp->finalise();
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
   return true;
@@ -349,7 +349,7 @@ bool cCmdControl::processRecStream_Open() /* OPCODE 40 */
   {
     m_req->getClient()->m_RecPlayer = new cRecPlayer(recording);
 
-    m_resp->add_U32(VDR_RET_OK);
+    m_resp->add_U32(VNSI_RET_OK);
     m_resp->add_U32(m_req->getClient()->m_RecPlayer->getLengthFrames());
     m_resp->add_U64(m_req->getClient()->m_RecPlayer->getLengthBytes());
 
@@ -361,7 +361,7 @@ bool cCmdControl::processRecStream_Open() /* OPCODE 40 */
   }
   else
   {
-    m_resp->add_U32(VDR_RET_DATAUNKNOWN);
+    m_resp->add_U32(VNSI_RET_DATAUNKNOWN);
     ERRORLOG("%s - unable to start recording !", __FUNCTION__);
   }
 
@@ -379,7 +379,7 @@ bool cCmdControl::processRecStream_Close() /* OPCODE 41 */
     m_req->getClient()->m_RecPlayer = NULL;
   }
 
-  m_resp->add_U32(VDR_RET_OK);
+  m_resp->add_U32(VNSI_RET_OK);
   m_resp->finalise();
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
   return true;
@@ -582,7 +582,7 @@ bool cCmdControl::processTIMER_Get() /* OPCODE 81 */
     cTimer *timer = Timers.Get(number-1);
     if (timer)
     {
-      m_resp->add_U32(VDR_RET_OK);
+      m_resp->add_U32(VNSI_RET_OK);
 
       m_resp->add_U32(timer->Index()+1);
       m_resp->add_U32(timer->HasFlags(tfActive));
@@ -601,10 +601,10 @@ bool cCmdControl::processTIMER_Get() /* OPCODE 81 */
       m_resp->add_String(m_toUTF8.Convert(timer->File()));
     }
     else
-      m_resp->add_U32(VDR_RET_DATAUNKNOWN);
+      m_resp->add_U32(VNSI_RET_DATAUNKNOWN);
   }
   else
-    m_resp->add_U32(VDR_RET_DATAUNKNOWN);
+    m_resp->add_U32(VNSI_RET_DATAUNKNOWN);
 
   m_resp->finalise();
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
@@ -690,7 +690,7 @@ bool cCmdControl::processTIMER_Add() /* OPCODE 83 */
       Timers.Add(timer);
       Timers.SetModified();
       INFOLOG("Timer %s added", *timer->ToDescr());
-      m_resp->add_U32(VDR_RET_OK);
+      m_resp->add_U32(VNSI_RET_OK);
       m_resp->finalise();
       m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
       return true;
@@ -698,13 +698,13 @@ bool cCmdControl::processTIMER_Add() /* OPCODE 83 */
     else
     {
       ERRORLOG("Timer already defined: %d %s", t->Index() + 1, *t->ToText());
-      m_resp->add_U32(VDR_RET_DATALOCKED);
+      m_resp->add_U32(VNSI_RET_DATALOCKED);
     }
   }
   else
   {
     ERRORLOG("Error in timer settings");
-    m_resp->add_U32(VDR_RET_DATAINVALID);
+    m_resp->add_U32(VNSI_RET_DATAINVALID);
   }
 
   delete timer;
@@ -722,7 +722,7 @@ bool cCmdControl::processTIMER_Delete() /* OPCODE 84 */
   if (number <= 0 || number > (uint32_t)Timers.Count())
   {
     ERRORLOG("Unable to delete timer - invalid timer identifier");
-    m_resp->add_U32(VDR_RET_DATAINVALID);
+    m_resp->add_U32(VNSI_RET_DATAINVALID);
   }
   else
   {
@@ -741,7 +741,7 @@ bool cCmdControl::processTIMER_Delete() /* OPCODE 84 */
           else
           {
             ERRORLOG("Timer \"%i\" is recording and can be deleted (use force=1 to stop it)", number);
-            m_resp->add_U32(VDR_RET_RECRUNNING);
+            m_resp->add_U32(VNSI_RET_RECRUNNING);
             m_resp->finalise();
             m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
             return true;
@@ -750,18 +750,18 @@ bool cCmdControl::processTIMER_Delete() /* OPCODE 84 */
         INFOLOG("Deleting timer %s", *timer->ToDescr());
         Timers.Del(timer);
         Timers.SetModified();
-        m_resp->add_U32(VDR_RET_OK);
+        m_resp->add_U32(VNSI_RET_OK);
       }
       else
       {
         ERRORLOG("Unable to delete timer - timers being edited at VDR");
-        m_resp->add_U32(VDR_RET_DATALOCKED);
+        m_resp->add_U32(VNSI_RET_DATALOCKED);
       }
     }
     else
     {
       ERRORLOG("Unable to delete timer - invalid timer identifier");
-      m_resp->add_U32(VDR_RET_DATAINVALID);
+      m_resp->add_U32(VNSI_RET_DATAINVALID);
     }
   }
   m_resp->finalise();
@@ -779,7 +779,7 @@ bool cCmdControl::processTIMER_Update() /* OPCODE 85 */
   if (!timer)
   {
     ERRORLOG("Timer \"%u\" not defined", index);
-    m_resp->add_U32(VDR_RET_DATAUNKNOWN);
+    m_resp->add_U32(VNSI_RET_DATAUNKNOWN);
     m_resp->finalise();
     m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
     return true;
@@ -832,7 +832,7 @@ bool cCmdControl::processTIMER_Update() /* OPCODE 85 */
     if (!t.Parse(buffer))
     {
       ERRORLOG("Error in timer settings");
-      m_resp->add_U32(VDR_RET_DATAINVALID);
+      m_resp->add_U32(VNSI_RET_DATAINVALID);
       m_resp->finalise();
       m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
       return true;
@@ -842,7 +842,7 @@ bool cCmdControl::processTIMER_Update() /* OPCODE 85 */
   *timer = t;
   Timers.SetModified();
 
-  m_resp->add_U32(VDR_RET_OK);
+  m_resp->add_U32(VNSI_RET_OK);
   m_resp->finalise();
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
   return true;
@@ -993,7 +993,7 @@ bool cCmdControl::processRECORDINGS_Rename() /* OPCODE 103 */
   uint32_t    uid          = m_req->extract_U32();
   char*       newtitle     = m_req->extract_String();
   cRecording* recording    = cRecordingsCache::GetInstance().Lookup(uid);
-  int         r            = VDR_RET_DATAINVALID;
+  int         r            = VNSI_RET_DATAINVALID;
 
   if(recording != NULL) {
     // get filename and remove last part (recording time)
@@ -1058,24 +1058,24 @@ bool cCmdControl::processRECORDINGS_Delete() /* OPCODE 104 */
         // Copy svdrdeveldevelp's way of doing this, see if it works
         Recordings.DelByName(recording->FileName());
         INFOLOG("Recording \"%s\" deleted", recording->FileName());
-        m_resp->add_U32(VDR_RET_OK);
+        m_resp->add_U32(VNSI_RET_OK);
       }
       else
       {
         ERRORLOG("Error while deleting recording!");
-        m_resp->add_U32(VDR_RET_ERROR);
+        m_resp->add_U32(VNSI_RET_ERROR);
       }
     }
     else
     {
       ERRORLOG("Recording \"%s\" is in use by timer %d", recording->Name(), rc->Timer()->Index() + 1);
-      m_resp->add_U32(VDR_RET_DATALOCKED);
+      m_resp->add_U32(VNSI_RET_DATALOCKED);
     }
   }
   else
   {
     ERRORLOG("Error in recording name \"%s\"", (const char*)recName);
-    m_resp->add_U32(VDR_RET_DATAUNKNOWN);
+    m_resp->add_U32(VNSI_RET_DATAUNKNOWN);
   }
 
   m_resp->finalise();
@@ -1236,9 +1236,9 @@ bool cCmdControl::processSCAN_ScanSupported() /* OPCODE 140 */
             it returns true if supported */
   cPlugin *p = cPluginManager::GetPlugin("wirbelscan");
   if (p && p->Service("WirbelScanService-StopScan-v1.0", NULL))
-    m_resp->add_U32(VDR_RET_OK);
+    m_resp->add_U32(VNSI_RET_OK);
   else
-    m_resp->add_U32(VDR_RET_NOTSUPPORTED);
+    m_resp->add_U32(VNSI_RET_NOTSUPPORTED);
 
   m_resp->finalise();
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
@@ -1253,18 +1253,18 @@ bool cCmdControl::processSCAN_GetCountries() /* OPCODE 141 */
     cPlugin *p = cPluginManager::GetPlugin("wirbelscan");
     if (p)
     {
-      m_resp->add_U32(VDR_RET_OK);
+      m_resp->add_U32(VNSI_RET_OK);
       p->Service("WirbelScanService-GetCountries-v1.0", (void*) processSCAN_AddCountry);
     }
     else
     {
-      m_resp->add_U32(VDR_RET_NOTSUPPORTED);
+      m_resp->add_U32(VNSI_RET_NOTSUPPORTED);
     }
     m_processSCAN_Response = NULL;
   }
   else
   {
-    m_resp->add_U32(VDR_RET_DATALOCKED);
+    m_resp->add_U32(VNSI_RET_DATALOCKED);
   }
 
   m_resp->finalise();
@@ -1280,18 +1280,18 @@ bool cCmdControl::processSCAN_GetSatellites() /* OPCODE 142 */
     cPlugin *p = cPluginManager::GetPlugin("wirbelscan");
     if (p)
     {
-      m_resp->add_U32(VDR_RET_OK);
+      m_resp->add_U32(VNSI_RET_OK);
       p->Service("WirbelScanService-GetSatellites-v1.0", (void*) processSCAN_AddSatellite);
     }
     else
     {
-      m_resp->add_U32(VDR_RET_NOTSUPPORTED);
+      m_resp->add_U32(VNSI_RET_NOTSUPPORTED);
     }
     m_processSCAN_Response = NULL;
   }
   else
   {
-    m_resp->add_U32(VDR_RET_DATALOCKED);
+    m_resp->add_U32(VNSI_RET_DATALOCKED);
   }
 
   m_resp->finalise();
@@ -1328,13 +1328,13 @@ bool cCmdControl::processSCAN_Start() /* OPCODE 143 */
   if (p)
   {
     if (p->Service("WirbelScanService-DoScan-v1.0", (void*) &svc))
-      m_resp->add_U32(VDR_RET_OK);
+      m_resp->add_U32(VNSI_RET_OK);
     else
-      m_resp->add_U32(VDR_RET_ERROR);
+      m_resp->add_U32(VNSI_RET_ERROR);
   }
   else
   {
-    m_resp->add_U32(VDR_RET_NOTSUPPORTED);
+    m_resp->add_U32(VNSI_RET_NOTSUPPORTED);
   }
 
   m_resp->finalise();
@@ -1348,11 +1348,11 @@ bool cCmdControl::processSCAN_Stop() /* OPCODE 144 */
   if (p)
   {
     p->Service("WirbelScanService-StopScan-v1.0", NULL);
-    m_resp->add_U32(VDR_RET_OK);
+    m_resp->add_U32(VNSI_RET_OK);
   }
   else
   {
-    m_resp->add_U32(VDR_RET_NOTSUPPORTED);
+    m_resp->add_U32(VNSI_RET_NOTSUPPORTED);
   }
   m_resp->finalise();
   m_req->getClient()->GetSocket()->write(m_resp->getPtr(), m_resp->getLen());
@@ -1379,7 +1379,7 @@ void cCmdControl::processSCAN_AddSatellite(int index, const char *shortName, con
 void cCmdControl::processSCAN_SetPercentage(int percent)
 {
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(VDR_SCANNER_PERCENTAGE))
+  if (!resp->initScan(VNSI_SCANNER_PERCENTAGE))
   {
     delete resp;
     return;
@@ -1393,7 +1393,7 @@ void cCmdControl::processSCAN_SetPercentage(int percent)
 void cCmdControl::processSCAN_SetSignalStrength(int strength, bool locked)
 {
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(VDR_SCANNER_SIGNAL))
+  if (!resp->initScan(VNSI_SCANNER_SIGNAL))
   {
     delete resp;
     return;
@@ -1410,7 +1410,7 @@ void cCmdControl::processSCAN_SetSignalStrength(int strength, bool locked)
 void cCmdControl::processSCAN_SetDeviceInfo(const char *Info)
 {
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(VDR_SCANNER_DEVICE))
+  if (!resp->initScan(VNSI_SCANNER_DEVICE))
   {
     delete resp;
     return;
@@ -1424,7 +1424,7 @@ void cCmdControl::processSCAN_SetDeviceInfo(const char *Info)
 void cCmdControl::processSCAN_SetTransponder(const char *Info)
 {
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(VDR_SCANNER_TRANSPONDER))
+  if (!resp->initScan(VNSI_SCANNER_TRANSPONDER))
   {
     delete resp;
     return;
@@ -1438,7 +1438,7 @@ void cCmdControl::processSCAN_SetTransponder(const char *Info)
 void cCmdControl::processSCAN_NewChannel(const char *Name, bool isRadio, bool isEncrypted, bool isHD)
 {
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(VDR_SCANNER_NEWCHANNEL))
+  if (!resp->initScan(VNSI_SCANNER_NEWCHANNEL))
   {
     delete resp;
     return;
@@ -1455,7 +1455,7 @@ void cCmdControl::processSCAN_NewChannel(const char *Name, bool isRadio, bool is
 void cCmdControl::processSCAN_IsFinished()
 {
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(VDR_SCANNER_FINISHED))
+  if (!resp->initScan(VNSI_SCANNER_FINISHED))
   {
     delete resp;
     return;
@@ -1469,7 +1469,7 @@ void cCmdControl::processSCAN_IsFinished()
 void cCmdControl::processSCAN_SetStatus(int status)
 {
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(VDR_SCANNER_STATUS))
+  if (!resp->initScan(VNSI_SCANNER_STATUS))
   {
     delete resp;
     return;

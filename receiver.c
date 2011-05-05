@@ -33,7 +33,7 @@
 #include "config.h"
 #include "receiver.h"
 #include "cxsocket.h"
-#include "vdrcommand.h"
+#include "vnsicommand.h"
 #include "responsepacket.h"
 
 // --- cLiveReceiver -------------------------------------------------
@@ -531,7 +531,7 @@ cLiveStreamer::cLiveStreamer()
   m_startup         = true;
 
   m_packetEmpty = new cResponsePacket;
-  m_packetEmpty->initStream(VDR_STREAM_MUXPKT, 0, 0, 0, 0);
+  m_packetEmpty->initStream(VNSI_STREAM_MUXPKT, 0, 0, 0, 0);
 
   memset(&m_FrontendInfo, 0, sizeof(m_FrontendInfo));
   for (int idx = 0; idx < MAXRECEIVEPIDS; ++idx)
@@ -795,7 +795,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
       m_Pids[m_NumStreams]    = 0;
 
       /* Send the OK response here, that it is before the Stream end message */
-      resp->add_U32(VDR_RET_OK);
+      resp->add_U32(VNSI_RET_OK);
       resp->finalise();
       m_Socket->write(resp->getPtr(), resp->getLen());
 
@@ -896,15 +896,15 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
   if(pkt == NULL)
     return;
 
-  m_streamHeader.channel  = htonl(CHANNEL_STREAM);        // stream channel
-  m_streamHeader.opcode   = htonl(VDR_STREAM_MUXPKT);     // Stream packet operation code
-  m_streamHeader.id       = htonl(pkt->id);               // Stream ID
-  m_streamHeader.duration = htonl(pkt->duration);         // Duration
+  m_streamHeader.channel  = htonl(VNSI_CHANNEL_STREAM);     // stream channel
+  m_streamHeader.opcode   = htonl(VNSI_STREAM_MUXPKT);      // Stream packet operation code
+  m_streamHeader.id       = htonl(pkt->id);                 // Stream ID
+  m_streamHeader.duration = htonl(pkt->duration);           // Duration
 
   *(int64_t*)&m_streamHeader.dts = __cpu_to_be64(pkt->dts); // DTS
   *(int64_t*)&m_streamHeader.pts = __cpu_to_be64(pkt->pts); // PTS
 
-  m_streamHeader.length   = htonl(pkt->size);             // Data length
+  m_streamHeader.length   = htonl(pkt->size);               // Data length
   m_Socket->write(&m_streamHeader, sizeof(m_streamHeader), -1, true);
 
   m_Socket->write(pkt->data, pkt->size);
@@ -913,7 +913,7 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
 void cLiveStreamer::sendStreamChange()
 {
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initStream(VDR_STREAM_CHANGE, 0, 0, 0, 0))
+  if (!resp->initStream(VNSI_STREAM_CHANGE, 0, 0, 0, 0))
   {
     ERRORLOG("stream response packet init fail");
     delete resp;
@@ -992,7 +992,7 @@ void cLiveStreamer::sendSignalInfo()
   if (m_Frontend == -2)
   {
     cResponsePacket *resp = new cResponsePacket();
-    if (!resp->initStream(VDR_STREAM_SIGNALINFO, 0, 0, 0, 0))
+    if (!resp->initStream(VNSI_STREAM_SIGNALINFO, 0, 0, 0, 0))
     {
       ERRORLOG("stream response packet init fail");
       delete resp;
@@ -1040,7 +1040,7 @@ void cLiveStreamer::sendSignalInfo()
     if (m_Frontend >= 0)
     {
       cResponsePacket *resp = new cResponsePacket();
-      if (!resp->initStream(VDR_STREAM_SIGNALINFO, 0, 0, 0, 0))
+      if (!resp->initStream(VNSI_STREAM_SIGNALINFO, 0, 0, 0, 0))
       {
         ERRORLOG("stream response packet init fail");
         delete resp;
@@ -1080,7 +1080,7 @@ void cLiveStreamer::sendSignalInfo()
     if (m_Frontend >= 0)
     {
       cResponsePacket *resp = new cResponsePacket();
-      if (!resp->initStream(VDR_STREAM_SIGNALINFO, 0, 0, 0, 0))
+      if (!resp->initStream(VNSI_STREAM_SIGNALINFO, 0, 0, 0, 0))
       {
         ERRORLOG("stream response packet init fail");
         delete resp;
@@ -1138,7 +1138,7 @@ void cLiveStreamer::sendStreamInfo()
   }
 
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initStream(VDR_STREAM_CONTENTINFO, 0, 0, 0, 0))
+  if (!resp->initStream(VNSI_STREAM_CONTENTINFO, 0, 0, 0, 0))
   {
     ERRORLOG("stream response packet init fail");
     delete resp;

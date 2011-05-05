@@ -45,7 +45,7 @@
 #include "connection.h"
 #include "receiver.h"
 #include "server.h"
-#include "vdrcommand.h"
+#include "vnsicommand.h"
 #include "recplayer.h"
 #include "responsepacket.h"
 #include "hash.h"
@@ -137,7 +137,7 @@ void cConnection::Action(void)
       }
 
       /* Handle channel open and close inside this thread */
-      if (opcode == VDR_CHANNELSTREAM_OPEN)
+      if (opcode == VNSI_CHANNELSTREAM_OPEN)
       {
         cResponsePacket *resp = new cResponsePacket();
         if (!resp->init(requestID))
@@ -174,20 +174,20 @@ void cConnection::Action(void)
           else
           {
             DEBUGLOG("Can't stream channel %s", channel->Name());
-            resp->add_U32(VDR_RET_DATALOCKED);
+            resp->add_U32(VNSI_RET_DATALOCKED);
           }
         }
         else
         {
           ERRORLOG("Can't find channel %08x", uid);
-          resp->add_U32(VDR_RET_DATAINVALID);
+          resp->add_U32(VNSI_RET_DATAINVALID);
         }
 
         Channels.Unlock();
         resp->finalise();
         m_socket.write(resp->getPtr(), resp->getLen());
       }
-      else if (opcode == VDR_CHANNELSTREAM_CLOSE)
+      else if (opcode == VNSI_CHANNELSTREAM_CLOSE)
       {
         if (m_isStreaming)
           StopChannelStreaming();
@@ -251,7 +251,7 @@ void cConnection::TimerChange()
   if (m_StatusInterfaceEnabled)
   {
     cResponsePacket *resp = new cResponsePacket();
-    if (!resp->initStatus(VDR_STATUS_TIMERCHANGE))
+    if (!resp->initStatus(VNSI_STATUS_TIMERCHANGE))
     {
       delete resp;
       return;
@@ -269,7 +269,7 @@ void cConnection::ChannelChange()
     return;
 
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initStatus(VDR_STATUS_CHANNELCHANGE))
+  if (!resp->initStatus(VNSI_STATUS_CHANNELCHANGE))
   {
     delete resp;
     return;
@@ -286,7 +286,7 @@ void cConnection::RecordingsChange()
     return;
 
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initStatus(VDR_STATUS_RECORDINGSCHANGE))
+  if (!resp->initStatus(VNSI_STATUS_RECORDINGSCHANGE))
   {
     delete resp;
     return;
@@ -307,7 +307,7 @@ void cConnection::Recording(const cDevice *Device, const char *Name, const char 
   if (m_StatusInterfaceEnabled)
   {
     cResponsePacket *resp = new cResponsePacket();
-    if (!resp->initStatus(VDR_STATUS_RECORDING))
+    if (!resp->initStatus(VNSI_STATUS_RECORDING))
     {
       delete resp;
       return;
@@ -393,7 +393,7 @@ void cConnection::OsdStatusMessage(const char *Message)
     else if (strcasecmp(Message, trVDR("No index-file found. Creating may take minutes. Create one?")) == 0) return;
 
     cResponsePacket *resp = new cResponsePacket();
-    if (!resp->initStatus(VDR_STATUS_MESSAGE))
+    if (!resp->initStatus(VNSI_STATUS_MESSAGE))
     {
       delete resp;
       return;
