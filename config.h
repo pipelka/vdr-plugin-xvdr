@@ -19,22 +19,33 @@
  *
  */
 
-#ifndef _STREAMERNG_CONFIG_H_
-#define _STREAMERNG_CONFIG_H_
+#ifndef VNSI_CONFIG_H
+#define VNSI_CONFIG_H
 
 #include <string.h>
 #include <stdint.h>
 
 #include <vdr/config.h>
 
-#ifdef DEBUG
+// log output configuration
+
+#ifdef CONSOLEDEBUG
+#define DEBUGLOG(x...) printf("VNSI: "x)
+#elif defined  DEBUG
 #define DEBUGLOG(x...) dsyslog("VNSI: "x)
 #else
 #define DEBUGLOG(x...)
 #endif
 
+#ifdef CONSOLEDEBUG
+#define INFOLOG(x...) printf("VNSI: "x)
+#define ERRORLOG(x...) printf("VNSI-Error: "x)
+#else
 #define INFOLOG(x...) isyslog("VNSI: "x)
 #define ERRORLOG(x...) esyslog("VNSI-Error: "x)
+#endif
+
+// default settings
 
 #define ALLOWED_HOSTS_FILE  "allowed_hosts.conf"
 #define FRONTEND_DEVICE     "/dev/dvb/adapter%d/frontend%d"
@@ -42,6 +53,8 @@
 #define LISTEN_PORT       34890
 #define LISTEN_PORT_S    "34890"
 #define DISCOVERY_PORT    34890
+
+// backward compatibility
 
 #if APIVERSNUM < 10701
 #define FOLDERDELIMCHAR '~'
@@ -61,4 +74,4 @@ public:
 // Global instance
 extern cVNSIServerConfig VNSIServerConfig;
 
-#endif /* _STREAMERNG_CONFIG_H_ */
+#endif // VNSI_CONFIG_H

@@ -47,6 +47,9 @@ DEFINES += -DPLUGIN_NAME_I18N='"$(PLUGIN)"' -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64
 ifeq ($(DEBUG),1)
   DEFINES += -DDEBUG
 endif
+ifeq ($(CONSOLEDEBUG),1)
+  DEFINES += -DCONSOLEDEBUG
+endif
 
 ### The object files (add further files here):
 
