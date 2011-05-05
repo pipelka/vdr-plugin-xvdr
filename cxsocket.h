@@ -1,5 +1,10 @@
 /*
+ *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *
+ *      Copyright (C) 2003-2006 Petri Hintukainen
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
+ *      Copyright (C) 2011 Alexander Pipelka
+ *
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -16,13 +21,6 @@
  *  along with XBMC; see the file COPYING.  If not, write to
  *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
  *  http://www.gnu.org/copyleft/gpl.html
- *
- */
-
-/*
- * Socket wrapper classes
- *
- * Code is taken from xineliboutput plugin.
  *
  */
 
@@ -43,7 +41,7 @@ class cxSocket {
 
   cPoller *m_pollerRead;
   cPoller *m_pollerWrite;
-  
+
   cxSocket(const cxSocket& s);
   cxSocket &operator=(const cxSocket &S);
 

@@ -1,5 +1,10 @@
 /*
+ *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *
+ *      Copyright (C) 2003-2006 Petri Hintukainen
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
+ *      Copyright (C) 2011 Alexander Pipelka
+ *
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
