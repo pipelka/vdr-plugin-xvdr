@@ -19,8 +19,8 @@
  *
  */
 
-#ifndef VNSIDEMUXER_AAC_H
-#define VNSIDEMUXER_AAC_H
+#ifndef VNSI_DEMUXER_AAC_H
+#define VNSI_DEMUXER_AAC_H
 
 #include "demuxer.h"
 #include "bitstream.h"
@@ -56,4 +56,4 @@ public:
   uint32_t LATMGetValue(cBitstream *bs) { return bs->readBits(bs->readBits(2) * 8); }
 };
 
-#endif /* VNSIDEMUXER_AAC_H */
+#endif // VNSI_DEMUXER_AAC_H

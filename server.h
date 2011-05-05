@@ -19,8 +19,8 @@
  *
  */
 
-#ifndef SERVER_H
-#define SERVER_H
+#ifndef VNSI_SERVER_H
+#define VNSI_SERVER_H
 
 #include <list>
 #include <vdr/thread.h>
@@ -50,4 +50,4 @@ public:
   virtual ~cServer();
 };
 
-#endif /* SERVER_H */
+#endif // VNSI_SERVER_H

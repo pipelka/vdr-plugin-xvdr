@@ -26,8 +26,8 @@
  *
  */
 
-#ifndef __CXSOCKET_H
-#define __CXSOCKET_H
+#ifndef VNSI_CXSOCKET_H
+#define VNSI_CXSOCKET_H
 
 #include <inttypes.h>
 #include <sys/types.h>
@@ -64,4 +64,4 @@ class cxSocket {
   static char *ip2txt(uint32_t ip, unsigned int port, char *str);
 };
 
-#endif // __CXSOCKET_H
+#endif // VNSI_CXSOCKET_H

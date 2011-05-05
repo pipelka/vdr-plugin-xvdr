@@ -19,8 +19,8 @@
  *
  */
 
-#ifndef VNSIDEMUXER_DTS_H
-#define VNSIDEMUXER_DTS_H
+#ifndef VNSI_DEMUXER_DTS_H
+#define VNSI_DEMUXER_DTS_H
 
 #include "demuxer.h"
 
@@ -39,4 +39,4 @@ public:
 };
 
 
-#endif /* VNSIDEMUXER_DTS_H */
+#endif // VNSI_DEMUXER_DTS_H

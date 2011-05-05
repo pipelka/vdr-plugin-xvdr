@@ -19,8 +19,8 @@
  *
  */
 
-#ifndef VNSIRECEIVER_H
-#define VNSIRECEIVER_H
+#ifndef VNSI_RECEIVER_H
+#define VNSI_RECEIVER_H
 
 #include <linux/dvb/frontend.h>
 #include <linux/videodev2.h>
@@ -103,4 +103,4 @@ public:
   int HaveStreamDemuxer(int Pid, eStreamType streamType);
 };
 
-#endif  /* VNSIRECEIVER_H */
+#endif  // VNSI_RECEIVER_H

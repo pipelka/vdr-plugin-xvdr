@@ -24,8 +24,8 @@
  * This code is taken from VOMP for VDR plugin.
  */
 
-#ifndef RESPONSEPACKET_H
-#define RESPONSEPACKET_H
+#ifndef VNSI_RESPONSEPACKET_H
+#define VNSI_RESPONSEPACKET_H
 
 class cResponsePacket
 {
@@ -67,5 +67,5 @@ private:
   const static uint32_t userDataLenPosStream  = 32;
 };
 
-#endif
+#endif // VNSI_RESPONSEPACKET_H
 

@@ -19,8 +19,8 @@
  *
  */
 
-#ifndef VNSIDEMUXER_AC3_H
-#define VNSIDEMUXER_AC3_H
+#ifndef VNSI_DEMUXER_AC3_H
+#define VNSI_DEMUXER_AC3_H
 
 #include "demuxer.h"
 
@@ -73,4 +73,4 @@ public:
 };
 
 
-#endif /* VNSIDEMUXER_AC3_H */
+#endif // VNSI_DEMUXER_AC3_H

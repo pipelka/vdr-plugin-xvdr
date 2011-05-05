@@ -19,8 +19,8 @@
  *
  */
 
-#ifndef VNSIDEMUXER_MPEGAUDIO_H
-#define VNSIDEMUXER_MPEGAUDIO_H
+#ifndef VNSI_DEMUXER_MPEGAUDIO_H
+#define VNSI_DEMUXER_MPEGAUDIO_H
 
 #include "demuxer.h"
 
@@ -112,4 +112,4 @@ public:
 };
 
 
-#endif /* VNSIDEMUXER_MPEGAUDIO_H */
+#endif // VNSI_DEMUXER_MPEGAUDIO_H

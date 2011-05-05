@@ -18,8 +18,8 @@
  *
  */
 
-#ifndef RECORDINGSCACHE_H
-#define RECORDINGSCACHE_H
+#ifndef VNSI_RECORDINGSCACHE_H
+#define VNSI_RECORDINGSCACHE_H
 
 #include <stdint.h>
 #include <map>
@@ -51,4 +51,4 @@ private:
 };
 
 
-#endif /* RECORDINGSCACHE_H */
+#endif // VNSI_RECORDINGSCACHE_H

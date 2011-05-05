@@ -19,8 +19,8 @@
  *
  */
 
-#ifndef VDRCOMMAND_H
-#define VDRCOMMAND_H
+#ifndef VNSI_VDRCOMMAND_H
+#define VNSI_VDRCOMMAND_H
 
 /** Current VNSI Protocol Version number */
 const static uint32_t VNSIProtocolVersion      = 2;
@@ -117,4 +117,4 @@ const static uint32_t VDR_RET_DATALOCKED      = 997;
 const static uint32_t VDR_RET_DATAINVALID     = 998;
 const static uint32_t VDR_RET_ERROR           = 999;
 
-#endif
+#endif // VNSI_VDRCOMMAND_H

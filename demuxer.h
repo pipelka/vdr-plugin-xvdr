@@ -19,8 +19,8 @@
  *
  */
 
-#ifndef VNSIDEMUXER_H
-#define VNSIDEMUXER_H
+#ifndef VNSI_DEMUXER_H
+#define VNSI_DEMUXER_H
 
 #include <vdr/device.h>
 #include <queue>
@@ -297,4 +297,4 @@ public:
   uint16_t AncillaryPageId() const { return m_ancillaryPageId; }
 };
 
-#endif /* VNSIDEMUXER_H */
+#endif // VNSI_DEMUXER_H

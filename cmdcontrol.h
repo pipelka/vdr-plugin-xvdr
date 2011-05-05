@@ -19,8 +19,8 @@
  *
  */
 
-#ifndef CMD_CONTROL_H
-#define CMD_CONTROL_H
+#ifndef VNSI_CMDCONTROL_H
+#define VNSI_CMDCONTROL_H
 
 #include <queue>
 #include <map>
@@ -111,4 +111,4 @@ private:
 };
 
 
-#endif /* CMD_CONTROL_H */
+#endif // VNSI_CMDCONTROL_H

@@ -19,8 +19,8 @@
  *
  */
 
-#ifndef VNSIDEMUXER_MPEGVIDEO_H
-#define VNSIDEMUXER_MPEGVIDEO_H
+#ifndef VNSI_DEMUXER_MPEGVIDEO_H
+#define VNSI_DEMUXER_MPEGVIDEO_H
 
 #include <deque>
 #include "demuxer.h"
@@ -62,4 +62,4 @@ public:
   virtual void Parse(unsigned char *data, int size, bool pusi);
 };
 
-#endif /* VNSIDEMUXER_MPEGVIDEO_H */
+#endif // VNSI_DEMUXER_MPEGVIDEO_H

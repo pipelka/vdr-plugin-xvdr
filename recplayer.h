@@ -24,8 +24,8 @@
  * This code is taken from VOMP for VDR plugin.
  */
 
-#ifndef RECPLAYER_H
-#define RECPLAYER_H
+#ifndef VNSI_RECPLAYER_H
+#define VNSI_RECPLAYER_H
 
 #include <stdio.h>
 #include <vdr/recording.h>
@@ -73,4 +73,4 @@ private:
   bool        m_pesrecording;
 };
 
-#endif
+#endif // VNSI_RECPLAYER_H

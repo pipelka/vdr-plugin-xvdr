@@ -19,8 +19,8 @@
  *
  */
 
-#ifndef CONNECTION_H
-#define CONNECTION_H
+#ifndef VNSI_CONNECTION_H
+#define VNSI_CONNECTION_H
 
 #include <vdr/thread.h>
 #include <vdr/tools.h>
@@ -97,4 +97,4 @@ public:
   cRecPlayer *GetRecPlayer() { return m_RecPlayer; }
 };
 
-#endif /* CONNECTION_H */
+#endif // VNSI_CONNECTION_H

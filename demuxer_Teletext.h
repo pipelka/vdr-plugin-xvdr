@@ -19,8 +19,8 @@
  *
  */
 
-#ifndef VNSIDEMUXER_TELETEXT_H
-#define VNSIDEMUXER_TELETEXT_H
+#ifndef VNSI_DEMUXER_TELETEXT_H
+#define VNSI_DEMUXER_TELETEXT_H
 
 #include "demuxer.h"
 
@@ -44,4 +44,4 @@ public:
   virtual void Parse(unsigned char *data, int size, bool pusi);
 };
 
-#endif /* VNSIDEMUXER_TELETEXT_H */
+#endif // VNSI_DEMUXER_TELETEXT_H

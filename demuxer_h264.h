@@ -19,8 +19,8 @@
  *
  */
 
-#ifndef VNSIDEMUXER_H264_H
-#define VNSIDEMUXER_H264_H
+#ifndef VNSI_DEMUXER_H264_H
+#define VNSI_DEMUXER_H264_H
 
 #include "demuxer.h"
 
@@ -94,4 +94,4 @@ public:
 };
 
 
-#endif /* VNSIDEMUXER_H264_H */
+#endif // VNSI_DEMUXER_H264_H

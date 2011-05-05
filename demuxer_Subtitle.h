@@ -19,8 +19,8 @@
  *
  */
 
-#ifndef VNSIDEMUXER_SUBTITLE_H
-#define VNSIDEMUXER_SUBTITLE_H
+#ifndef VNSI_DEMUXER_SUBTITLE_H
+#define VNSI_DEMUXER_SUBTITLE_H
 
 #include "demuxer.h"
 
@@ -47,4 +47,4 @@ public:
 };
 
 
-#endif /* VNSIDEMUXER_SUBTITLE_H */
+#endif // VNSI_DEMUXER_SUBTITLE_H

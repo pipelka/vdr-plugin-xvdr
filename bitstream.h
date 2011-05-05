@@ -19,8 +19,8 @@
  *
  */
 
-#ifndef BITSTREAM_H_
-#define BITSTREAM_H_
+#ifndef VNSI_BITSTREAM_H
+#define VNSI_BITSTREAM_H
 
 class cBitstream
 {
@@ -44,4 +44,4 @@ public:
   int          length() { return m_len; }
 };
 
-#endif /* BITSTREAM_H_ */
+#endif // VNSI_BITSTREAM_H

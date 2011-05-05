@@ -19,8 +19,8 @@
  *
  */
 
-#ifndef REQUEST_PACKET_H
-#define REQUEST_PACKET_H
+#ifndef VNSI_REQUESTPACKET_H
+#define VNSI_REQUESTPACKET_H
 
 class cConnection;
 
@@ -69,4 +69,4 @@ private:
   cConnection *client;
 };
 
-#endif /* REQUEST_PACKET_H */
+#endif // VNSI_REQUESTPACKET_H
