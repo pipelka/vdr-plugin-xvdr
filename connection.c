@@ -133,9 +133,9 @@ void cConnection::Action(void)
 
       DEBUGLOG("Received chan=%u, ser=%u, op=%u, edl=%u", channelID, requestID, opcode, dataLength);
 
-      if (!m_loggedIn && (opcode != 1))
+      if (!m_loggedIn && (opcode != VNSI_LOGIN))
       {
-        ERRORLOG("Not logged in and opcode != 1");
+        ERRORLOG("Clients must be logged in before sending commands! Aborting.");
         if (data) free(data);
         break;
       }
@@ -190,11 +190,22 @@ void cConnection::Action(void)
         Channels.Unlock();
         resp->finalise();
         m_socket.write(resp->getPtr(), resp->getLen());
+        delete resp;
       }
       else if (opcode == VNSI_CHANNELSTREAM_CLOSE)
       {
         if (m_isStreaming)
           StopChannelStreaming();
+      }
+      else if (opcode == VNSI_PING)
+      {
+        cResponsePacket *resp = new cResponsePacket();
+        if(resp->init(requestID))
+        {
+          resp->finalise();
+          m_socket.write(resp->getPtr(), resp->getLen());
+        }
+        delete resp;
       }
       else
       {
