@@ -575,6 +575,7 @@ bool cVNSIClient::process_EnableOSDInterface()
 
 bool cVNSIClient::process_Ping() /* OPCODE 7 */
 {
+  m_resp->add_U32(1);
   m_resp->finalise();
   m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
