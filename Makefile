@@ -11,7 +11,7 @@ PLUGIN = vnsiserver
 
 ### The version number of this plugin (taken from the main source file):
 
-VERSION = $(shell grep 'static const char \*VERSION *=' $(PLUGIN).c | awk '{ print $$6 }' | sed -e 's/[";]//g')
+VERSION = $(shell grep 'static const char \*VERSION *=' vnsi.c | awk '{ print $$6 }' | sed -e 's/[";]//g')
 
 ### The C++ compiler and options:
 
@@ -53,10 +53,10 @@ endif
 
 ### The object files (add further files here):
 
-OBJS = $(PLUGIN).o bitstream.o cmdcontrol.o connection.o config.o cxsocket.o demuxer.o demuxer_AAC.o \
+OBJS = vnsi.o bitstream.o vnsiclient.o config.o cxsocket.o demuxer.o demuxer_AAC.o \
        demuxer_AC3.o demuxer_DTS.o demuxer_h264.o demuxer_MPEGAudio.o demuxer_MPEGVideo.o \
        demuxer_Subtitle.o demuxer_Teletext.o receiver.o recplayer.o requestpacket.o responsepacket.o \
-       server.o hash.o recordingscache.o
+       vnsiserver.o hash.o recordingscache.o
 
 ### Implicit rules:
 

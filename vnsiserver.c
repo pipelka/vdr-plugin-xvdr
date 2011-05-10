@@ -23,146 +23,263 @@
  *
  */
 
-#include <getopt.h>
+#include <netdb.h>
+#include <poll.h>
+#include <assert.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <arpa/inet.h>
+
 #include <vdr/plugin.h>
-#include "server.h"
+#include <vdr/shutdown.h>
 
-static const char *VERSION        = "0.0.1";
-static const char *DESCRIPTION    = "VDR-Network-Streaming-Interface (VNSI) Server";
+#include "vnsiserver.h"
+#include "vnsiclient.h"
 
-class cPluginVNSIServer : public cPlugin {
-private:
-  cServer *Server;
+unsigned int cVNSIServer::m_IdCnt = 0;
 
+class cAllowedHosts : public cSVDRPhosts
+{
 public:
-  cPluginVNSIServer(void);
-  virtual ~cPluginVNSIServer();
-  virtual const char *Version(void) { return VERSION; }
-  virtual const char *Description(void) { return DESCRIPTION; }
-  virtual const char *CommandLineHelp(void);
-  virtual bool ProcessArgs(int argc, char *argv[]);
-  virtual bool Initialize(void);
-  virtual bool Start(void);
-  virtual void Stop(void);
-  virtual void Housekeeping(void);
-  virtual void MainThreadHook(void);
-  virtual cString Active(void);
-  virtual time_t WakeupTime(void);
-  virtual const char *MainMenuEntry(void) { return NULL; }
-  virtual cOsdObject *MainMenuAction(void) { return NULL; }
-  virtual cMenuSetupPage *SetupMenu(void);
-  virtual bool SetupParse(const char *Name, const char *Value);
-  virtual bool Service(const char *Id, void *Data = NULL);
-  virtual const char **SVDRPHelpPages(void);
-  virtual cString SVDRPCommand(const char *Command, const char *Option, int &ReplyCode);
-  };
+  cAllowedHosts(const cString& AllowedHostsFile)
+  {
+    if (!Load(AllowedHostsFile, true, true))
+    {
+      ERRORLOG("Invalid or missing '%s'. falling back to 'svdrphosts.conf'.", *AllowedHostsFile);
+      cString Base = cString::sprintf("%s/../svdrphosts.conf", *VNSIServerConfig.ConfigDirectory);
+      if (!Load(Base, true, true))
+      {
+        ERRORLOG("Invalid or missing %s. Adding 127.0.0.1 to list of allowed hosts.", *Base);
+        cSVDRPhost *localhost = new cSVDRPhost;
+        if (localhost->Parse("127.0.0.1"))
+          Add(localhost);
+        else
+          delete localhost;
+      }
+    }
+  }
+};
 
-cPluginVNSIServer::cPluginVNSIServer(void)
+cVNSIServer::cVNSIServer(int listenPort) : cThread("VDR VNSI Server")
 {
-  Server = NULL;
+  m_ServerPort  = listenPort;
+
+  if(*VNSIServerConfig.ConfigDirectory)
+  {
+    m_AllowedHostsFile = cString::sprintf("%s/" ALLOWED_HOSTS_FILE, *VNSIServerConfig.ConfigDirectory);
+  }
+  else
+  {
+    ERRORLOG("cVNSIServer: missing ConfigDirectory!");
+    m_AllowedHostsFile = cString::sprintf("/video/" ALLOWED_HOSTS_FILE);
+  }
+
+  m_ServerFD = socket(AF_INET, SOCK_STREAM, 0);
+  if(m_ServerFD == -1)
+    return;
+
+  fcntl(m_ServerFD, F_SETFD, fcntl(m_ServerFD, F_GETFD) | FD_CLOEXEC);
+
+  int one = 1;
+  setsockopt(m_ServerFD, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int));
+
+  struct sockaddr_in s;
+  memset(&s, 0, sizeof(s));
+  s.sin_family = AF_INET;
+  s.sin_port = htons(m_ServerPort);
+
+  int x = bind(m_ServerFD, (struct sockaddr *)&s, sizeof(s));
+  if (x < 0)
+  {
+    close(m_ServerFD);
+    INFOLOG("Unable to start VNSI Server, port already in use ?");
+    m_ServerFD = -1;
+    return;
+  }
+
+  listen(m_ServerFD, 10);
+
+  Start();
+
+  INFOLOG("VNSI Server started");
+  INFOLOG("Channel streaming timeout: %i seconds", VNSIServerConfig.stream_timeout);
+  return;
 }
 
-cPluginVNSIServer::~cPluginVNSIServer()
+cVNSIServer::~cVNSIServer()
 {
-  // Clean up after yourself!
+  Cancel(-1);
+  for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++)
+  {
+    delete (*i);
+  }
+  m_clients.erase(m_clients.begin(), m_clients.end());
+  Cancel();
+  INFOLOG("VNSI Server stopped");
 }
 
-const char *cPluginVNSIServer::CommandLineHelp(void)
+void cVNSIServer::NewClientConnected(int fd)
 {
-    return "  -t n, --timeout=n      stream data timeout in seconds (default: 10)\n";
+  char buf[64];
+  struct sockaddr_in sin;
+  socklen_t len = sizeof(sin);
+
+  if (getpeername(fd, (struct sockaddr *)&sin, &len))
+  {
+    ERRORLOG("getpeername() failed, dropping new incoming connection %d", m_IdCnt);
+    close(fd);
+    return;
+  }
+
+  cAllowedHosts AllowedHosts(m_AllowedHostsFile);
+  if (!AllowedHosts.Acceptable(sin.sin_addr.s_addr))
+  {
+    ERRORLOG("Address not allowed to connect (%s)", *m_AllowedHostsFile);
+    close(fd);
+    return;
+  }
+
+  if (fcntl(fd, F_SETFL, fcntl (fd, F_GETFL) | O_NONBLOCK) == -1)
+  {
+    ERRORLOG("Error setting control socket to nonblocking mode");
+    close(fd);
+    return;
+  }
+
+  int val = 1;
+  setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &val, sizeof(val));
+
+  val = 30;
+  setsockopt(fd, SOL_TCP, TCP_KEEPIDLE, &val, sizeof(val));
+
+  val = 15;
+  setsockopt(fd, SOL_TCP, TCP_KEEPINTVL, &val, sizeof(val));
+
+  val = 5;
+  setsockopt(fd, SOL_TCP, TCP_KEEPCNT, &val, sizeof(val));
+
+  val = 1;
+  setsockopt(fd, SOL_TCP, TCP_NODELAY, &val, sizeof(val));
+
+  INFOLOG("Client with ID %d connected: %s", m_IdCnt, cxSocket::ip2txt(sin.sin_addr.s_addr, sin.sin_port, buf));
+  cVNSIClient *connection = new cVNSIClient(fd, m_IdCnt, cxSocket::ip2txt(sin.sin_addr.s_addr, sin.sin_port, buf));
+  m_clients.push_back(connection);
+  m_IdCnt++;
 }
 
-bool cPluginVNSIServer::ProcessArgs(int argc, char *argv[])
+void cVNSIServer::Action(void)
 {
-  // Implement command line argument processing here if applicable.
-  static struct option long_options[] = {
-       { "timeout",  required_argument, NULL, 't' },
-       { NULL,       no_argument,       NULL,  0  }
-     };
+  fd_set fds;
+  struct timeval tv;
 
-  int c;
+  // get initial state of the recordings
+  int recState = -1;
+  cTimeMs recStateTime;
+  Recordings.StateChanged(recState);
 
-  while ((c = getopt_long(argc, argv, "t:", long_options, NULL)) != -1) {
-        switch (c) {
-          case 't': if(optarg != NULL) VNSIServerConfig.stream_timeout = atoi(optarg);
-                    break;
-          default:  return false;
-          }
+  // get initial state of the timers
+  int timerState = -1;
+  cTimeMs timerStateTime;
+  Timers.Modified(timerState);
+
+  while (Running())
+  {
+    FD_ZERO(&fds);
+    FD_SET(m_ServerFD, &fds);
+
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
+
+    int r = select(m_ServerFD + 1, &fds, NULL, NULL, &tv);
+    if (r == -1)
+    {
+      ERRORLOG("failed during select");
+      continue;
+    }
+    if (r == 0)
+    {
+      // remove disconnected clients
+      for (ClientList::iterator i = m_clients.begin(); i != m_clients.end();)
+      {
+        if (!(*i)->Active())
+        {
+          INFOLOG("Client with ID %u seems to be disconnected, removing from client list", (*i)->GetID());
+          delete (*i);
+          i = m_clients.erase(i);
         }
-  return true;
+        else {
+          i++;
+        }
+      }
+
+      // trigger clients to reload the modified channel list
+      if(m_clients.size() > 0)
+      {
+        Channels.Lock(false);
+        if(Channels.Modified() != 0)
+        {
+          INFOLOG("Requesting clients to reload channel list");
+          for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++)
+            (*i)->ChannelChange();
+        }
+        Channels.Unlock();
+      }
+
+      // reset inactivity timeout as long as there are clients connected
+      if(m_clients.size() > 0) {
+        ShutdownHandler.SetUserInactiveTimeout();
+      }
+
+      // update recordings
+      if(Recordings.StateChanged(recState))
+      {
+        INFOLOG("Recordings state changed (%i)", recState);
+
+        if(recStateTime.Elapsed() >= 10*1000)
+        {
+          INFOLOG("Requesting clients to reload recordings list");
+          for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++)
+          {
+            (*i)->RecordingsChange();
+          }
+          recStateTime.Set(0);
+        }
+      }
+
+      // update timers
+      if(Timers.Modified(timerState))
+      {
+        INFOLOG("Timers state changed (%i)", timerState);
+
+        if(timerStateTime.Elapsed() >= 10*1000)
+        {
+          INFOLOG("Requesting clients to reload timers");
+          for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++)
+          {
+            (*i)->TimerChange();
+          }
+          timerStateTime.Set(0);
+        }
+      }
+      continue;
+    }
+
+    int fd = accept(m_ServerFD, 0, 0);
+    if (fd >= 0)
+    {
+      NewClientConnected(fd);
+    }
+    else
+    {
+      ERRORLOG("accept failed");
+    }
+  }
+  return;
 }
-
-bool cPluginVNSIServer::Initialize(void)
-{
-  // Initialize any background activities the plugin shall perform.
-  VNSIServerConfig.ConfigDirectory = ConfigDirectory(PLUGIN_NAME_I18N);
-  return true;
-}
-
-bool cPluginVNSIServer::Start(void)
-{
-  Server = new cServer(VNSIServerConfig.listen_port);
-
-  return true;
-}
-
-void cPluginVNSIServer::Stop(void)
-{
-  delete Server;
-  Server = NULL;
-}
-
-void cPluginVNSIServer::Housekeeping(void)
-{
-  // Perform any cleanup or other regular tasks.
-}
-
-void cPluginVNSIServer::MainThreadHook(void)
-{
-  // Perform actions in the context of the main program thread.
-  // WARNING: Use with great care - see PLUGINS.html!
-}
-
-cString cPluginVNSIServer::Active(void)
-{
-  // Return a message string if shutdown should be postponed
-  return NULL;
-}
-
-time_t cPluginVNSIServer::WakeupTime(void)
-{
-  // Return custom wakeup time for shutdown script
-  return 0;
-}
-
-cMenuSetupPage *cPluginVNSIServer::SetupMenu(void)
-{
-  // Return a setup menu in case the plugin supports one.
-  return NULL;
-}
-
-bool cPluginVNSIServer::SetupParse(const char *Name, const char *Value)
-{
-  // Parse your own setup parameters and store their values.
-  return false;
-}
-
-bool cPluginVNSIServer::Service(const char *Id, void *Data)
-{
-  // Handle custom service requests from other plugins
-  return false;
-}
-
-const char **cPluginVNSIServer::SVDRPHelpPages(void)
-{
-  // Return help text for SVDRP commands this plugin implements
-  return NULL;
-}
-
-cString cPluginVNSIServer::SVDRPCommand(const char *Command, const char *Option, int &ReplyCode)
-{
-  // Process SVDRP commands this plugin implements
-  return NULL;
-}
-
-VDRPLUGINCREATOR(cPluginVNSIServer); // Don't touch this!

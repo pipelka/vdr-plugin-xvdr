@@ -98,7 +98,7 @@ public:
 
   void Activate(bool On);
 
-  bool StreamChannel(const cChannel *channel, int priority, cxSocket *Socket, cResponsePacket *resp);
+  bool StreamChannel(const cChannel *channel, int priority, cxSocket *Socket, cResponsePacket* resp);
   void SetReady() { m_streamReady = true; }
   bool IsReady() { return m_streamReady && (m_NumStreams > 0); }
   bool IsStarting() { return m_startup; }

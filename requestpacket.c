@@ -32,11 +32,10 @@
 
 #include "config.h"
 #include "requestpacket.h"
-#include "server.h"
 #include "vnsicommand.h"
 
-cRequestPacket::cRequestPacket(uint32_t requestID, uint32_t opcode, uint8_t* data, uint32_t dataLength, cConnection *cli)
- : userData(data), userDataLength(dataLength), opCode(opcode), requestID(requestID), client(cli)
+cRequestPacket::cRequestPacket(uint32_t requestID, uint32_t opcode, uint8_t* data, uint32_t dataLength)
+ : userData(data), userDataLength(dataLength), opCode(opcode), requestID(requestID)
 {
   packetPos       = 0;
   ownBlock        = true;

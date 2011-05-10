@@ -31,27 +31,27 @@
 
 #include "config.h"
 
-class cConnection;
+class cVNSIClient;
 
-typedef std::list<cConnection*> Connections;
-
-class cServer : public cThread
+class cVNSIServer : public cThread
 {
 protected:
+
+  typedef std::list<cVNSIClient*> ClientList;
+
   virtual void Action(void);
   void NewClientConnected(int fd);
 
   int           m_ServerPort;
-  int           m_ServerId;
   int           m_ServerFD;
   cString       m_AllowedHostsFile;
-  Connections   m_Connections;
+  ClientList    m_clients;
 
   static unsigned int m_IdCnt;
 
 public:
-  cServer(int listenPort);
-  virtual ~cServer();
+  cVNSIServer(int listenPort);
+  virtual ~cVNSIServer();
 };
 
 #endif // VNSI_SERVER_H

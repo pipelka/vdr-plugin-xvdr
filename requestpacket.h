@@ -27,12 +27,10 @@
 #ifndef VNSI_REQUESTPACKET_H
 #define VNSI_REQUESTPACKET_H
 
-class cConnection;
-
 class cRequestPacket
 {
 public:
-  cRequestPacket(uint32_t requestID, uint32_t opcode, uint8_t* data, uint32_t dataLength, cConnection *cli);
+  cRequestPacket(uint32_t requestID, uint32_t opcode, uint8_t* data, uint32_t dataLength);
   ~cRequestPacket();
 
   int  serverError();
@@ -43,7 +41,6 @@ public:
   uint32_t  getStreamID()       { return streamID; }
   uint32_t  getFlag()           { return flag; }
   uint32_t  getOpCode()         { return opCode; }
-  cConnection *getClient()      { return client; }
 
   char*     extract_String();
   uint8_t   extract_U8();
@@ -71,7 +68,6 @@ private:
   uint32_t flag; // stream only
 
   bool ownBlock;
-  cConnection *client;
 };
 
 #endif // VNSI_REQUESTPACKET_H

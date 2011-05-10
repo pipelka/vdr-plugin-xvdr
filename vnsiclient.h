@@ -23,36 +23,83 @@
  *
  */
 
-#ifndef VNSI_CMDCONTROL_H
-#define VNSI_CMDCONTROL_H
+#ifndef VNSI_CLIENT_H
+#define VNSI_CLIENT_H
 
-#include <queue>
-#include <map>
 #include <vdr/thread.h>
+#include <vdr/tools.h>
+#include <vdr/receiver.h>
+#include <vdr/status.h>
 
-#include "responsepacket.h"
-#include "requestpacket.h"
+#include "config.h"
+#include "cxsocket.h"
 
-typedef std::queue<cRequestPacket*> RequestPacketQueue;
+class cChannel;
+class cDevice;
+class cLiveStreamer;
+class cRequestPacket;
+class cResponsePacket;
+class cRecPlayer;
+class cCmdControl;
 
-class cxSocket;
-
-class cCmdControl : public cThread
+class cVNSIClient : public cThread
+                  , public cStatus
 {
-public:
-  cCmdControl();
-  ~cCmdControl();
+private:
 
-  bool init();
-  bool recvRequest(cRequestPacket*);
+  unsigned int     m_Id;
+  cxSocket         m_socket;
+  bool             m_loggedIn;
+  bool             m_StatusInterfaceEnabled;
+  bool             m_OSDInterfaceEnabled;
+  cLiveStreamer   *m_Streamer;
+  bool             m_isStreaming;
+  cString          m_ClientAddress;
+  cRecPlayer      *m_RecPlayer;
+  cRequestPacket  *m_req;
+  cResponsePacket *m_resp;
+  cCharSetConv     m_toUTF8;
+  uint32_t         m_protocolVersion;
+
+protected:
+
+  bool processRequest(cRequestPacket* req);
+
+  virtual void Action(void);
+
+  virtual void TimerChange(const cTimer *Timer, eTimerChange Change);
+  virtual void Recording(const cDevice *Device, const char *Name, const char *FileName, bool On);
+  virtual void OsdStatusMessage(const char *Message);
+
+public:
+
+  cVNSIClient(int fd, unsigned int id, const char *ClientAdr);
+  virtual ~cVNSIClient();
+
+  void ChannelChange();
+  void RecordingsChange();
+  void TimerChange();
+
+  unsigned int GetID() { return m_Id; }
+
+protected:
+
+  void SetLoggedIn(bool yesNo) { m_loggedIn = yesNo; }
+  void SetStatusInterface(bool yesNo) { m_StatusInterfaceEnabled = yesNo; }
+  void SetOSDInterface(bool yesNo) { m_OSDInterfaceEnabled = yesNo; }
+  bool StartChannelStreaming(const cChannel *channel);
+  void StopChannelStreaming();
 
 private:
-  bool processPacket();
 
   bool process_Login();
   bool process_GetTime();
   bool process_EnableStatusInterface();
   bool process_EnableOSDInterface();
+  bool process_Ping();
+
+  bool processChannelStream_Open();
+  bool processChannelStream_Close();
 
   bool processRecStream_Open();
   bool processRecStream_Close();
@@ -103,16 +150,6 @@ private:
   static cResponsePacket *m_processSCAN_Response;
   static cxSocket *m_processSCAN_Socket;
 
-  virtual void Action(void);
-
-  cRequestPacket     *m_req;
-  RequestPacketQueue  m_req_queue;
-  cResponsePacket    *m_resp;
-  cCondWait           m_Wait;
-  cCharSetConv        m_toUTF8;
-  cMutex              m_mutex;
-  uint32_t            m_protocolVersion;
 };
 
-
-#endif // VNSI_CMDCONTROL_H
+#endif // VNSI_CLIENT_H
