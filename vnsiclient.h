@@ -60,6 +60,7 @@ private:
   cResponsePacket *m_resp;
   cCharSetConv     m_toUTF8;
   uint32_t         m_protocolVersion;
+  cMutex           m_msgLock;
 
 protected:
 

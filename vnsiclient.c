@@ -196,6 +196,8 @@ void cVNSIClient::TimerChange(const cTimer *Timer, eTimerChange Change)
 
 void cVNSIClient::TimerChange()
 {
+  cMutexLock lock(&m_msgLock);
+
   if (m_StatusInterfaceEnabled)
   {
     cResponsePacket *resp = new cResponsePacket();
@@ -213,6 +215,8 @@ void cVNSIClient::TimerChange()
 
 void cVNSIClient::ChannelChange()
 {
+  cMutexLock lock(&m_msgLock);
+
   if (!m_StatusInterfaceEnabled)
     return;
 
@@ -230,6 +234,8 @@ void cVNSIClient::ChannelChange()
 
 void cVNSIClient::RecordingsChange()
 {
+  cMutexLock lock(&m_msgLock);
+
   if (!m_StatusInterfaceEnabled)
     return;
 
@@ -245,13 +251,10 @@ void cVNSIClient::RecordingsChange()
   delete resp;
 }
 
-//void cVNSIClient::ChannelSwitch(const cDevice *Device, int ChannelNumber)
-//{
-//
-//}
-
 void cVNSIClient::Recording(const cDevice *Device, const char *Name, const char *FileName, bool On)
 {
+  cMutexLock lock(&m_msgLock);
+
   if (m_StatusInterfaceEnabled)
   {
     cResponsePacket *resp = new cResponsePacket();
@@ -281,6 +284,8 @@ void cVNSIClient::Recording(const cDevice *Device, const char *Name, const char 
 
 void cVNSIClient::OsdStatusMessage(const char *Message)
 {
+  cMutexLock lock(&m_msgLock);
+
   if (m_StatusInterfaceEnabled && Message)
   {
     /* Ignore this messages */
@@ -322,6 +327,8 @@ void cVNSIClient::OsdStatusMessage(const char *Message)
 
 bool cVNSIClient::processRequest(cRequestPacket* req)
 {
+  cMutexLock lock(&m_msgLock);
+
   m_req = req;
   m_resp = new cResponsePacket();
   if (!m_resp->init(m_req->getRequestID()))
