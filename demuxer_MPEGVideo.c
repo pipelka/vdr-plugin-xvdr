@@ -306,7 +306,8 @@ void cParserMPEG2Video::Parse_ComputePTS(sStreamPacket *pkt)
   /* PTS known and no other packets in queue, deliver at once */
   if (validpts && pkt->duration)
   {
-    SendPacket(pkt);
+    if (m_Width > 0)
+      SendPacket(pkt);
     free(pkt->data);
     delete pkt;
     return;
@@ -356,7 +357,8 @@ void cParserMPEG2Video::Parse_ComputePTS(sStreamPacket *pkt)
     }
     else
     {
-      SendPacket(pkt);
+      if (m_Width > 0)
+        SendPacket(pkt);
       free(pkt->data);
       delete pkt;
     }
@@ -379,7 +381,8 @@ void cParserMPEG2Video::Parse_ComputeDuration(sStreamPacket *pkt)
   if (duration >= 10)
   {
     pkt->duration = duration;
-    SendPacket(pkt);
+    if (m_Width > 0)
+      SendPacket(pkt);
   }
   free(pkt->data);
 }
