@@ -531,7 +531,6 @@ cLiveStreamer::cLiveStreamer()
   m_streamReady     = false;
   m_IsAudioOnly     = false;
   m_IsMPEGPS        = false;
-  m_streamchangeSent= false;
   m_startup         = true;
 
   m_packetEmpty = new cResponsePacket;
@@ -663,8 +662,8 @@ void cLiveStreamer::Action(void)
     {
       INFOLOG("streaming of channel started");
       last_info.Set(0);
-      sendStreamInfo();
       sendSignalInfo();
+      sendStreamChange();
       m_startup = false;
     }
 
@@ -688,11 +687,11 @@ void cLiveStreamer::Action(void)
     }
     Del(used);
 
-    if(last_info.Elapsed() >= 5*1000)
+    if(last_info.Elapsed() >= 10*1000)
     {
       last_info.Set(0);
-      sendSignalInfo();
       sendStreamInfo();
+      sendSignalInfo();
     }
   }
 }
@@ -856,7 +855,6 @@ inline void cLiveStreamer::Activate(bool On)
   if (On)
   {
     DEBUGLOG("VDR active, sending stream start message");
-    m_streamchangeSent = false;
     Start();
   }
   else
@@ -891,12 +889,6 @@ void cLiveStreamer::Detach(void)
 
 void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
 {
-  if (!m_streamchangeSent)
-  {
-    sendStreamChange();
-    m_streamchangeSent = true;
-  }
-
   if(pkt == NULL)
     return;
 
