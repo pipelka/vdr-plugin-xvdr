@@ -662,8 +662,9 @@ void cLiveStreamer::Action(void)
     {
       INFOLOG("streaming of channel started");
       last_info.Set(0);
-      sendSignalInfo();
       sendStreamChange();
+      sendStreamInfo();
+      sendSignalInfo();
       m_startup = false;
     }
 
