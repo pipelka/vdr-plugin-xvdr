@@ -54,7 +54,6 @@ cVNSIClient::cVNSIClient(int fd, unsigned int id, const char *ClientAdr)
   m_isStreaming             = false;
   m_ClientAddress           = ClientAdr;
   m_StatusInterfaceEnabled  = false;
-  m_OSDInterfaceEnabled     = false;
   m_RecPlayer               = NULL;
   m_req                     = NULL;
   m_resp                    = NULL;
@@ -357,10 +356,6 @@ bool cVNSIClient::processRequest(cRequestPacket* req)
       result = process_EnableStatusInterface();
       break;
 
-    case VNSI_ENABLEOSDINTERFACE:
-      result = process_EnableOSDInterface();
-      break;
-
     case VNSI_PING:
       result = process_Ping();
       break;
@@ -554,18 +549,6 @@ bool cVNSIClient::process_EnableStatusInterface()
   bool enabled = m_req->extract_U8();
 
   SetStatusInterface(enabled);
-
-  m_resp->add_U32(VNSI_RET_OK);
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
-  return true;
-}
-
-bool cVNSIClient::process_EnableOSDInterface()
-{
-  bool enabled = m_req->extract_U8();
-
-  SetOSDInterface(enabled);
 
   m_resp->add_U32(VNSI_RET_OK);
   m_resp->finalise();

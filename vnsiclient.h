@@ -51,7 +51,6 @@ private:
   cxSocket         m_socket;
   bool             m_loggedIn;
   bool             m_StatusInterfaceEnabled;
-  bool             m_OSDInterfaceEnabled;
   cLiveStreamer   *m_Streamer;
   bool             m_isStreaming;
   cString          m_ClientAddress;
@@ -87,7 +86,6 @@ protected:
 
   void SetLoggedIn(bool yesNo) { m_loggedIn = yesNo; }
   void SetStatusInterface(bool yesNo) { m_StatusInterfaceEnabled = yesNo; }
-  void SetOSDInterface(bool yesNo) { m_OSDInterfaceEnabled = yesNo; }
   bool StartChannelStreaming(const cChannel *channel);
   void StopChannelStreaming();
 
@@ -96,7 +94,6 @@ private:
   bool process_Login();
   bool process_GetTime();
   bool process_EnableStatusInterface();
-  bool process_EnableOSDInterface();
   bool process_Ping();
 
   bool processChannelStream_Open();
