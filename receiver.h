@@ -77,6 +77,7 @@ private:
   bool              m_IsAudioOnly;                  /*!> Set to true if streams contains only audio */
   bool              m_IsMPEGPS;                     /*!> TS Stream contains MPEG PS data like from pvrinput */
   cResponsePacket*  m_packetEmpty;                  /*!> Empty stream packet */
+  bool              m_requestStreamChange;
 
   struct {
     uint32_t channel;
@@ -90,6 +91,7 @@ private:
 
 protected:
   virtual void Action(void);
+  void RequestStreamChange();
 
 public:
   cLiveStreamer();
@@ -104,6 +106,7 @@ public:
   bool IsAudioOnly() { return m_IsAudioOnly; }
   bool IsMPEGPS() { return m_IsMPEGPS; }
   int HaveStreamDemuxer(int Pid, eStreamType streamType);
+
 };
 
 #endif  // VNSI_RECEIVER_H

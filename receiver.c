@@ -510,6 +510,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
 #endif
       m_Streamer->m_Device->AttachReceiver(m_Streamer->m_Receiver);
       INFOLOG("Currently unknown new streams found, receiver and demuxers reinited\n");
+      m_Streamer->RequestStreamChange();
     }
   }
 }
@@ -532,6 +533,7 @@ cLiveStreamer::cLiveStreamer()
   m_IsAudioOnly     = false;
   m_IsMPEGPS        = false;
   m_startup         = true;
+  m_requestStreamChange = false;
 
   m_packetEmpty = new cResponsePacket;
   m_packetEmpty->initStream(VNSI_STREAM_MUXPKT, 0, 0, 0, 0);
@@ -605,6 +607,11 @@ cLiveStreamer::~cLiveStreamer()
   delete m_packetEmpty;
 
   DEBUGLOG("Finished to delete live streamer");
+}
+
+void cLiveStreamer::RequestStreamChange()
+{
+  m_requestStreamChange = true;
 }
 
 void cLiveStreamer::Action(void)
@@ -905,6 +912,12 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
   m_Socket->write(&m_streamHeader, sizeof(m_streamHeader), -1, true);
 
   m_Socket->write(pkt->data, pkt->size);
+
+  if(m_requestStreamChange)
+  {
+    sendStreamChange();
+    sendStreamInfo();
+  }
 }
 
 void cLiveStreamer::sendStreamChange()
@@ -980,6 +993,8 @@ void cLiveStreamer::sendStreamChange()
   resp->finaliseStream();
   m_Socket->write(resp->getPtr(), resp->getLen(), -1, true);
   delete resp;
+
+  m_requestStreamChange = false;
 }
 
 void cLiveStreamer::sendSignalInfo()
