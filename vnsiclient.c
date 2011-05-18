@@ -406,6 +406,17 @@ bool cVNSIClient::processRequest(cRequestPacket* req)
       result = processCHANNELS_GetChannels();
       break;
 
+    case VNSI_CHANNELGROUP_GETCOUNT:
+      result = processCHANNELS_GroupsCount();
+      break;
+
+    case VNSI_CHANNELGROUP_LIST:
+      result = processCHANNELS_GroupList();
+      break;
+
+    case VNSI_CHANNELGROUP_MEMBERS:
+      result = processCHANNELS_GetGroupMembers();
+      break;
 
     /** OPCODE 80 - 99: VNSI network functions for timer access */
     case VNSI_TIMER_GETCOUNT:
@@ -844,9 +855,153 @@ bool cVNSIClient::processCHANNELS_GetChannels() /* OPCODE 63 */
 
   m_resp->finalise();
   m_socket.write(m_resp->getPtr(), m_resp->getLen());
+
   return true;
 }
 
+bool cVNSIClient::processCHANNELS_GroupsCount()
+{
+  uint32_t type = m_req->extract_U32();
+
+  Channels.Lock(false);
+
+  m_channelgroups[0].clear();
+  m_channelgroups[1].clear();
+
+  switch(type)
+  {
+    // get groups defined in channels.conf
+    default:
+    case 0:
+      CreateChannelGroups(false);
+      break;
+    // automatically create groups
+    case 1:
+      CreateChannelGroups(true);
+      break;
+  }
+
+  Channels.Unlock();
+
+  uint32_t count = m_channelgroups[0].size() + m_channelgroups[1].size();
+
+  m_resp->add_U32(count);
+  m_resp->finalise();
+  m_socket.write(m_resp->getPtr(), m_resp->getLen());
+  return true;
+}
+
+bool cVNSIClient::processCHANNELS_GroupList()
+{
+  uint32_t radio = m_req->extract_U8();
+  std::map<std::string, ChannelGroup>::iterator i;
+
+  for(i = m_channelgroups[radio].begin(); i != m_channelgroups[radio].end(); i++)
+  {
+    m_resp->add_String(i->second.name.c_str());
+    m_resp->add_U8(i->second.radio);
+  }
+
+  m_resp->finalise();
+  m_socket.write(m_resp->getPtr(), m_resp->getLen());
+  return true;
+}
+
+bool cVNSIClient::processCHANNELS_GetGroupMembers()
+{
+  char* groupname = m_req->extract_String();
+  uint32_t radio = m_req->extract_U8();
+  int index = 0;
+
+  // unknown group
+  if(m_channelgroups[radio].find(groupname) == m_channelgroups[radio].end())
+  {
+    delete[] groupname;
+    m_resp->finalise();
+    m_socket.write(m_resp->getPtr(), m_resp->getLen());
+    return true;
+  }
+
+  bool automatic = m_channelgroups[radio][groupname].automatic;
+  std::string name;
+
+  for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel))
+  {
+
+    if(automatic && !channel->GroupSep())
+      name = channel->Provider();
+    else
+    {
+      if(channel->GroupSep())
+      {
+        name = channel->Name();
+        continue;
+      }
+    }
+
+    if(name.empty())
+      continue;
+
+    bool isRadio = false;
+
+    // assume channels without VPID & APID are video channels
+    if (channel->Vpid() == 0 && channel->Apid(0) == 0)
+      isRadio = false;
+    // channels without VPID are radio channels (channels with VPID 1 are encrypted radio channels)
+    else if (channel->Vpid() == 0 || channel->Vpid() == 1)
+      isRadio = true;
+
+    if(isRadio != radio)
+      continue;
+
+    if(name == groupname)
+    {
+      m_resp->add_U32(CreateChannelUID(channel));
+      m_resp->add_U32(++index);
+    }
+  }
+
+  delete[] groupname;
+  m_resp->finalise();
+  m_socket.write(m_resp->getPtr(), m_resp->getLen());
+  return true;
+}
+
+void cVNSIClient::CreateChannelGroups(bool automatic)
+{
+  for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel))
+  {
+    bool isRadio = false;
+
+    // assume channels without VPID & APID are video channels
+    if (channel->Vpid() == 0 && channel->Apid(0) == 0)
+      isRadio = false;
+    // channels without VPID are radio channels (channels with VPID 1 are encrypted radio channels)
+    else if (channel->Vpid() == 0 || channel->Vpid() == 1)
+      isRadio = true;
+
+    std::string groupname;
+
+    if(automatic && !channel->GroupSep())
+      groupname = channel->Provider();
+    else if(!automatic && channel->GroupSep())
+      groupname = channel->Name();
+    else
+      continue;
+
+    if(groupname.empty())
+      continue;
+
+    if(m_channelgroups[isRadio].find(groupname) == m_channelgroups[isRadio].end())
+    {
+      ChannelGroup group;
+      group.name = groupname;
+      group.radio = isRadio;
+      group.automatic = automatic;
+      m_channelgroups[isRadio][groupname] = group;
+    }
+  }
+}
 
 /** OPCODE 80 - 99: VNSI network functions for timer access */
 

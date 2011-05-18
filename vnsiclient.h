@@ -34,6 +34,9 @@
 #include "config.h"
 #include "cxsocket.h"
 
+#include <map>
+#include <string>
+
 class cChannel;
 class cDevice;
 class cLiveStreamer;
@@ -91,6 +94,14 @@ protected:
 
 private:
 
+  typedef struct {
+    bool automatic;
+    bool radio;
+    std::string name;
+  } ChannelGroup;
+
+  std::map<std::string, ChannelGroup> m_channelgroups[2];
+
   bool process_Login();
   bool process_GetTime();
   bool process_EnableStatusInterface();
@@ -110,6 +121,9 @@ private:
   bool processCHANNELS_ChannelsCount();
   bool processCHANNELS_GroupList();
   bool processCHANNELS_GetChannels();
+  bool processCHANNELS_GetGroupMembers();
+
+  void CreateChannelGroups(bool automatic);
 
   bool processTIMER_GetCount();
   bool processTIMER_Get();
