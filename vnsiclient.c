@@ -919,6 +919,8 @@ bool cVNSIClient::processCHANNELS_GetGroupMembers()
   bool automatic = m_channelgroups[radio][groupname].automatic;
   std::string name;
 
+  Channels.Lock(false);
+
   for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel))
   {
 
@@ -954,6 +956,8 @@ bool cVNSIClient::processCHANNELS_GetGroupMembers()
       m_resp->add_U32(++index);
     }
   }
+
+  Channels.Unlock();
 
   delete[] groupname;
   m_resp->finalise();
