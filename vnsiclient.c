@@ -137,12 +137,6 @@ void cVNSIClient::Action(void)
 
       cRequestPacket* req = new cRequestPacket(requestID, opcode, data, dataLength);
 
-      if (opcode == VNSI_CHANNELSTREAM_CLOSE)
-      {
-        if (m_isStreaming)
-          StopChannelStreaming();
-      }
-
       processRequest(req);
     }
     else if (channelID == 3)
