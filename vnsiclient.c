@@ -969,6 +969,8 @@ bool cVNSIClient::processCHANNELS_GetGroupMembers()
 
 void cVNSIClient::CreateChannelGroups(bool automatic)
 {
+  std::string groupname;
+
   for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel))
   {
     bool isRadio = false;
@@ -980,14 +982,10 @@ void cVNSIClient::CreateChannelGroups(bool automatic)
     else if (channel->Vpid() == 0 || channel->Vpid() == 1)
       isRadio = true;
 
-    std::string groupname;
-
     if(automatic && !channel->GroupSep())
       groupname = channel->Provider();
     else if(!automatic && channel->GroupSep())
       groupname = channel->Name();
-    else
-      continue;
 
     if(groupname.empty())
       continue;
