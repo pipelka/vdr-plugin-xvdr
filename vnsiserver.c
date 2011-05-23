@@ -186,7 +186,6 @@ void cVNSIServer::Action(void)
 
   // get initial state of the timers
   int timerState = -1;
-  cTimeMs timerStateTime;
   Timers.Modified(timerState);
 
   while (Running())
@@ -257,15 +256,10 @@ void cVNSIServer::Action(void)
       if(Timers.Modified(timerState))
       {
         INFOLOG("Timers state changed (%i)", timerState);
-
-        if(timerStateTime.Elapsed() >= 10*1000)
+        INFOLOG("Requesting clients to reload timers");
+        for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++)
         {
-          INFOLOG("Requesting clients to reload timers");
-          for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++)
-          {
-            (*i)->TimerChange();
-          }
-          timerStateTime.Set(0);
+         (*i)->TimerChange();
         }
       }
       continue;
