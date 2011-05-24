@@ -47,6 +47,21 @@
 #include "wirbelscanservice.h" /// copied from modified wirbelscan plugin
                                /// must be hold up to date with wirbelscan
 
+
+static bool IsRadio(const cChannel* channel)
+{
+  bool isRadio = false;
+
+  // assume channels without VPID & APID are video channels
+  if (channel->Vpid() == 0 && channel->Apid(0) == 0)
+    isRadio = false;
+  // channels without VPID are radio channels (channels with VPID 1 are encrypted radio channels)
+  else if (channel->Vpid() == 0 || channel->Vpid() == 1)
+    isRadio = true;
+
+  return isRadio;
+}
+
 cVNSIClient::cVNSIClient(int fd, unsigned int id, const char *ClientAdr)
 {
   m_Id                      = id;
@@ -797,52 +812,32 @@ bool cVNSIClient::processCHANNELS_GetChannels() /* OPCODE 63 */
 
   bool radio = m_req->extract_U32();
 
-  int groupIndex = 0;
-  const cChannel* group = NULL;
-
   Channels.Lock(false);
 
   for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel))
   {
-    if (channel->GroupSep())
-    {
-      group = channel;
-      groupIndex++;
+    if (radio != IsRadio(channel))
+      continue;
+
+    // skip invalid channels
+    if (channel->Sid() == 0)
+      continue;
+
+    m_resp->add_U32(channel->Number());
+    m_resp->add_String(m_toUTF8.Convert(channel->Name()));
+    if(m_protocolVersion >= 2) {
+      m_resp->add_U32(CreateChannelUID(channel));
     }
-    else
-    {
-      bool isRadio = false;
-
-      // assume channels without VPID & APID are video channels
-      if (channel->Vpid() == 0 && channel->Apid(0) == 0)
-        isRadio = false;
-      // channels without VPID are radio channels (channels with VPID 1 are encrypted radio channels)
-      else if (channel->Vpid() == 0 || channel->Vpid() == 1)
-        isRadio = true;
-
-      if (radio != isRadio)
-        continue;
-
-      // skip invalid channels
-      if (channel->Sid() == 0)
-        continue;
-
-      m_resp->add_U32(channel->Number());
-      m_resp->add_String(m_toUTF8.Convert(channel->Name()));
-      if(m_protocolVersion >= 2) {
-        m_resp->add_U32(CreateChannelUID(channel));
-      }
-      else {
-        m_resp->add_U32(channel->Sid());
-      }
-      m_resp->add_U32(groupIndex);
-      m_resp->add_U32(channel->Ca());
+    else {
+      m_resp->add_U32(channel->Sid());
+    }
+    m_resp->add_U32(0); // groupindex unused
+    m_resp->add_U32(channel->Ca());
 #if APIVERSNUM >= 10701
-      m_resp->add_U32(channel->Vtype());
+    m_resp->add_U32(channel->Vtype());
 #else
-      m_resp->add_U32(2);
+    m_resp->add_U32(2);
 #endif
-    }
   }
 
   Channels.Unlock();
@@ -938,16 +933,7 @@ bool cVNSIClient::processCHANNELS_GetGroupMembers()
     if(name.empty())
       continue;
 
-    bool isRadio = false;
-
-    // assume channels without VPID & APID are video channels
-    if (channel->Vpid() == 0 && channel->Apid(0) == 0)
-      isRadio = false;
-    // channels without VPID are radio channels (channels with VPID 1 are encrypted radio channels)
-    else if (channel->Vpid() == 0 || channel->Vpid() == 1)
-      isRadio = true;
-
-    if(isRadio != radio)
+    if(IsRadio(channel) != radio)
       continue;
 
     if(name == groupname)
@@ -971,14 +957,7 @@ void cVNSIClient::CreateChannelGroups(bool automatic)
 
   for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel))
   {
-    bool isRadio = false;
-
-    // assume channels without VPID & APID are video channels
-    if (channel->Vpid() == 0 && channel->Apid(0) == 0)
-      isRadio = false;
-    // channels without VPID are radio channels (channels with VPID 1 are encrypted radio channels)
-    else if (channel->Vpid() == 0 || channel->Vpid() == 1)
-      isRadio = true;
+    bool isRadio = IsRadio(channel);
 
     if(automatic && !channel->GroupSep())
       groupname = channel->Provider();
