@@ -211,16 +211,18 @@ bool cParserH264::Parse_H264(size_t len, uint32_t next_startcode, int sc_offset)
       return true;
 
     /* Discard Packets until we have the picture size (XBMC can't enable VDPAU without it) */
-    if (!m_firstIFrame || !m_Width)
+    if (!m_firstIFrame || m_Width <= 0)
       return true;
-    else
-      m_Streamer->SetReady();
 
+    // send packet (will be cached if the stream isn't ready yet)
     m_FoundFrame        = false;
     m_StreamPacket.data = m_pictureBuffer;
     m_StreamPacket.size = m_pictureBufferPtr;
     SendPacket(&m_StreamPacket);
     m_firstPUSIseen = true;
+
+    // signal stream is ready
+    m_Streamer->SetReady();
     return true;
   }
 
