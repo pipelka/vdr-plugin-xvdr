@@ -54,28 +54,16 @@ protected:
   virtual void Receive(uchar *Data, int Length);
 
 public:
-#if VDRVERSNUM < 10705
   cLiveReceiver(cLiveStreamer *Streamer, tChannelID ChannelID, int Priority, const int *Pids);
-#endif
-  cLiveReceiver(cLiveStreamer *Streamer, const cChannel *channel, int Priority = -1);
   virtual ~cLiveReceiver();
 };
 
-#if VDRVERSNUM < 10705
 cLiveReceiver::cLiveReceiver(cLiveStreamer *Streamer, tChannelID ChannelID, int Priority, const int *Pids)
  : cReceiver(ChannelID, Priority, 0, Pids)
  , m_Streamer(Streamer)
 {
   DEBUGLOG("Starting live receiver");
 }
-#else
-cLiveReceiver::cLiveReceiver(cLiveStreamer *Streamer, const cChannel *channel, int Priority)
- : cReceiver(channel, Priority)
- , m_Streamer(Streamer)
-{
-  DEBUGLOG("Starting live receiver");
-}
-#endif
 
 cLiveReceiver::~cLiveReceiver()
 {
@@ -503,11 +491,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
         }
       }
 
-#if VDRVERSNUM < 10705
       m_Streamer->m_Receiver  = new cLiveReceiver(m_Streamer, m_Channel->GetChannelID(), m_Streamer->m_Priority, m_Streamer->m_Pids);
-#else
-      m_Streamer->m_Receiver  = new cLiveReceiver(m_Streamer, m_Channel, m_Streamer->m_Priority);
-#endif
       m_Streamer->m_Device->AttachReceiver(m_Streamer->m_Receiver);
       INFOLOG("Currently unknown new streams found, receiver and demuxers reinited\n");
       m_Streamer->RequestStreamChange();
@@ -814,12 +798,8 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
 
       if (m_NumStreams > 0 && m_Socket)
       {
-        DEBUGLOG("Creating new live Receiver");
-#if VDRVERSNUM < 10705
+        dsyslog("VNSI: Creating new live Receiver");
         m_Receiver  = new cLiveReceiver(this, m_Channel->GetChannelID(), m_Priority, m_Pids);
-#else
-        m_Receiver  = new cLiveReceiver(this, m_Channel, m_Priority);
-#endif
         m_PatFilter = new cLivePatFilter(this, m_Channel);
         m_Device->AttachReceiver(m_Receiver);
         m_Device->AttachFilter(m_PatFilter);
