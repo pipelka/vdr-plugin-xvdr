@@ -649,7 +649,7 @@ void cLiveStreamer::Action(void)
     }
 
     // Send stream information as the first packet on startup
-    if (IsStarting() && m_NumStreams > 0 && IsReady())
+    if (IsStarting() && IsReady())
     {
       INFOLOG("streaming of channel started");
       last_info.Set(0);
@@ -679,7 +679,7 @@ void cLiveStreamer::Action(void)
     }
     Del(used);
 
-    if(last_info.Elapsed() >= 10*1000)
+    if(last_info.Elapsed() >= 10*1000 && IsReady())
     {
       last_info.Set(0);
       sendStreamInfo();
@@ -880,6 +880,12 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
   if(pkt == NULL)
     return;
 
+  if(m_requestStreamChange)
+  {
+    sendStreamChange();
+    sendStreamInfo();
+  }
+
   m_streamHeader.channel  = htonl(VNSI_CHANNEL_STREAM);     // stream channel
   m_streamHeader.opcode   = htonl(VNSI_STREAM_MUXPKT);      // Stream packet operation code
   m_streamHeader.id       = htonl(pkt->id);                 // Stream ID
@@ -893,11 +899,6 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
 
   m_Socket->write(pkt->data, pkt->size);
 
-  if(m_requestStreamChange)
-  {
-    sendStreamChange();
-    sendStreamInfo();
-  }
 }
 
 void cLiveStreamer::sendStreamChange()

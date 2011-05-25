@@ -66,7 +66,6 @@ cParserH264::cParserH264(cTSDemuxer *demuxer, cLiveStreamer *streamer, int strea
   m_demuxer           = demuxer;
   m_vbvDelay          = -1;
   m_vbvSize           = 0;
-  m_firstPUSIseen     = false;
   m_firstIFrame       = false;
   m_PixelAspect.den   = 1;
   m_PixelAspect.num   = 1;
@@ -219,7 +218,6 @@ bool cParserH264::Parse_H264(size_t len, uint32_t next_startcode, int sc_offset)
     m_StreamPacket.data = m_pictureBuffer;
     m_StreamPacket.size = m_pictureBufferPtr;
     SendPacket(&m_StreamPacket);
-    m_firstPUSIseen = true;
 
     // signal stream is ready
     m_Streamer->SetReady();
