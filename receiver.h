@@ -78,7 +78,7 @@ private:
   bool              m_IsMPEGPS;                     /*!> TS Stream contains MPEG PS data like from pvrinput */
   cResponsePacket*  m_packetEmpty;                  /*!> Empty stream packet */
   bool              m_requestStreamChange;
-
+  uint32_t          m_scanTimeout;                  /*!> Channel scanning timeout (in seconds) */
   struct {
     uint32_t channel;
     uint32_t opcode;
@@ -94,7 +94,7 @@ protected:
   void RequestStreamChange();
 
 public:
-  cLiveStreamer();
+  cLiveStreamer(uint32_t timeout = 0);
   virtual ~cLiveStreamer();
 
   void Activate(bool On);

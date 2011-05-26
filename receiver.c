@@ -501,9 +501,10 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
 
 // --- cLiveStreamer -------------------------------------------------
 
-cLiveStreamer::cLiveStreamer()
+cLiveStreamer::cLiveStreamer(uint32_t timeout)
  : cThread("cLiveStreamer stream processor")
  , cRingBufferLinear(MEGABYTE(3), TS_SIZE, true)
+ , m_scanTimeout(timeout)
 {
   m_Channel         = NULL;
   m_Priority        = 0;
@@ -528,6 +529,9 @@ cLiveStreamer::cLiveStreamer()
     m_Streams[idx] = NULL;
     m_Pids[idx]    = 0;
   }
+
+  if(m_scanTimeout == 0)
+    m_scanTimeout = VNSIServerConfig.stream_timeout;
 
   SetTimeouts(0, 100);
 }
@@ -622,7 +626,7 @@ void cLiveStreamer::Action(void)
     }
 
     // prevent inifinite loop on encrypted channels
-    if(!IsReady() && (starttime.Elapsed() >= (uint64_t)(VNSIServerConfig.stream_timeout*1000))) {
+    if(!IsReady() && (starttime.Elapsed() >= (uint64_t)(m_scanTimeout*1000))) {
       INFOLOG("returning from streamer thread, timeout on starting streaming");
       break;
     }
