@@ -165,6 +165,13 @@ int cLivePatFilter::GetPid(SI::PMT::Stream& stream, eStreamType *type, char *lan
   if (!stream.getPid())
     return 0;
 
+  if(m_Channel->Tpid() == stream.getPid())
+  {
+    DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d %s\n", stream.getPid(), "Teletext");
+    *type = stTELETEXT;
+    return stream.getPid();
+  }
+
   switch (stream.getStreamType())
   {
     case 0x01: // ISO/IEC 11172 Video
