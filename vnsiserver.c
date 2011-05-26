@@ -181,7 +181,6 @@ void cVNSIServer::Action(void)
 
   // get initial state of the recordings
   int recState = -1;
-  cTimeMs recStateTime;
   Recordings.StateChanged(recState);
 
   // get initial state of the timers
@@ -240,16 +239,9 @@ void cVNSIServer::Action(void)
       if(Recordings.StateChanged(recState))
       {
         INFOLOG("Recordings state changed (%i)", recState);
-
-        if(recStateTime.Elapsed() >= 10*1000)
-        {
-          INFOLOG("Requesting clients to reload recordings list");
-          for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++)
-          {
-            (*i)->RecordingsChange();
-          }
-          recStateTime.Set(0);
-        }
+        INFOLOG("Requesting clients to reload recordings list");
+        for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++)
+          (*i)->RecordingsChange();
       }
 
       // update timers
