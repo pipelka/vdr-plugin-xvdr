@@ -192,8 +192,8 @@ void cVNSIServer::Action(void)
     FD_ZERO(&fds);
     FD_SET(m_ServerFD, &fds);
 
-    tv.tv_sec = 5;
-    tv.tv_usec = 0;
+    tv.tv_sec = 0;
+    tv.tv_usec = 250*1000;
 
     int r = select(m_ServerFD + 1, &fds, NULL, NULL, &tv);
     if (r == -1)
