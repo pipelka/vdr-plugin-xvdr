@@ -62,6 +62,8 @@ static bool IsRadio(const cChannel* channel)
   return isRadio;
 }
 
+cMutex cVNSIClient::m_timerLock;
+
 cVNSIClient::cVNSIClient(int fd, unsigned int id, const char *ClientAdr)
 {
   m_Id                      = id;
@@ -986,6 +988,8 @@ void cVNSIClient::CreateChannelGroups(bool automatic)
 
 bool cVNSIClient::processTIMER_GetCount() /* OPCODE 80 */
 {
+  cMutexLock lock(&m_timerLock);
+
   int count = Timers.Count();
 
   m_resp->add_U32(count);
@@ -997,6 +1001,8 @@ bool cVNSIClient::processTIMER_GetCount() /* OPCODE 80 */
 
 bool cVNSIClient::processTIMER_Get() /* OPCODE 81 */
 {
+  cMutexLock lock(&m_timerLock);
+
   uint32_t number = m_req->extract_U32();
 
   int numTimers = Timers.Count();
@@ -1036,6 +1042,8 @@ bool cVNSIClient::processTIMER_Get() /* OPCODE 81 */
 
 bool cVNSIClient::processTIMER_GetList() /* OPCODE 82 */
 {
+  cMutexLock lock(&m_timerLock);
+
   cTimer *timer;
   int numTimers = Timers.Count();
 
@@ -1071,6 +1079,8 @@ bool cVNSIClient::processTIMER_GetList() /* OPCODE 82 */
 
 bool cVNSIClient::processTIMER_Add() /* OPCODE 83 */
 {
+  cMutexLock lock(&m_timerLock);
+
   uint32_t flags      = m_req->extract_U32() > 0 ? tfActive : tfNone;
   uint32_t priority   = m_req->extract_U32();
   uint32_t lifetime   = m_req->extract_U32();
@@ -1139,6 +1149,8 @@ bool cVNSIClient::processTIMER_Add() /* OPCODE 83 */
 
 bool cVNSIClient::processTIMER_Delete() /* OPCODE 84 */
 {
+  cMutexLock lock(&m_timerLock);
+
   uint32_t number = m_req->extract_U32();
   bool     force  = m_req->extract_U32();
 
@@ -1194,6 +1206,8 @@ bool cVNSIClient::processTIMER_Delete() /* OPCODE 84 */
 
 bool cVNSIClient::processTIMER_Update() /* OPCODE 85 */
 {
+  cMutexLock lock(&m_timerLock);
+
   int length      = m_req->getDataLength();
   uint32_t index  = m_req->extract_U32();
   bool active     = m_req->extract_U32();
@@ -1301,6 +1315,8 @@ bool cVNSIClient::processRECORDINGS_GetCount() /* OPCODE 101 */
 
 bool cVNSIClient::processRECORDINGS_GetList() /* OPCODE 102 */
 {
+  cMutexLock lock(&m_timerLock);
+
   if(m_protocolVersion == 1) {
     m_resp->add_String(VideoDirectory);
   }

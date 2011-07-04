@@ -63,6 +63,7 @@ private:
   cCharSetConv     m_toUTF8;
   uint32_t         m_protocolVersion;
   cMutex           m_msgLock;
+  static cMutex    m_timerLock;
 
 protected:
 
