@@ -68,7 +68,7 @@ cParserH264::cParserH264(cTSDemuxer *demuxer, cLiveStreamer *streamer, int strea
   m_vbvSize           = 0;
   m_firstIFrame       = false;
   m_PixelAspect.den   = 1;
-  m_PixelAspect.num   = 1;
+  m_PixelAspect.num   = 0;
   memset(&m_streamData, 0, sizeof(m_streamData));
 }
 
@@ -163,7 +163,11 @@ bool cParserH264::Parse_H264(size_t len, uint32_t next_startcode, int sc_offset)
     if (!Parse_SPS(nal_data, nal_len))
       return true;
 
-    m_demuxer->SetVideoInformation(0,0, m_Height, m_Width, m_PixelAspect.num/m_PixelAspect.den);
+    double PAR = m_PixelAspect.num/m_PixelAspect.den;
+    double DAR = (PAR * m_Width) / m_Height;
+    DEBUGLOG("H.264 SPS: DAR %.2f", DAR);
+
+    m_demuxer->SetVideoInformation(0,0, m_Height, m_Width, DAR);
     break;
   }
 
@@ -434,7 +438,7 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len)
         if (aspect_ratio_idc < sizeof(aspect_ratios)/sizeof(aspect_ratios[0]))
         {
           memcpy(&m_PixelAspect, &aspect_ratios[aspect_ratio_idc], sizeof(mpeg_rational_t));
-          DEBUGLOG("H.264 SPS: -> aspect ratio %d / %d", m_PixelAspect.num, m_PixelAspect.den);
+          DEBUGLOG("H.264 SPS: PAR %d / %d", m_PixelAspect.num, m_PixelAspect.den);
         }
         else
         {

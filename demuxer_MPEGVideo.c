@@ -263,7 +263,33 @@ bool cParserMPEG2Video::Parse_MPEG2Video_SeqStart(cBitstream *bs)
 
   m_Width         = bs->readBits(12);
   m_Height        = bs->readBits(12);
-  bs->skipBits(4);
+
+  // figure out Display Aspect Ratio
+  double DAR = 0;
+  uint8_t aspect = bs->readBits(4);
+
+  switch(aspect)
+  {
+    case 0:
+    default:
+      ERRORLOG("invalid / forbidden DAR in sequence header !");
+      break;
+    case 1:
+      DAR = 1.0;
+      break;
+    case 2:
+      DAR = 4.0/3.0;
+      break;
+    case 3:
+      DAR = 16.0/9.0;
+      break;
+    case 4:
+      DAR = 2.21;
+      break;
+  }
+
+  DEBUGLOG("MPEG2 DAR: %.2f", DAR);
+
   m_FrameDuration = mpeg2video_framedurations[bs->readBits(4)];
   bs->skipBits(18);
   bs->skipBits(1);
@@ -272,7 +298,7 @@ bool cParserMPEG2Video::Parse_MPEG2Video_SeqStart(cBitstream *bs)
     m_Streamer->SetReady();
 
   m_vbvSize = bs->readBits(10) * 16 * 1024 / 8;
-  m_demuxer->SetVideoInformation(0,0, m_Height, m_Width, 0);
+  m_demuxer->SetVideoInformation(0,0, m_Height, m_Width, DAR);
 
   return false;
 }
