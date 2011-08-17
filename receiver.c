@@ -426,7 +426,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
         }
       }
       m_Streamer->m_NumStreams  = 0;
-      m_Streamer->m_streamReady = true;
+      m_Streamer->m_streamReady = false;
 
       for (int i = 0; i < streams; i++)
       {
