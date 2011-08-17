@@ -186,6 +186,12 @@ int cLivePatFilter::GetPid(SI::PMT::Stream& stream, eStreamType *type, char *lan
       GetLanguage(stream, langs);
       DEBUGLOG("cStreamdevPatFilter PMT scanner adding PID %d (%s) (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], langs);
       return stream.getPid();
+    case 0x0f: // ISO/IEC 13818-7 Audio with ADTS transport syntax
+    case 0x11: // ISO/IEC 14496-3 Audio with LATM transport syntax
+       *type = stAAC;
+       GetLanguage(stream, langs);
+       DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "AAC", langs);
+      return stream.getPid();
 #if 1
     case 0x07: // ISO/IEC 13512 MHEG
     case 0x08: // ISO/IEC 13818-1 Annex A  DSM CC
@@ -195,9 +201,7 @@ int cLivePatFilter::GetPid(SI::PMT::Stream& stream, eStreamType *type, char *lan
     case 0x0d: // ISO/IEC 13818-6 Sections (any type, including private data)
     case 0x0e: // ISO/IEC 13818-1 auxiliary
 #endif
-    case 0x0f: // ISO/IEC 13818-7 Audio with ADTS transport syntax
     case 0x10: // ISO/IEC 14496-2 Visual (MPEG-4)
-    case 0x11: // ISO/IEC 14496-3 Audio with LATM transport syntax
       DEBUGLOG("cStreamdevPatFilter PMT scanner: Not adding PID %d (%s) (skipped)\n", stream.getPid(), psStreamTypes[stream.getStreamType()]);
       break;
     case 0x1b: // ISO/IEC 14496-10 Video (MPEG-4 part 10/AVC, aka H.264)
