@@ -40,6 +40,9 @@
 #include "vnsicommand.h"
 #include "responsepacket.h"
 
+// disable EAC3 by now
+//#define ENABLE_EAC3 1
+
 // --- cLiveReceiver -------------------------------------------------
 
 class cLiveReceiver: public cReceiver
@@ -220,12 +223,14 @@ int cLivePatFilter::GetPid(SI::PMT::Stream& stream, eStreamType *type, char *lan
             GetLanguage(stream, langs);
             delete d;
             return stream.getPid();
+#ifdef ENABLE_EAC3
           case SI::EnhancedAC3DescriptorTag:
             DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "EAC3", langs);
             *type = stEAC3;
             GetLanguage(stream, langs);
             delete d;
             return stream.getPid();
+#endif
           case SI::DTSDescriptorTag:
             DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "DTS", langs);
             *type = stDTS;
