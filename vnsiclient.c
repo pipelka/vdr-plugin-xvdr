@@ -1092,6 +1092,12 @@ bool cVNSIClient::processTIMER_Add() /* OPCODE 83 */
   const char *file    = m_req->extract_String();
   const char *aux     = m_req->extract_String();
 
+  // handle instant timers
+  if(startTime == -1 || startTime == 0)
+  {
+    startTime = time(NULL);
+  }
+
   struct tm tm_r;
   struct tm *time = localtime_r(&startTime, &tm_r);
   if (day <= 0)
