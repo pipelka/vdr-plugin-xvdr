@@ -62,6 +62,14 @@ static bool IsRadio(const cChannel* channel)
   return isRadio;
 }
 
+static uint32_t recid2uid(const char* recid)
+{
+  unsigned int uid = 0;
+  sscanf(recid, "%8x", &uid);
+  DEBUGLOG("lookup recid: %s (uid: %u)", recid, uid);
+  return uid;
+}
+
 cMutex cVNSIClient::m_timerLock;
 
 cVNSIClient::cVNSIClient(int fd, unsigned int id, const char *ClientAdr)
@@ -650,7 +658,14 @@ bool cVNSIClient::processRecStream_Open() /* OPCODE 40 */
 {
   cRecording *recording = NULL;
 
-  if(m_protocolVersion >= 2) {
+  if(m_protocolVersion >= 3) {
+    char* recid = m_req->extract_String();
+    unsigned int uid = recid2uid(recid);
+    DEBUGLOG("lookup recid: %s (uid: %u)", recid, uid);
+    recording = cRecordingsCache::GetInstance().Lookup(uid);
+    delete[] recid;
+  }
+  else if(m_protocolVersion = 2) {
     uint32_t uid = m_req->extract_U32();
     recording = cRecordingsCache::GetInstance().Lookup(uid);
   }
@@ -1416,8 +1431,13 @@ bool cVNSIClient::processRECORDINGS_GetList() /* OPCODE 102 */
     }
 
     // filename / uid of recording
-    if(m_protocolVersion >= 2) {
-      uint32_t uid = cRecordingsCache::GetInstance().Register(recording);
+    uint32_t uid = cRecordingsCache::GetInstance().Register(recording);
+    if(m_protocolVersion >= 3) {
+      char recid[9];
+      snprintf(recid, sizeof(recid), "%0x8", uid);
+      m_resp->add_String(recid);
+    }
+    else if(m_protocolVersion = 2) {
       m_resp->add_U32(uid);
     }
     else {
@@ -1435,7 +1455,16 @@ bool cVNSIClient::processRECORDINGS_GetList() /* OPCODE 102 */
 
 bool cVNSIClient::processRECORDINGS_Rename() /* OPCODE 103 */
 {
-  uint32_t    uid          = m_req->extract_U32();
+  uint32_t uid = 0;
+  if(m_protocolVersion >= 3) {
+    char* recid = m_req->extract_String();
+    uid = recid2uid(recid);
+    delete[] recid;
+  }
+  else {
+    uid = m_req->extract_U32();
+  }
+
   char*       newtitle     = m_req->extract_String();
   cRecording* recording    = cRecordingsCache::GetInstance().Lookup(uid);
   int         r            = VNSI_RET_DATAINVALID;
@@ -1479,7 +1508,13 @@ bool cVNSIClient::processRECORDINGS_Delete() /* OPCODE 104 */
   cString recName;
   cRecording* recording = NULL;
 
-  if(m_protocolVersion >= 2) {
+  if(m_protocolVersion >= 3) {
+    char* recid = m_req->extract_String();
+    uint32_t uid = recid2uid(recid);
+    recording = cRecordingsCache::GetInstance().Lookup(uid);
+    delete[] recid;
+  }
+  else if(m_protocolVersion == 2) {
     uint32_t uid = m_req->extract_U32();
     recording = cRecordingsCache::GetInstance().Lookup(uid);
   }
