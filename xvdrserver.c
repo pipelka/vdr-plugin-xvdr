@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
  *      Copyright (C) 2010, 2011 Alexander Pipelka
@@ -40,10 +40,10 @@
 #include <vdr/plugin.h>
 #include <vdr/shutdown.h>
 
-#include "vnsiserver.h"
-#include "vnsiclient.h"
+#include "xvdrserver.h"
+#include "xvdrclient.h"
 
-unsigned int cVNSIServer::m_IdCnt = 0;
+unsigned int cXVDRServer::m_IdCnt = 0;
 
 class cAllowedHosts : public cSVDRPhosts
 {
@@ -53,7 +53,7 @@ public:
     if (!Load(AllowedHostsFile, true, true))
     {
       ERRORLOG("Invalid or missing '%s'. falling back to 'svdrphosts.conf'.", *AllowedHostsFile);
-      cString Base = cString::sprintf("%s/../svdrphosts.conf", *VNSIServerConfig.ConfigDirectory);
+      cString Base = cString::sprintf("%s/../svdrphosts.conf", *XVDRServerConfig.ConfigDirectory);
       if (!Load(Base, true, true))
       {
         ERRORLOG("Invalid or missing %s. Adding 127.0.0.1 to list of allowed hosts.", *Base);
@@ -67,17 +67,17 @@ public:
   }
 };
 
-cVNSIServer::cVNSIServer(int listenPort) : cThread("VDR VNSI Server")
+cXVDRServer::cXVDRServer(int listenPort) : cThread("VDR XVDR Server")
 {
   m_ServerPort  = listenPort;
 
-  if(*VNSIServerConfig.ConfigDirectory)
+  if(*XVDRServerConfig.ConfigDirectory)
   {
-    m_AllowedHostsFile = cString::sprintf("%s/" ALLOWED_HOSTS_FILE, *VNSIServerConfig.ConfigDirectory);
+    m_AllowedHostsFile = cString::sprintf("%s/" ALLOWED_HOSTS_FILE, *XVDRServerConfig.ConfigDirectory);
   }
   else
   {
-    ERRORLOG("cVNSIServer: missing ConfigDirectory!");
+    ERRORLOG("cXVDRServer: missing ConfigDirectory!");
     m_AllowedHostsFile = cString::sprintf("/video/" ALLOWED_HOSTS_FILE);
   }
 
@@ -99,7 +99,7 @@ cVNSIServer::cVNSIServer(int listenPort) : cThread("VDR VNSI Server")
   if (x < 0)
   {
     close(m_ServerFD);
-    INFOLOG("Unable to start VNSI Server, port already in use ?");
+    INFOLOG("Unable to start XVDR Server, port already in use ?");
     m_ServerFD = -1;
     return;
   }
@@ -108,12 +108,12 @@ cVNSIServer::cVNSIServer(int listenPort) : cThread("VDR VNSI Server")
 
   Start();
 
-  INFOLOG("VNSI Server started");
-  INFOLOG("Channel streaming timeout: %i seconds", VNSIServerConfig.stream_timeout);
+  INFOLOG("XVDR Server started");
+  INFOLOG("Channel streaming timeout: %i seconds", XVDRServerConfig.stream_timeout);
   return;
 }
 
-cVNSIServer::~cVNSIServer()
+cXVDRServer::~cXVDRServer()
 {
   Cancel(-1);
   for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++)
@@ -122,10 +122,10 @@ cVNSIServer::~cVNSIServer()
   }
   m_clients.erase(m_clients.begin(), m_clients.end());
   Cancel();
-  INFOLOG("VNSI Server stopped");
+  INFOLOG("XVDR Server stopped");
 }
 
-void cVNSIServer::NewClientConnected(int fd)
+void cXVDRServer::NewClientConnected(int fd)
 {
   char buf[64];
   struct sockaddr_in sin;
@@ -169,12 +169,12 @@ void cVNSIServer::NewClientConnected(int fd)
   setsockopt(fd, SOL_TCP, TCP_NODELAY, &val, sizeof(val));
 
   INFOLOG("Client with ID %d connected: %s", m_IdCnt, cxSocket::ip2txt(sin.sin_addr.s_addr, sin.sin_port, buf));
-  cVNSIClient *connection = new cVNSIClient(fd, m_IdCnt, cxSocket::ip2txt(sin.sin_addr.s_addr, sin.sin_port, buf));
+  cXVDRClient *connection = new cXVDRClient(fd, m_IdCnt, cxSocket::ip2txt(sin.sin_addr.s_addr, sin.sin_port, buf));
   m_clients.push_back(connection);
   m_IdCnt++;
 }
 
-void cVNSIServer::Action(void)
+void cXVDRServer::Action(void)
 {
   fd_set fds;
   struct timeval tv;

@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
  *      Copyright (C) 2010, 2011 Alexander Pipelka
@@ -37,7 +37,7 @@
 #include "config.h"
 #include "receiver.h"
 #include "cxsocket.h"
-#include "vnsicommand.h"
+#include "xvdrcommand.h"
 #include "responsepacket.h"
 
 // disable EAC3 by now
@@ -537,7 +537,7 @@ cLiveStreamer::cLiveStreamer(uint32_t timeout)
   m_requestStreamChange = false;
 
   m_packetEmpty = new cResponsePacket;
-  m_packetEmpty->initStream(VNSI_STREAM_MUXPKT, 0, 0, 0, 0);
+  m_packetEmpty->initStream(XVDR_STREAM_MUXPKT, 0, 0, 0, 0);
 
   memset(&m_FrontendInfo, 0, sizeof(m_FrontendInfo));
   for (int idx = 0; idx < MAXRECEIVEPIDS; ++idx)
@@ -547,7 +547,7 @@ cLiveStreamer::cLiveStreamer(uint32_t timeout)
   }
 
   if(m_scanTimeout == 0)
-    m_scanTimeout = VNSIServerConfig.stream_timeout;
+    m_scanTimeout = XVDRServerConfig.stream_timeout;
 
   SetTimeouts(0, 100);
 }
@@ -743,7 +743,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
       {
         /* m_streamReady is set by the Video demuxers, to have always valid stream informations
          * like height and width. But if no Video PID is present like for radio channels
-         * VNSI will deadlock
+         * XVDR will deadlock
          */
         m_streamReady = true;
         m_IsAudioOnly = true;
@@ -815,7 +815,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
       m_Pids[m_NumStreams]    = 0;
 
       /* Send the OK response here, that it is before the Stream end message */
-      resp->add_U32(VNSI_RET_OK);
+      resp->add_U32(XVDR_RET_OK);
       resp->finalise();
       m_Socket->write(resp->getPtr(), resp->getLen());
 
@@ -823,7 +823,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
 
       if (m_NumStreams > 0 && m_Socket)
       {
-        dsyslog("VNSI: Creating new live Receiver");
+        dsyslog("XVDR: Creating new live Receiver");
         m_Receiver  = new cLiveReceiver(this, m_Channel->GetChannelID(), m_Priority, m_Pids);
         m_PatFilter = new cLivePatFilter(this, m_Channel);
         m_Device->AttachReceiver(m_Receiver);
@@ -911,8 +911,8 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
     sendStreamInfo();
   }
 
-  m_streamHeader.channel  = htonl(VNSI_CHANNEL_STREAM);     // stream channel
-  m_streamHeader.opcode   = htonl(VNSI_STREAM_MUXPKT);      // Stream packet operation code
+  m_streamHeader.channel  = htonl(XVDR_CHANNEL_STREAM);     // stream channel
+  m_streamHeader.opcode   = htonl(XVDR_STREAM_MUXPKT);      // Stream packet operation code
   m_streamHeader.id       = htonl(pkt->id);                 // Stream ID
   m_streamHeader.duration = htonl(pkt->duration);           // Duration
 
@@ -929,7 +929,7 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
 void cLiveStreamer::sendStreamChange()
 {
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initStream(VNSI_STREAM_CHANGE, 0, 0, 0, 0))
+  if (!resp->initStream(XVDR_STREAM_CHANGE, 0, 0, 0, 0))
   {
     ERRORLOG("stream response packet init fail");
     delete resp;
@@ -1010,7 +1010,7 @@ void cLiveStreamer::sendSignalInfo()
   if (m_Frontend == -2)
   {
     cResponsePacket *resp = new cResponsePacket();
-    if (!resp->initStream(VNSI_STREAM_SIGNALINFO, 0, 0, 0, 0))
+    if (!resp->initStream(XVDR_STREAM_SIGNALINFO, 0, 0, 0, 0))
     {
       ERRORLOG("stream response packet init fail");
       delete resp;
@@ -1058,7 +1058,7 @@ void cLiveStreamer::sendSignalInfo()
     if (m_Frontend >= 0)
     {
       cResponsePacket *resp = new cResponsePacket();
-      if (!resp->initStream(VNSI_STREAM_SIGNALINFO, 0, 0, 0, 0))
+      if (!resp->initStream(XVDR_STREAM_SIGNALINFO, 0, 0, 0, 0))
       {
         ERRORLOG("stream response packet init fail");
         delete resp;
@@ -1098,7 +1098,7 @@ void cLiveStreamer::sendSignalInfo()
     if (m_Frontend >= 0)
     {
       cResponsePacket *resp = new cResponsePacket();
-      if (!resp->initStream(VNSI_STREAM_SIGNALINFO, 0, 0, 0, 0))
+      if (!resp->initStream(XVDR_STREAM_SIGNALINFO, 0, 0, 0, 0))
       {
         ERRORLOG("stream response packet init fail");
         delete resp;
@@ -1156,7 +1156,7 @@ void cLiveStreamer::sendStreamInfo()
   }
 
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initStream(VNSI_STREAM_CONTENTINFO, 0, 0, 0, 0))
+  if (!resp->initStream(XVDR_STREAM_CONTENTINFO, 0, 0, 0, 0))
   {
     ERRORLOG("stream response packet init fail");
     delete resp;

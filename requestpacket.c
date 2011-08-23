@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 2007 Chris Tallon
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
@@ -32,7 +32,7 @@
 
 #include "config.h"
 #include "requestpacket.h"
-#include "vnsicommand.h"
+#include "xvdrcommand.h"
 
 cRequestPacket::cRequestPacket(uint32_t requestID, uint32_t opcode, uint8_t* data, uint32_t dataLength)
  : userData(data), userDataLength(dataLength), opCode(opcode), requestID(requestID)

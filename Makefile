@@ -7,11 +7,11 @@
 # This name will be used in the '-P...' option of VDR to load the plugin.
 # By default the main source file also carries this name.
 #
-PLUGIN = vnsiserver
+PLUGIN = xvdr
 
 ### The version number of this plugin (taken from the main source file):
 
-VERSION = $(shell grep 'static const char \*VERSION *=' vnsi.h | awk '{ print $$6 }' | sed -e 's/[";]//g')
+VERSION = $(shell grep 'static const char \*VERSION *=' xvdr.h | awk '{ print $$6 }' | sed -e 's/[";]//g')
 
 ### The C++ compiler and options:
 
@@ -43,7 +43,7 @@ PACKAGE = vdr-$(ARCHIVE)
 
 INCLUDES += -I$(VDRDIR)/include -I$(DVBDIR)/include -I$(VDRDIR)
 
-DEFINES += -DPLUGIN_NAME_I18N='"$(PLUGIN)"' -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -DVNSI_SERVER_VERSION='"$(VERSION)"'
+DEFINES += -DPLUGIN_NAME_I18N='"$(PLUGIN)"' -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -DXVDR_VERSION='"$(VERSION)"'
 ifeq ($(DEBUG),1)
   DEFINES += -DDEBUG
 endif
@@ -53,10 +53,10 @@ endif
 
 ### The object files (add further files here):
 
-OBJS = vnsi.o bitstream.o vnsiclient.o config.o cxsocket.o demuxer.o demuxer_AAC.o \
+OBJS = xvdr.o bitstream.o xvdrclient.o config.o cxsocket.o demuxer.o demuxer_AAC.o \
        demuxer_AC3.o demuxer_DTS.o demuxer_h264.o demuxer_MPEGAudio.o demuxer_MPEGVideo.o \
        demuxer_Subtitle.o demuxer_Teletext.o receiver.o recplayer.o requestpacket.o responsepacket.o \
-       vnsiserver.o hash.o recordingscache.o
+       xvdrserver.o hash.o recordingscache.o
 
 ### Implicit rules:
 

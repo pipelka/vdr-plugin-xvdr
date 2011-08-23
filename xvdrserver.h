@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
  *      Copyright (C) 2010, 2011 Alexander Pipelka
@@ -23,21 +23,21 @@
  *
  */
 
-#ifndef VNSI_SERVER_H
-#define VNSI_SERVER_H
+#ifndef XVDR_SERVER_H
+#define XVDR_SERVER_H
 
 #include <list>
 #include <vdr/thread.h>
 
 #include "config.h"
 
-class cVNSIClient;
+class cXVDRClient;
 
-class cVNSIServer : public cThread
+class cXVDRServer : public cThread
 {
 protected:
 
-  typedef std::list<cVNSIClient*> ClientList;
+  typedef std::list<cXVDRClient*> ClientList;
 
   virtual void Action(void);
   void NewClientConnected(int fd);
@@ -50,8 +50,8 @@ protected:
   static unsigned int m_IdCnt;
 
 public:
-  cVNSIServer(int listenPort);
-  virtual ~cVNSIServer();
+  cXVDRServer(int listenPort);
+  virtual ~cXVDRServer();
 };
 
-#endif // VNSI_SERVER_H
+#endif // XVDR_SERVER_H

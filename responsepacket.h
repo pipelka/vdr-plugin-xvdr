@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 2007 Chris Tallon
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
@@ -28,8 +28,8 @@
  * This code is taken from VOMP for VDR plugin.
  */
 
-#ifndef VNSI_RESPONSEPACKET_H
-#define VNSI_RESPONSEPACKET_H
+#ifndef XVDR_RESPONSEPACKET_H
+#define XVDR_RESPONSEPACKET_H
 
 class cResponsePacket
 {
@@ -71,5 +71,5 @@ private:
   const static uint32_t userDataLenPosStream  = 32;
 };
 
-#endif // VNSI_RESPONSEPACKET_H
+#endif // XVDR_RESPONSEPACKET_H
 

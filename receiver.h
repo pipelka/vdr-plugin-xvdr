@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
  *      Copyright (C) 2010, 2011 Alexander Pipelka
@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef VNSI_RECEIVER_H
-#define VNSI_RECEIVER_H
+#ifndef XVDR_RECEIVER_H
+#define XVDR_RECEIVER_H
 
 #include <linux/dvb/frontend.h>
 #include <linux/videodev2.h>
@@ -109,4 +109,4 @@ public:
 
 };
 
-#endif  // VNSI_RECEIVER_H
+#endif  // XVDR_RECEIVER_H

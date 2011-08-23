@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
  *      Copyright (C) 2010, 2011 Alexander Pipelka
@@ -35,11 +35,11 @@
 #include <vdr/device.h>
 
 #include "config.h"
-#include "vnsicommand.h"
+#include "xvdrcommand.h"
 #include "recordingscache.h"
-#include "vnsiclient.h"
+#include "xvdrclient.h"
 #include "receiver.h"
-#include "vnsiserver.h"
+#include "xvdrserver.h"
 #include "recplayer.h"
 #include "requestpacket.h"
 #include "responsepacket.h"
@@ -70,9 +70,9 @@ static uint32_t recid2uid(const char* recid)
   return uid;
 }
 
-cMutex cVNSIClient::m_timerLock;
+cMutex cXVDRClient::m_timerLock;
 
-cVNSIClient::cVNSIClient(int fd, unsigned int id, const char *ClientAdr)
+cXVDRClient::cXVDRClient(int fd, unsigned int id, const char *ClientAdr)
 {
   m_Id                      = id;
   m_Streamer                = NULL;
@@ -91,7 +91,7 @@ cVNSIClient::cVNSIClient(int fd, unsigned int id, const char *ClientAdr)
   Start();
 }
 
-cVNSIClient::~cVNSIClient()
+cXVDRClient::~cXVDRClient()
 {
   DEBUGLOG("%s", __FUNCTION__);
   StopChannelStreaming();
@@ -100,7 +100,7 @@ cVNSIClient::~cVNSIClient()
   DEBUGLOG("done");
 }
 
-void cVNSIClient::Action(void)
+void cXVDRClient::Action(void)
 {
   uint32_t kaTimeStamp;
   uint32_t channelID;
@@ -153,7 +153,7 @@ void cVNSIClient::Action(void)
 
       DEBUGLOG("Received chan=%u, ser=%u, op=%u, edl=%u", channelID, requestID, opcode, dataLength);
 
-      if (!m_loggedIn && (opcode != VNSI_LOGIN))
+      if (!m_loggedIn && (opcode != XVDR_LOGIN))
       {
         ERRORLOG("Clients must be logged in before sending commands! Aborting.");
         if (data) free(data);
@@ -190,14 +190,14 @@ void cVNSIClient::Action(void)
   StopChannelStreaming();
 }
 
-bool cVNSIClient::StartChannelStreaming(const cChannel *channel, uint32_t timeout)
+bool cXVDRClient::StartChannelStreaming(const cChannel *channel, uint32_t timeout)
 {
   m_Streamer    = new cLiveStreamer(timeout);
   m_isStreaming = m_Streamer->StreamChannel(channel, 50, &m_socket, m_resp);
   return m_isStreaming;
 }
 
-void cVNSIClient::StopChannelStreaming()
+void cXVDRClient::StopChannelStreaming()
 {
   m_isStreaming = false;
   if (m_Streamer)
@@ -207,19 +207,19 @@ void cVNSIClient::StopChannelStreaming()
   }
 }
 
-void cVNSIClient::TimerChange(const cTimer *Timer, eTimerChange Change)
+void cXVDRClient::TimerChange(const cTimer *Timer, eTimerChange Change)
 {
   TimerChange();
 }
 
-void cVNSIClient::TimerChange()
+void cXVDRClient::TimerChange()
 {
   cMutexLock lock(&m_msgLock);
 
   if (m_StatusInterfaceEnabled)
   {
     cResponsePacket *resp = new cResponsePacket();
-    if (!resp->initStatus(VNSI_STATUS_TIMERCHANGE))
+    if (!resp->initStatus(XVDR_STATUS_TIMERCHANGE))
     {
       delete resp;
       return;
@@ -231,7 +231,7 @@ void cVNSIClient::TimerChange()
   }
 }
 
-void cVNSIClient::ChannelChange()
+void cXVDRClient::ChannelChange()
 {
   cMutexLock lock(&m_msgLock);
 
@@ -239,7 +239,7 @@ void cVNSIClient::ChannelChange()
     return;
 
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initStatus(VNSI_STATUS_CHANNELCHANGE))
+  if (!resp->initStatus(XVDR_STATUS_CHANNELCHANGE))
   {
     delete resp;
     return;
@@ -250,7 +250,7 @@ void cVNSIClient::ChannelChange()
   delete resp;
 }
 
-void cVNSIClient::RecordingsChange()
+void cXVDRClient::RecordingsChange()
 {
   cMutexLock lock(&m_msgLock);
 
@@ -258,7 +258,7 @@ void cVNSIClient::RecordingsChange()
     return;
 
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initStatus(VNSI_STATUS_RECORDINGSCHANGE))
+  if (!resp->initStatus(XVDR_STATUS_RECORDINGSCHANGE))
   {
     delete resp;
     return;
@@ -269,14 +269,14 @@ void cVNSIClient::RecordingsChange()
   delete resp;
 }
 
-void cVNSIClient::Recording(const cDevice *Device, const char *Name, const char *FileName, bool On)
+void cXVDRClient::Recording(const cDevice *Device, const char *Name, const char *FileName, bool On)
 {
   cMutexLock lock(&m_msgLock);
 
   if (m_StatusInterfaceEnabled)
   {
     cResponsePacket *resp = new cResponsePacket();
-    if (!resp->initStatus(VNSI_STATUS_RECORDING))
+    if (!resp->initStatus(XVDR_STATUS_RECORDING))
     {
       delete resp;
       return;
@@ -300,7 +300,7 @@ void cVNSIClient::Recording(const cDevice *Device, const char *Name, const char 
   }
 }
 
-void cVNSIClient::OsdStatusMessage(const char *Message)
+void cXVDRClient::OsdStatusMessage(const char *Message)
 {
   cMutexLock lock(&m_msgLock);
 
@@ -329,7 +329,7 @@ void cVNSIClient::OsdStatusMessage(const char *Message)
     else if (strcasecmp(Message, trVDR("No index-file found. Creating may take minutes. Create one?")) == 0) return;
 
     cResponsePacket *resp = new cResponsePacket();
-    if (!resp->initStatus(VNSI_STATUS_MESSAGE))
+    if (!resp->initStatus(XVDR_STATUS_MESSAGE))
     {
       delete resp;
       return;
@@ -343,7 +343,7 @@ void cVNSIClient::OsdStatusMessage(const char *Message)
   }
 }
 
-bool cVNSIClient::processRequest(cRequestPacket* req)
+bool cXVDRClient::processRequest(cRequestPacket* req)
 {
   cMutexLock lock(&m_msgLock);
 
@@ -362,153 +362,153 @@ bool cVNSIClient::processRequest(cRequestPacket* req)
   bool result = false;
   switch(m_req->getOpCode())
   {
-    /** OPCODE 1 - 19: VNSI network functions for general purpose */
-    case VNSI_LOGIN:
+    /** OPCODE 1 - 19: XVDR network functions for general purpose */
+    case XVDR_LOGIN:
       result = process_Login();
       break;
 
-    case VNSI_GETTIME:
+    case XVDR_GETTIME:
       result = process_GetTime();
       break;
 
-    case VNSI_ENABLESTATUSINTERFACE:
+    case XVDR_ENABLESTATUSINTERFACE:
       result = process_EnableStatusInterface();
       break;
 
-    case VNSI_PING:
+    case XVDR_PING:
       result = process_Ping();
       break;
 
 
-    /** OPCODE 20 - 39: VNSI network functions for live streaming */
-    case VNSI_CHANNELSTREAM_OPEN:
+    /** OPCODE 20 - 39: XVDR network functions for live streaming */
+    case XVDR_CHANNELSTREAM_OPEN:
       result = processChannelStream_Open();
       break;
 
-    case VNSI_CHANNELSTREAM_CLOSE:
+    case XVDR_CHANNELSTREAM_CLOSE:
       result = processChannelStream_Close();
       break;
 
 
-    /** OPCODE 40 - 59: VNSI network functions for recording streaming */
-    case VNSI_RECSTREAM_OPEN:
+    /** OPCODE 40 - 59: XVDR network functions for recording streaming */
+    case XVDR_RECSTREAM_OPEN:
       result = processRecStream_Open();
       break;
 
-    case VNSI_RECSTREAM_CLOSE:
+    case XVDR_RECSTREAM_CLOSE:
       result = processRecStream_Close();
       break;
 
-    case VNSI_RECSTREAM_GETBLOCK:
+    case XVDR_RECSTREAM_GETBLOCK:
       result = processRecStream_GetBlock();
       break;
 
-    case VNSI_RECSTREAM_POSTOFRAME:
+    case XVDR_RECSTREAM_POSTOFRAME:
       result = processRecStream_PositionFromFrameNumber();
       break;
 
-    case VNSI_RECSTREAM_FRAMETOPOS:
+    case XVDR_RECSTREAM_FRAMETOPOS:
       result = processRecStream_FrameNumberFromPosition();
       break;
 
-    case VNSI_RECSTREAM_GETIFRAME:
+    case XVDR_RECSTREAM_GETIFRAME:
       result = processRecStream_GetIFrame();
       break;
 
 
-    /** OPCODE 60 - 79: VNSI network functions for channel access */
-    case VNSI_CHANNELS_GETCOUNT:
+    /** OPCODE 60 - 79: XVDR network functions for channel access */
+    case XVDR_CHANNELS_GETCOUNT:
       result = processCHANNELS_ChannelsCount();
       break;
 
-    case VNSI_CHANNELS_GETCHANNELS:
+    case XVDR_CHANNELS_GETCHANNELS:
       result = processCHANNELS_GetChannels();
       break;
 
-    case VNSI_CHANNELGROUP_GETCOUNT:
+    case XVDR_CHANNELGROUP_GETCOUNT:
       result = processCHANNELS_GroupsCount();
       break;
 
-    case VNSI_CHANNELGROUP_LIST:
+    case XVDR_CHANNELGROUP_LIST:
       result = processCHANNELS_GroupList();
       break;
 
-    case VNSI_CHANNELGROUP_MEMBERS:
+    case XVDR_CHANNELGROUP_MEMBERS:
       result = processCHANNELS_GetGroupMembers();
       break;
 
-    /** OPCODE 80 - 99: VNSI network functions for timer access */
-    case VNSI_TIMER_GETCOUNT:
+    /** OPCODE 80 - 99: XVDR network functions for timer access */
+    case XVDR_TIMER_GETCOUNT:
       result = processTIMER_GetCount();
       break;
 
-    case VNSI_TIMER_GET:
+    case XVDR_TIMER_GET:
       result = processTIMER_Get();
       break;
 
-    case VNSI_TIMER_GETLIST:
+    case XVDR_TIMER_GETLIST:
       result = processTIMER_GetList();
       break;
 
-    case VNSI_TIMER_ADD:
+    case XVDR_TIMER_ADD:
       result = processTIMER_Add();
       break;
 
-    case VNSI_TIMER_DELETE:
+    case XVDR_TIMER_DELETE:
       result = processTIMER_Delete();
       break;
 
-    case VNSI_TIMER_UPDATE:
+    case XVDR_TIMER_UPDATE:
       result = processTIMER_Update();
       break;
 
 
-    /** OPCODE 100 - 119: VNSI network functions for recording access */
-    case VNSI_RECORDINGS_DISKSIZE:
+    /** OPCODE 100 - 119: XVDR network functions for recording access */
+    case XVDR_RECORDINGS_DISKSIZE:
       result = processRECORDINGS_GetDiskSpace();
       break;
 
-    case VNSI_RECORDINGS_GETCOUNT:
+    case XVDR_RECORDINGS_GETCOUNT:
       result = processRECORDINGS_GetCount();
       break;
 
-    case VNSI_RECORDINGS_GETLIST:
+    case XVDR_RECORDINGS_GETLIST:
       result = processRECORDINGS_GetList();
       break;
 
-    case VNSI_RECORDINGS_RENAME:
+    case XVDR_RECORDINGS_RENAME:
       result = processRECORDINGS_Rename();
       break;
 
-    case VNSI_RECORDINGS_DELETE:
+    case XVDR_RECORDINGS_DELETE:
       result = processRECORDINGS_Delete();
       break;
 
 
-    /** OPCODE 120 - 139: VNSI network functions for epg access and manipulating */
-    case VNSI_EPG_GETFORCHANNEL:
+    /** OPCODE 120 - 139: XVDR network functions for epg access and manipulating */
+    case XVDR_EPG_GETFORCHANNEL:
       result = processEPG_GetForChannel();
       break;
 
 
-    /** OPCODE 140 - 159: VNSI network functions for channel scanning */
-    case VNSI_SCAN_SUPPORTED:
+    /** OPCODE 140 - 159: XVDR network functions for channel scanning */
+    case XVDR_SCAN_SUPPORTED:
       result = processSCAN_ScanSupported();
       break;
 
-    case VNSI_SCAN_GETCOUNTRIES:
+    case XVDR_SCAN_GETCOUNTRIES:
       result = processSCAN_GetCountries();
       break;
 
-    case VNSI_SCAN_GETSATELLITES:
+    case XVDR_SCAN_GETSATELLITES:
       result = processSCAN_GetSatellites();
       break;
 
-    case VNSI_SCAN_START:
+    case XVDR_SCAN_START:
       result = processSCAN_Start();
       break;
 
-    case VNSI_SCAN_STOP:
+    case XVDR_SCAN_STOP:
       result = processSCAN_Stop();
       break;
   }
@@ -523,9 +523,9 @@ bool cVNSIClient::processRequest(cRequestPacket* req)
 }
 
 
-/** OPCODE 1 - 19: VNSI network functions for general purpose */
+/** OPCODE 1 - 19: XVDR network functions for general purpose */
 
-bool cVNSIClient::process_Login() /* OPCODE 1 */
+bool cXVDRClient::process_Login() /* OPCODE 1 */
 {
   if (m_req->getDataLength() <= 4) return false;
 
@@ -533,7 +533,7 @@ bool cVNSIClient::process_Login() /* OPCODE 1 */
                            m_req->extract_U8();
   const char *clientName = m_req->extract_String();
 
-  if (m_protocolVersion > VNSI_PROTOCOLVERSION)
+  if (m_protocolVersion > XVDR_PROTOCOLVERSION)
   {
     ERRORLOG("Client '%s' have a not allowed protocol version '%u', terminating client", clientName, m_protocolVersion);
     delete[] clientName;
@@ -547,11 +547,11 @@ bool cVNSIClient::process_Login() /* OPCODE 1 */
   struct tm* timeStruct = localtime(&timeNow);
   int timeOffset        = timeStruct->tm_gmtoff;
 
-  m_resp->add_U32(VNSI_PROTOCOLVERSION);
+  m_resp->add_U32(XVDR_PROTOCOLVERSION);
   m_resp->add_U32(timeNow);
   m_resp->add_S32(timeOffset);
-  m_resp->add_String("VDR-Network-Streaming-Interface (VNSI) Server");
-  m_resp->add_String(VNSI_SERVER_VERSION);
+  m_resp->add_String("VDR-XVDR Server");
+  m_resp->add_String(XVDR_VERSION);
   m_resp->finalise();
   SetLoggedIn(true);
   m_socket.write(m_resp->getPtr(), m_resp->getLen());
@@ -561,7 +561,7 @@ bool cVNSIClient::process_Login() /* OPCODE 1 */
   return true;
 }
 
-bool cVNSIClient::process_GetTime() /* OPCODE 2 */
+bool cXVDRClient::process_GetTime() /* OPCODE 2 */
 {
   time_t timeNow        = time(NULL);
   struct tm* timeStruct = localtime(&timeNow);
@@ -574,19 +574,19 @@ bool cVNSIClient::process_GetTime() /* OPCODE 2 */
   return true;
 }
 
-bool cVNSIClient::process_EnableStatusInterface()
+bool cXVDRClient::process_EnableStatusInterface()
 {
   bool enabled = m_req->extract_U8();
 
   SetStatusInterface(enabled);
 
-  m_resp->add_U32(VNSI_RET_OK);
+  m_resp->add_U32(XVDR_RET_OK);
   m_resp->finalise();
   m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
-bool cVNSIClient::process_Ping() /* OPCODE 7 */
+bool cXVDRClient::process_Ping() /* OPCODE 7 */
 {
   m_resp->add_U32(1);
   m_resp->finalise();
@@ -595,15 +595,15 @@ bool cVNSIClient::process_Ping() /* OPCODE 7 */
 }
 
 
-/** OPCODE 20 - 39: VNSI network functions for live streaming */
+/** OPCODE 20 - 39: XVDR network functions for live streaming */
 
-bool cVNSIClient::processChannelStream_Open() /* OPCODE 20 */
+bool cXVDRClient::processChannelStream_Open() /* OPCODE 20 */
 {
   uint32_t uid = m_req->extract_U32();
   uint32_t timeout = m_req->extract_U32();
 
   if(timeout == 0)
-    timeout = VNSIServerConfig.stream_timeout;
+    timeout = XVDRServerConfig.stream_timeout;
 
   if (m_isStreaming)
     StopChannelStreaming();
@@ -621,7 +621,7 @@ bool cVNSIClient::processChannelStream_Open() /* OPCODE 20 */
 
   if (channel == NULL) {
     ERRORLOG("Can't find channel %08x", uid);
-    m_resp->add_U32(VNSI_RET_DATAINVALID);
+    m_resp->add_U32(XVDR_RET_DATAINVALID);
   }
   else
   {
@@ -634,7 +634,7 @@ bool cVNSIClient::processChannelStream_Open() /* OPCODE 20 */
     }
 
     DEBUGLOG("Can't stream channel %s", channel->Name());
-    m_resp->add_U32(VNSI_RET_DATALOCKED);
+    m_resp->add_U32(XVDR_RET_DATALOCKED);
   }
 
   m_resp->finalise();
@@ -643,7 +643,7 @@ bool cVNSIClient::processChannelStream_Open() /* OPCODE 20 */
   return false;
 }
 
-bool cVNSIClient::processChannelStream_Close() /* OPCODE 21 */
+bool cXVDRClient::processChannelStream_Close() /* OPCODE 21 */
 {
   if (m_isStreaming)
     StopChannelStreaming();
@@ -652,9 +652,9 @@ bool cVNSIClient::processChannelStream_Close() /* OPCODE 21 */
 }
 
 
-/** OPCODE 40 - 59: VNSI network functions for recording streaming */
+/** OPCODE 40 - 59: XVDR network functions for recording streaming */
 
-bool cVNSIClient::processRecStream_Open() /* OPCODE 40 */
+bool cXVDRClient::processRecStream_Open() /* OPCODE 40 */
 {
   cRecording *recording = NULL;
 
@@ -679,7 +679,7 @@ bool cVNSIClient::processRecStream_Open() /* OPCODE 40 */
   {
     m_RecPlayer = new cRecPlayer(recording);
 
-    m_resp->add_U32(VNSI_RET_OK);
+    m_resp->add_U32(XVDR_RET_OK);
     m_resp->add_U32(m_RecPlayer->getLengthFrames());
     m_resp->add_U64(m_RecPlayer->getLengthBytes());
 
@@ -691,7 +691,7 @@ bool cVNSIClient::processRecStream_Open() /* OPCODE 40 */
   }
   else
   {
-    m_resp->add_U32(VNSI_RET_DATAUNKNOWN);
+    m_resp->add_U32(XVDR_RET_DATAUNKNOWN);
     ERRORLOG("%s - unable to start recording !", __FUNCTION__);
   }
 
@@ -701,7 +701,7 @@ bool cVNSIClient::processRecStream_Open() /* OPCODE 40 */
   return true;
 }
 
-bool cVNSIClient::processRecStream_Close() /* OPCODE 41 */
+bool cXVDRClient::processRecStream_Close() /* OPCODE 41 */
 {
   if (m_RecPlayer)
   {
@@ -709,13 +709,13 @@ bool cVNSIClient::processRecStream_Close() /* OPCODE 41 */
     m_RecPlayer = NULL;
   }
 
-  m_resp->add_U32(VNSI_RET_OK);
+  m_resp->add_U32(XVDR_RET_OK);
   m_resp->finalise();
   m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
-bool cVNSIClient::processRecStream_GetBlock() /* OPCODE 42 */
+bool cXVDRClient::processRecStream_GetBlock() /* OPCODE 42 */
 {
   if (m_isStreaming)
   {
@@ -748,7 +748,7 @@ bool cVNSIClient::processRecStream_GetBlock() /* OPCODE 42 */
   return true;
 }
 
-bool cVNSIClient::processRecStream_PositionFromFrameNumber() /* OPCODE 43 */
+bool cXVDRClient::processRecStream_PositionFromFrameNumber() /* OPCODE 43 */
 {
   uint64_t retval       = 0;
   uint32_t frameNumber  = m_req->extract_U32();
@@ -764,7 +764,7 @@ bool cVNSIClient::processRecStream_PositionFromFrameNumber() /* OPCODE 43 */
   return true;
 }
 
-bool cVNSIClient::processRecStream_FrameNumberFromPosition() /* OPCODE 44 */
+bool cXVDRClient::processRecStream_FrameNumberFromPosition() /* OPCODE 44 */
 {
   uint32_t retval   = 0;
   uint64_t position = m_req->extract_U64();
@@ -780,7 +780,7 @@ bool cVNSIClient::processRecStream_FrameNumberFromPosition() /* OPCODE 44 */
   return true;
 }
 
-bool cVNSIClient::processRecStream_GetIFrame() /* OPCODE 45 */
+bool cXVDRClient::processRecStream_GetIFrame() /* OPCODE 45 */
 {
   bool success            = false;
   uint32_t frameNumber    = m_req->extract_U32();
@@ -812,9 +812,9 @@ bool cVNSIClient::processRecStream_GetIFrame() /* OPCODE 45 */
 }
 
 
-/** OPCODE 60 - 79: VNSI network functions for channel access */
+/** OPCODE 60 - 79: XVDR network functions for channel access */
 
-bool cVNSIClient::processCHANNELS_ChannelsCount() /* OPCODE 61 */
+bool cXVDRClient::processCHANNELS_ChannelsCount() /* OPCODE 61 */
 {
   Channels.Lock(false);
   int count = Channels.MaxNumber();
@@ -827,7 +827,7 @@ bool cVNSIClient::processCHANNELS_ChannelsCount() /* OPCODE 61 */
   return true;
 }
 
-bool cVNSIClient::processCHANNELS_GetChannels() /* OPCODE 63 */
+bool cXVDRClient::processCHANNELS_GetChannels() /* OPCODE 63 */
 {
   if (m_req->getDataLength() != 4) return false;
 
@@ -869,7 +869,7 @@ bool cVNSIClient::processCHANNELS_GetChannels() /* OPCODE 63 */
   return true;
 }
 
-bool cVNSIClient::processCHANNELS_GroupsCount()
+bool cXVDRClient::processCHANNELS_GroupsCount()
 {
   uint32_t type = m_req->extract_U32();
 
@@ -901,7 +901,7 @@ bool cVNSIClient::processCHANNELS_GroupsCount()
   return true;
 }
 
-bool cVNSIClient::processCHANNELS_GroupList()
+bool cXVDRClient::processCHANNELS_GroupList()
 {
   uint32_t radio = m_req->extract_U8();
   std::map<std::string, ChannelGroup>::iterator i;
@@ -917,7 +917,7 @@ bool cVNSIClient::processCHANNELS_GroupList()
   return true;
 }
 
-bool cVNSIClient::processCHANNELS_GetGroupMembers()
+bool cXVDRClient::processCHANNELS_GetGroupMembers()
 {
   char* groupname = m_req->extract_String();
   uint32_t radio = m_req->extract_U8();
@@ -972,7 +972,7 @@ bool cVNSIClient::processCHANNELS_GetGroupMembers()
   return true;
 }
 
-void cVNSIClient::CreateChannelGroups(bool automatic)
+void cXVDRClient::CreateChannelGroups(bool automatic)
 {
   std::string groupname;
 
@@ -999,9 +999,9 @@ void cVNSIClient::CreateChannelGroups(bool automatic)
   }
 }
 
-/** OPCODE 80 - 99: VNSI network functions for timer access */
+/** OPCODE 80 - 99: XVDR network functions for timer access */
 
-bool cVNSIClient::processTIMER_GetCount() /* OPCODE 80 */
+bool cXVDRClient::processTIMER_GetCount() /* OPCODE 80 */
 {
   cMutexLock lock(&m_timerLock);
 
@@ -1014,7 +1014,7 @@ bool cVNSIClient::processTIMER_GetCount() /* OPCODE 80 */
   return true;
 }
 
-bool cVNSIClient::processTIMER_Get() /* OPCODE 81 */
+bool cXVDRClient::processTIMER_Get() /* OPCODE 81 */
 {
   cMutexLock lock(&m_timerLock);
 
@@ -1026,7 +1026,7 @@ bool cVNSIClient::processTIMER_Get() /* OPCODE 81 */
     cTimer *timer = Timers.Get(number-1);
     if (timer)
     {
-      m_resp->add_U32(VNSI_RET_OK);
+      m_resp->add_U32(XVDR_RET_OK);
 
       m_resp->add_U32(timer->Index()+1);
       m_resp->add_U32(timer->HasFlags(tfActive));
@@ -1045,17 +1045,17 @@ bool cVNSIClient::processTIMER_Get() /* OPCODE 81 */
       m_resp->add_String(m_toUTF8.Convert(timer->File()));
     }
     else
-      m_resp->add_U32(VNSI_RET_DATAUNKNOWN);
+      m_resp->add_U32(XVDR_RET_DATAUNKNOWN);
   }
   else
-    m_resp->add_U32(VNSI_RET_DATAUNKNOWN);
+    m_resp->add_U32(XVDR_RET_DATAUNKNOWN);
 
   m_resp->finalise();
   m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
-bool cVNSIClient::processTIMER_GetList() /* OPCODE 82 */
+bool cXVDRClient::processTIMER_GetList() /* OPCODE 82 */
 {
   cMutexLock lock(&m_timerLock);
 
@@ -1092,7 +1092,7 @@ bool cVNSIClient::processTIMER_GetList() /* OPCODE 82 */
   return true;
 }
 
-bool cVNSIClient::processTIMER_Add() /* OPCODE 83 */
+bool cXVDRClient::processTIMER_Add() /* OPCODE 83 */
 {
   cMutexLock lock(&m_timerLock);
 
@@ -1144,7 +1144,7 @@ bool cVNSIClient::processTIMER_Add() /* OPCODE 83 */
       Timers.Add(timer);
       Timers.SetModified();
       INFOLOG("Timer %s added", *timer->ToDescr());
-      m_resp->add_U32(VNSI_RET_OK);
+      m_resp->add_U32(XVDR_RET_OK);
       m_resp->finalise();
       m_socket.write(m_resp->getPtr(), m_resp->getLen());
       return true;
@@ -1152,13 +1152,13 @@ bool cVNSIClient::processTIMER_Add() /* OPCODE 83 */
     else
     {
       ERRORLOG("Timer already defined: %d %s", t->Index() + 1, *t->ToText());
-      m_resp->add_U32(VNSI_RET_DATALOCKED);
+      m_resp->add_U32(XVDR_RET_DATALOCKED);
     }
   }
   else
   {
     ERRORLOG("Error in timer settings");
-    m_resp->add_U32(VNSI_RET_DATAINVALID);
+    m_resp->add_U32(XVDR_RET_DATAINVALID);
   }
 
   delete timer;
@@ -1168,7 +1168,7 @@ bool cVNSIClient::processTIMER_Add() /* OPCODE 83 */
   return true;
 }
 
-bool cVNSIClient::processTIMER_Delete() /* OPCODE 84 */
+bool cXVDRClient::processTIMER_Delete() /* OPCODE 84 */
 {
   cMutexLock lock(&m_timerLock);
 
@@ -1178,7 +1178,7 @@ bool cVNSIClient::processTIMER_Delete() /* OPCODE 84 */
   if (number <= 0 || number > (uint32_t)Timers.Count())
   {
     ERRORLOG("Unable to delete timer - invalid timer identifier");
-    m_resp->add_U32(VNSI_RET_DATAINVALID);
+    m_resp->add_U32(XVDR_RET_DATAINVALID);
   }
   else
   {
@@ -1197,7 +1197,7 @@ bool cVNSIClient::processTIMER_Delete() /* OPCODE 84 */
           else
           {
             ERRORLOG("Timer \"%i\" is recording and can be deleted (use force=1 to stop it)", number);
-            m_resp->add_U32(VNSI_RET_RECRUNNING);
+            m_resp->add_U32(XVDR_RET_RECRUNNING);
             m_resp->finalise();
             m_socket.write(m_resp->getPtr(), m_resp->getLen());
             return true;
@@ -1206,18 +1206,18 @@ bool cVNSIClient::processTIMER_Delete() /* OPCODE 84 */
         INFOLOG("Deleting timer %s", *timer->ToDescr());
         Timers.Del(timer);
         Timers.SetModified();
-        m_resp->add_U32(VNSI_RET_OK);
+        m_resp->add_U32(XVDR_RET_OK);
       }
       else
       {
         ERRORLOG("Unable to delete timer - timers being edited at VDR");
-        m_resp->add_U32(VNSI_RET_DATALOCKED);
+        m_resp->add_U32(XVDR_RET_DATALOCKED);
       }
     }
     else
     {
       ERRORLOG("Unable to delete timer - invalid timer identifier");
-      m_resp->add_U32(VNSI_RET_DATAINVALID);
+      m_resp->add_U32(XVDR_RET_DATAINVALID);
     }
   }
   m_resp->finalise();
@@ -1225,7 +1225,7 @@ bool cVNSIClient::processTIMER_Delete() /* OPCODE 84 */
   return true;
 }
 
-bool cVNSIClient::processTIMER_Update() /* OPCODE 85 */
+bool cXVDRClient::processTIMER_Update() /* OPCODE 85 */
 {
   cMutexLock lock(&m_timerLock);
 
@@ -1237,7 +1237,7 @@ bool cVNSIClient::processTIMER_Update() /* OPCODE 85 */
   if (!timer)
   {
     ERRORLOG("Timer \"%u\" not defined", index);
-    m_resp->add_U32(VNSI_RET_DATAUNKNOWN);
+    m_resp->add_U32(XVDR_RET_DATAUNKNOWN);
     m_resp->finalise();
     m_socket.write(m_resp->getPtr(), m_resp->getLen());
     return true;
@@ -1290,7 +1290,7 @@ bool cVNSIClient::processTIMER_Update() /* OPCODE 85 */
     if (!t.Parse(buffer))
     {
       ERRORLOG("Error in timer settings");
-      m_resp->add_U32(VNSI_RET_DATAINVALID);
+      m_resp->add_U32(XVDR_RET_DATAINVALID);
       m_resp->finalise();
       m_socket.write(m_resp->getPtr(), m_resp->getLen());
       return true;
@@ -1300,16 +1300,16 @@ bool cVNSIClient::processTIMER_Update() /* OPCODE 85 */
   *timer = t;
   Timers.SetModified();
 
-  m_resp->add_U32(VNSI_RET_OK);
+  m_resp->add_U32(XVDR_RET_OK);
   m_resp->finalise();
   m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
 
-/** OPCODE 100 - 119: VNSI network functions for recording access */
+/** OPCODE 100 - 119: XVDR network functions for recording access */
 
-bool cVNSIClient::processRECORDINGS_GetDiskSpace() /* OPCODE 100 */
+bool cXVDRClient::processRECORDINGS_GetDiskSpace() /* OPCODE 100 */
 {
   int FreeMB;
   int Percent = VideoDiskSpace(&FreeMB);
@@ -1324,7 +1324,7 @@ bool cVNSIClient::processRECORDINGS_GetDiskSpace() /* OPCODE 100 */
   return true;
 }
 
-bool cVNSIClient::processRECORDINGS_GetCount() /* OPCODE 101 */
+bool cXVDRClient::processRECORDINGS_GetCount() /* OPCODE 101 */
 {
   Recordings.Load();
   m_resp->add_U32(Recordings.Count());
@@ -1334,7 +1334,7 @@ bool cVNSIClient::processRECORDINGS_GetCount() /* OPCODE 101 */
   return true;
 }
 
-bool cVNSIClient::processRECORDINGS_GetList() /* OPCODE 102 */
+bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
 {
   cMutexLock lock(&m_timerLock);
 
@@ -1453,7 +1453,7 @@ bool cVNSIClient::processRECORDINGS_GetList() /* OPCODE 102 */
   return true;
 }
 
-bool cVNSIClient::processRECORDINGS_Rename() /* OPCODE 103 */
+bool cXVDRClient::processRECORDINGS_Rename() /* OPCODE 103 */
 {
   uint32_t uid = 0;
   if(m_protocolVersion >= 3) {
@@ -1467,7 +1467,7 @@ bool cVNSIClient::processRECORDINGS_Rename() /* OPCODE 103 */
 
   char*       newtitle     = m_req->extract_String();
   cRecording* recording    = cRecordingsCache::GetInstance().Lookup(uid);
-  int         r            = VNSI_RET_DATAINVALID;
+  int         r            = XVDR_RET_DATAINVALID;
 
   if(recording != NULL) {
     // get filename and remove last part (recording time)
@@ -1503,7 +1503,7 @@ bool cVNSIClient::processRECORDINGS_Rename() /* OPCODE 103 */
   return true;
 }
 
-bool cVNSIClient::processRECORDINGS_Delete() /* OPCODE 104 */
+bool cXVDRClient::processRECORDINGS_Delete() /* OPCODE 104 */
 {
   cString recName;
   cRecording* recording = NULL;
@@ -1538,24 +1538,24 @@ bool cVNSIClient::processRECORDINGS_Delete() /* OPCODE 104 */
         // Copy svdrdeveldevelp's way of doing this, see if it works
         Recordings.DelByName(recording->FileName());
         INFOLOG("Recording \"%s\" deleted", recording->FileName());
-        m_resp->add_U32(VNSI_RET_OK);
+        m_resp->add_U32(XVDR_RET_OK);
       }
       else
       {
         ERRORLOG("Error while deleting recording!");
-        m_resp->add_U32(VNSI_RET_ERROR);
+        m_resp->add_U32(XVDR_RET_ERROR);
       }
     }
     else
     {
       ERRORLOG("Recording \"%s\" is in use by timer %d", recording->Name(), rc->Timer()->Index() + 1);
-      m_resp->add_U32(VNSI_RET_DATALOCKED);
+      m_resp->add_U32(XVDR_RET_DATALOCKED);
     }
   }
   else
   {
     ERRORLOG("Error in recording name \"%s\"", (const char*)recName);
-    m_resp->add_U32(VNSI_RET_DATAUNKNOWN);
+    m_resp->add_U32(XVDR_RET_DATAUNKNOWN);
   }
 
   m_resp->finalise();
@@ -1565,9 +1565,9 @@ bool cVNSIClient::processRECORDINGS_Delete() /* OPCODE 104 */
 }
 
 
-/** OPCODE 120 - 139: VNSI network functions for epg access and manipulating */
+/** OPCODE 120 - 139: XVDR network functions for epg access and manipulating */
 
-bool cVNSIClient::processEPG_GetForChannel() /* OPCODE 120 */
+bool cXVDRClient::processEPG_GetForChannel() /* OPCODE 120 */
 {
   uint32_t channelNumber  = 0;
   uint32_t channelUID  = 0;
@@ -1707,25 +1707,25 @@ bool cVNSIClient::processEPG_GetForChannel() /* OPCODE 120 */
 }
 
 
-/** OPCODE 140 - 169: VNSI network functions for channel scanning */
+/** OPCODE 140 - 169: XVDR network functions for channel scanning */
 
-bool cVNSIClient::processSCAN_ScanSupported() /* OPCODE 140 */
+bool cXVDRClient::processSCAN_ScanSupported() /* OPCODE 140 */
 {
   /** Note: Using "WirbelScanService-StopScan-v1.0" to detect
             a present service interface in wirbelscan plugin,
             it returns true if supported */
   cPlugin *p = cPluginManager::GetPlugin("wirbelscan");
   if (p && p->Service("WirbelScanService-StopScan-v1.0", NULL))
-    m_resp->add_U32(VNSI_RET_OK);
+    m_resp->add_U32(XVDR_RET_OK);
   else
-    m_resp->add_U32(VNSI_RET_NOTSUPPORTED);
+    m_resp->add_U32(XVDR_RET_NOTSUPPORTED);
 
   m_resp->finalise();
   m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
-bool cVNSIClient::processSCAN_GetCountries() /* OPCODE 141 */
+bool cXVDRClient::processSCAN_GetCountries() /* OPCODE 141 */
 {
   if (!m_processSCAN_Response)
   {
@@ -1733,18 +1733,18 @@ bool cVNSIClient::processSCAN_GetCountries() /* OPCODE 141 */
     cPlugin *p = cPluginManager::GetPlugin("wirbelscan");
     if (p)
     {
-      m_resp->add_U32(VNSI_RET_OK);
+      m_resp->add_U32(XVDR_RET_OK);
       p->Service("WirbelScanService-GetCountries-v1.0", (void*) processSCAN_AddCountry);
     }
     else
     {
-      m_resp->add_U32(VNSI_RET_NOTSUPPORTED);
+      m_resp->add_U32(XVDR_RET_NOTSUPPORTED);
     }
     m_processSCAN_Response = NULL;
   }
   else
   {
-    m_resp->add_U32(VNSI_RET_DATALOCKED);
+    m_resp->add_U32(XVDR_RET_DATALOCKED);
   }
 
   m_resp->finalise();
@@ -1752,7 +1752,7 @@ bool cVNSIClient::processSCAN_GetCountries() /* OPCODE 141 */
   return true;
 }
 
-bool cVNSIClient::processSCAN_GetSatellites() /* OPCODE 142 */
+bool cXVDRClient::processSCAN_GetSatellites() /* OPCODE 142 */
 {
   if (!m_processSCAN_Response)
   {
@@ -1760,18 +1760,18 @@ bool cVNSIClient::processSCAN_GetSatellites() /* OPCODE 142 */
     cPlugin *p = cPluginManager::GetPlugin("wirbelscan");
     if (p)
     {
-      m_resp->add_U32(VNSI_RET_OK);
+      m_resp->add_U32(XVDR_RET_OK);
       p->Service("WirbelScanService-GetSatellites-v1.0", (void*) processSCAN_AddSatellite);
     }
     else
     {
-      m_resp->add_U32(VNSI_RET_NOTSUPPORTED);
+      m_resp->add_U32(XVDR_RET_NOTSUPPORTED);
     }
     m_processSCAN_Response = NULL;
   }
   else
   {
-    m_resp->add_U32(VNSI_RET_DATALOCKED);
+    m_resp->add_U32(XVDR_RET_DATALOCKED);
   }
 
   m_resp->finalise();
@@ -1779,7 +1779,7 @@ bool cVNSIClient::processSCAN_GetSatellites() /* OPCODE 142 */
   return true;
 }
 
-bool cVNSIClient::processSCAN_Start() /* OPCODE 143 */
+bool cXVDRClient::processSCAN_Start() /* OPCODE 143 */
 {
   WirbelScanService_DoScan_v1_0 svc;
   svc.type              = (scantype_t)m_req->extract_U32();
@@ -1808,13 +1808,13 @@ bool cVNSIClient::processSCAN_Start() /* OPCODE 143 */
   if (p)
   {
     if (p->Service("WirbelScanService-DoScan-v1.0", (void*) &svc))
-      m_resp->add_U32(VNSI_RET_OK);
+      m_resp->add_U32(XVDR_RET_OK);
     else
-      m_resp->add_U32(VNSI_RET_ERROR);
+      m_resp->add_U32(XVDR_RET_ERROR);
   }
   else
   {
-    m_resp->add_U32(VNSI_RET_NOTSUPPORTED);
+    m_resp->add_U32(XVDR_RET_NOTSUPPORTED);
   }
 
   m_resp->finalise();
@@ -1822,44 +1822,44 @@ bool cVNSIClient::processSCAN_Start() /* OPCODE 143 */
   return true;
 }
 
-bool cVNSIClient::processSCAN_Stop() /* OPCODE 144 */
+bool cXVDRClient::processSCAN_Stop() /* OPCODE 144 */
 {
   cPlugin *p = cPluginManager::GetPlugin("wirbelscan");
   if (p)
   {
     p->Service("WirbelScanService-StopScan-v1.0", NULL);
-    m_resp->add_U32(VNSI_RET_OK);
+    m_resp->add_U32(XVDR_RET_OK);
   }
   else
   {
-    m_resp->add_U32(VNSI_RET_NOTSUPPORTED);
+    m_resp->add_U32(XVDR_RET_NOTSUPPORTED);
   }
   m_resp->finalise();
   m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
-cResponsePacket *cVNSIClient::m_processSCAN_Response = NULL;
-cxSocket *cVNSIClient::m_processSCAN_Socket = NULL;
+cResponsePacket *cXVDRClient::m_processSCAN_Response = NULL;
+cxSocket *cXVDRClient::m_processSCAN_Socket = NULL;
 
-void cVNSIClient::processSCAN_AddCountry(int index, const char *isoName, const char *longName)
+void cXVDRClient::processSCAN_AddCountry(int index, const char *isoName, const char *longName)
 {
   m_processSCAN_Response->add_U32(index);
   m_processSCAN_Response->add_String(isoName);
   m_processSCAN_Response->add_String(longName);
 }
 
-void cVNSIClient::processSCAN_AddSatellite(int index, const char *shortName, const char *longName)
+void cXVDRClient::processSCAN_AddSatellite(int index, const char *shortName, const char *longName)
 {
   m_processSCAN_Response->add_U32(index);
   m_processSCAN_Response->add_String(shortName);
   m_processSCAN_Response->add_String(longName);
 }
 
-void cVNSIClient::processSCAN_SetPercentage(int percent)
+void cXVDRClient::processSCAN_SetPercentage(int percent)
 {
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(VNSI_SCANNER_PERCENTAGE))
+  if (!resp->initScan(XVDR_SCANNER_PERCENTAGE))
   {
     delete resp;
     return;
@@ -1870,10 +1870,10 @@ void cVNSIClient::processSCAN_SetPercentage(int percent)
   delete resp;
 }
 
-void cVNSIClient::processSCAN_SetSignalStrength(int strength, bool locked)
+void cXVDRClient::processSCAN_SetSignalStrength(int strength, bool locked)
 {
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(VNSI_SCANNER_SIGNAL))
+  if (!resp->initScan(XVDR_SCANNER_SIGNAL))
   {
     delete resp;
     return;
@@ -1887,10 +1887,10 @@ void cVNSIClient::processSCAN_SetSignalStrength(int strength, bool locked)
   delete resp;
 }
 
-void cVNSIClient::processSCAN_SetDeviceInfo(const char *Info)
+void cXVDRClient::processSCAN_SetDeviceInfo(const char *Info)
 {
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(VNSI_SCANNER_DEVICE))
+  if (!resp->initScan(XVDR_SCANNER_DEVICE))
   {
     delete resp;
     return;
@@ -1901,10 +1901,10 @@ void cVNSIClient::processSCAN_SetDeviceInfo(const char *Info)
   delete resp;
 }
 
-void cVNSIClient::processSCAN_SetTransponder(const char *Info)
+void cXVDRClient::processSCAN_SetTransponder(const char *Info)
 {
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(VNSI_SCANNER_TRANSPONDER))
+  if (!resp->initScan(XVDR_SCANNER_TRANSPONDER))
   {
     delete resp;
     return;
@@ -1915,10 +1915,10 @@ void cVNSIClient::processSCAN_SetTransponder(const char *Info)
   delete resp;
 }
 
-void cVNSIClient::processSCAN_NewChannel(const char *Name, bool isRadio, bool isEncrypted, bool isHD)
+void cXVDRClient::processSCAN_NewChannel(const char *Name, bool isRadio, bool isEncrypted, bool isHD)
 {
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(VNSI_SCANNER_NEWCHANNEL))
+  if (!resp->initScan(XVDR_SCANNER_NEWCHANNEL))
   {
     delete resp;
     return;
@@ -1932,10 +1932,10 @@ void cVNSIClient::processSCAN_NewChannel(const char *Name, bool isRadio, bool is
   delete resp;
 }
 
-void cVNSIClient::processSCAN_IsFinished()
+void cXVDRClient::processSCAN_IsFinished()
 {
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(VNSI_SCANNER_FINISHED))
+  if (!resp->initScan(XVDR_SCANNER_FINISHED))
   {
     delete resp;
     return;
@@ -1946,10 +1946,10 @@ void cVNSIClient::processSCAN_IsFinished()
   delete resp;
 }
 
-void cVNSIClient::processSCAN_SetStatus(int status)
+void cXVDRClient::processSCAN_SetStatus(int status)
 {
   cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(VNSI_SCANNER_STATUS))
+  if (!resp->initScan(XVDR_SCANNER_STATUS))
   {
     delete resp;
     return;

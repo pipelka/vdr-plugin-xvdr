@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
  *      Copyright (C) 2010, 2011 Alexander Pipelka
@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef VNSI_CONFIG_H
-#define VNSI_CONFIG_H
+#ifndef XVDR_CONFIG_H
+#define XVDR_CONFIG_H
 
 #include <string.h>
 #include <stdint.h>
@@ -34,19 +34,19 @@
 // log output configuration
 
 #ifdef CONSOLEDEBUG
-#define DEBUGLOG(x...) printf("VNSI: "x)
+#define DEBUGLOG(x...) printf("XVDR: "x)
 #elif defined  DEBUG
-#define DEBUGLOG(x...) dsyslog("VNSI: "x)
+#define DEBUGLOG(x...) dsyslog("XVDR: "x)
 #else
 #define DEBUGLOG(x...)
 #endif
 
 #ifdef CONSOLEDEBUG
-#define INFOLOG(x...) printf("VNSI: "x)
-#define ERRORLOG(x...) printf("VNSI-Error: "x)
+#define INFOLOG(x...) printf("XVDR: "x)
+#define ERRORLOG(x...) printf("XVDR-Error: "x)
 #else
-#define INFOLOG(x...) isyslog("VNSI: "x)
-#define ERRORLOG(x...) esyslog("VNSI-Error: "x)
+#define INFOLOG(x...) isyslog("XVDR: "x)
+#define ERRORLOG(x...) esyslog("XVDR-Error: "x)
 #endif
 
 // default settings
@@ -64,10 +64,10 @@
 #define FOLDERDELIMCHAR '~'
 #endif
 
-class cVNSIServerConfig
+class cXVDRServerConfig
 {
 public:
-  cVNSIServerConfig();
+  cXVDRServerConfig();
 
   // Remote server settings
   cString ConfigDirectory;      // config directory path
@@ -76,6 +76,6 @@ public:
 };
 
 // Global instance
-extern cVNSIServerConfig VNSIServerConfig;
+extern cXVDRServerConfig XVDRServerConfig;
 
-#endif // VNSI_CONFIG_H
+#endif // XVDR_CONFIG_H

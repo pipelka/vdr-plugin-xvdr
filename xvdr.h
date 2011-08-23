@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
  *      Copyright (C) 2010, 2011 Alexander Pipelka
@@ -25,18 +25,18 @@
 
 #include <getopt.h>
 #include <vdr/plugin.h>
-#include "vnsiserver.h"
+#include "xvdrserver.h"
 
 static const char *VERSION        = "0.9.0";
-static const char *DESCRIPTION    = "VDR-Network-Streaming-Interface (VNSI) Server";
+static const char *DESCRIPTION    = "VDR-Network-Streaming-Interface (XVDR) Server";
 
-class cPluginVNSIServer : public cPlugin {
+class cPluginXVDRServer : public cPlugin {
 private:
-  cVNSIServer *Server;
+  cXVDRServer *Server;
 
 public:
-  cPluginVNSIServer(void);
-  virtual ~cPluginVNSIServer();
+  cPluginXVDRServer(void);
+  virtual ~cPluginXVDRServer();
   virtual const char *Version(void) { return VERSION; }
   virtual const char *Description(void) { return DESCRIPTION; }
   virtual const char *CommandLineHelp(void);

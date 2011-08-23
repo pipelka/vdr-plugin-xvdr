@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 2007 Chris Tallon
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
@@ -35,7 +35,7 @@
 #include <asm/byteorder.h>
 
 #include "responsepacket.h"
-#include "vnsicommand.h"
+#include "xvdrcommand.h"
 #include "config.h"
 
 /* Packet format for an RR channel response:
@@ -70,7 +70,7 @@ bool cResponsePacket::init(uint32_t requestID)
 {
   initBuffers();
 
-  *(uint32_t*)&buffer[0] = htonl(VNSI_CHANNEL_REQUEST_RESPONSE); // RR channel
+  *(uint32_t*)&buffer[0] = htonl(XVDR_CHANNEL_REQUEST_RESPONSE); // RR channel
   *(uint32_t*)&buffer[4] = htonl(requestID);
   *(uint32_t*)&buffer[userDataLenPos] = 0;
   bufUsed = headerLength;
@@ -82,7 +82,7 @@ bool cResponsePacket::initScan(uint32_t opCode)
 {
   initBuffers();
 
-  *(uint32_t*)&buffer[0] = htonl(VNSI_CHANNEL_SCAN); // RR channel
+  *(uint32_t*)&buffer[0] = htonl(XVDR_CHANNEL_SCAN); // RR channel
   *(uint32_t*)&buffer[4] = htonl(opCode);
   *(uint32_t*)&buffer[userDataLenPos] = 0;
   bufUsed = headerLength;
@@ -94,7 +94,7 @@ bool cResponsePacket::initStatus(uint32_t opCode)
 {
   initBuffers();
 
-  *(uint32_t*)&buffer[0] = htonl(VNSI_CHANNEL_STATUS); // RR channel
+  *(uint32_t*)&buffer[0] = htonl(XVDR_CHANNEL_STATUS); // RR channel
   *(uint32_t*)&buffer[4] = htonl(opCode);
   *(uint32_t*)&buffer[userDataLenPos] = 0;
   bufUsed = headerLength;
@@ -106,7 +106,7 @@ bool cResponsePacket::initStream(uint32_t opCode, uint32_t streamID, uint32_t du
 {
   initBuffers();
 
-  *(uint32_t*)&buffer[0]  = htonl(VNSI_CHANNEL_STREAM); // stream channel
+  *(uint32_t*)&buffer[0]  = htonl(XVDR_CHANNEL_STREAM); // stream channel
   *(uint32_t*)&buffer[4]  = htonl(opCode);         // Stream packet operation code
   *(uint32_t*)&buffer[8]  = htonl(streamID);       // Stream ID
   *(uint32_t*)&buffer[12] = htonl(duration);       // Duration

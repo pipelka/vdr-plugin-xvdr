@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 2007 Chris Tallon
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
@@ -24,8 +24,8 @@
  *
  */
 
-#ifndef VNSI_REQUESTPACKET_H
-#define VNSI_REQUESTPACKET_H
+#ifndef XVDR_REQUESTPACKET_H
+#define XVDR_REQUESTPACKET_H
 
 class cRequestPacket
 {
@@ -70,4 +70,4 @@ private:
   bool ownBlock;
 };
 
-#endif // VNSI_REQUESTPACKET_H
+#endif // XVDR_REQUESTPACKET_H

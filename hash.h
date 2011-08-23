@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 1986 Gary S. Brown (CRC32 code)
  *      Copyright (C) 2011 Alexander Pipelka
@@ -21,8 +21,8 @@
  *
  */
 
-#ifndef VNSI_HASH_H
-#define VNSI_HASH_H
+#ifndef XVDR_HASH_H
+#define XVDR_HASH_H
 
 #include <stdint.h>
 #include <vdr/channels.h>
@@ -34,4 +34,4 @@ const cChannel* FindChannelByUID(uint32_t channelUID);
 
 uint32_t CreateStringHash(const cString& string);
 
-#endif // VNSI_HASH_H
+#endif // XVDR_HASH_H

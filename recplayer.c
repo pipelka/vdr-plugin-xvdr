@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 2004-2005 Chris Tallon
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)

@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
  *
@@ -22,8 +22,8 @@
  *
  */
 
-#ifndef VNSI_DEMUXER_H264_H
-#define VNSI_DEMUXER_H264_H
+#ifndef XVDR_DEMUXER_H264_H
+#define XVDR_DEMUXER_H264_H
 
 #include "demuxer.h"
 
@@ -96,4 +96,4 @@ public:
 };
 
 
-#endif // VNSI_DEMUXER_H264_H
+#endif // XVDR_DEMUXER_H264_H

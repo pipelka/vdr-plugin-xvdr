@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
  *
@@ -22,8 +22,8 @@
  *
  */
 
-#ifndef VNSI_DEMUXER_AAC_H
-#define VNSI_DEMUXER_AAC_H
+#ifndef XVDR_DEMUXER_AAC_H
+#define XVDR_DEMUXER_AAC_H
 
 #include "demuxer.h"
 #include "bitstream.h"
@@ -59,4 +59,4 @@ public:
   uint32_t LATMGetValue(cBitstream *bs) { return bs->readBits(bs->readBits(2) * 8); }
 };
 
-#endif // VNSI_DEMUXER_AAC_H
+#endif // XVDR_DEMUXER_AAC_H

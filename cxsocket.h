@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 2003-2006 Petri Hintukainen
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
@@ -24,8 +24,8 @@
  *
  */
 
-#ifndef VNSI_CXSOCKET_H
-#define VNSI_CXSOCKET_H
+#ifndef XVDR_CXSOCKET_H
+#define XVDR_CXSOCKET_H
 
 #include <inttypes.h>
 #include <sys/types.h>
@@ -62,4 +62,4 @@ class cxSocket {
   static char *ip2txt(uint32_t ip, unsigned int port, char *str);
 };
 
-#endif // VNSI_CXSOCKET_H
+#endif // XVDR_CXSOCKET_H

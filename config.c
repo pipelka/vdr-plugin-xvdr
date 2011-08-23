@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
  *      Copyright (C) 2010, 2011 Alexander Pipelka
@@ -31,7 +31,7 @@
 
 #include "config.h"
 
-cVNSIServerConfig::cVNSIServerConfig()
+cXVDRServerConfig::cXVDRServerConfig()
 {
   listen_port         = LISTEN_PORT;
   ConfigDirectory     = NULL;
@@ -39,4 +39,4 @@ cVNSIServerConfig::cVNSIServerConfig()
 }
 
 /* Global instance */
-cVNSIServerConfig VNSIServerConfig;
+cXVDRServerConfig XVDRServerConfig;

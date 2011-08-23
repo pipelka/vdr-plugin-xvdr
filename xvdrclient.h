@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
  *      Copyright (C) 2010, 2011 Alexander Pipelka
@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef VNSI_CLIENT_H
-#define VNSI_CLIENT_H
+#ifndef XVDR_CLIENT_H
+#define XVDR_CLIENT_H
 
 #include <vdr/thread.h>
 #include <vdr/tools.h>
@@ -45,7 +45,7 @@ class cResponsePacket;
 class cRecPlayer;
 class cCmdControl;
 
-class cVNSIClient : public cThread
+class cXVDRClient : public cThread
                   , public cStatus
 {
 private:
@@ -77,8 +77,8 @@ protected:
 
 public:
 
-  cVNSIClient(int fd, unsigned int id, const char *ClientAdr);
-  virtual ~cVNSIClient();
+  cXVDRClient(int fd, unsigned int id, const char *ClientAdr);
+  virtual ~cXVDRClient();
 
   void ChannelChange();
   void RecordingsChange();
@@ -165,4 +165,4 @@ private:
 
 };
 
-#endif // VNSI_CLIENT_H
+#endif // XVDR_CLIENT_H

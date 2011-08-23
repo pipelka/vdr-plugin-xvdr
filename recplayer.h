@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 2004-2005 Chris Tallon
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
@@ -28,8 +28,8 @@
  * This code is taken from VOMP for VDR plugin.
  */
 
-#ifndef VNSI_RECPLAYER_H
-#define VNSI_RECPLAYER_H
+#ifndef XVDR_RECPLAYER_H
+#define XVDR_RECPLAYER_H
 
 #include <stdio.h>
 #include <vdr/recording.h>
@@ -77,4 +77,4 @@ private:
   bool        m_pesrecording;
 };
 
-#endif // VNSI_RECPLAYER_H
+#endif // XVDR_RECPLAYER_H

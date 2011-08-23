@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 2011 Alexander Pipelka
  *
@@ -20,8 +20,8 @@
  *
  */
 
-#ifndef VNSI_RECORDINGSCACHE_H
-#define VNSI_RECORDINGSCACHE_H
+#ifndef XVDR_RECORDINGSCACHE_H
+#define XVDR_RECORDINGSCACHE_H
 
 #include <stdint.h>
 #include <map>
@@ -53,4 +53,4 @@ private:
 };
 
 
-#endif // VNSI_RECORDINGSCACHE_H
+#endif // XVDR_RECORDINGSCACHE_H

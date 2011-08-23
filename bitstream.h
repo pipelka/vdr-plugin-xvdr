@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
  *
@@ -22,8 +22,8 @@
  *
  */
 
-#ifndef VNSI_BITSTREAM_H
-#define VNSI_BITSTREAM_H
+#ifndef XVDR_BITSTREAM_H
+#define XVDR_BITSTREAM_H
 
 class cBitstream
 {
@@ -47,4 +47,4 @@ public:
   int          length() { return m_len; }
 };
 
-#endif // VNSI_BITSTREAM_H
+#endif // XVDR_BITSTREAM_H

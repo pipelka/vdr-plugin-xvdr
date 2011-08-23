@@ -1,5 +1,5 @@
 /*
- *      vdr-plugin-vnsi - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
  *      Copyright (C) 1986 Gary S. Brown (CRC32 code)
  *      Copyright (C) 2011 Alexander Pipelka
