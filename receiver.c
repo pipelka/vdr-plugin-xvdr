@@ -218,34 +218,34 @@ int cLivePatFilter::GetPid(SI::PMT::Stream& stream, eStreamType *type, char *lan
         switch (d->getDescriptorTag())
         {
           case SI::AC3DescriptorTag:
-            DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "AC3", langs);
             *type = stAC3;
             GetLanguage(stream, langs);
+            DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "AC3", langs);
             delete d;
             return stream.getPid();
 #ifdef ENABLE_EAC3
           case SI::EnhancedAC3DescriptorTag:
-            DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "EAC3", langs);
             *type = stEAC3;
             GetLanguage(stream, langs);
+            DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "EAC3", langs);
             delete d;
             return stream.getPid();
 #endif
           case SI::DTSDescriptorTag:
-            DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "DTS", langs);
             *type = stDTS;
             GetLanguage(stream, langs);
+            DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "DTS", langs);
             delete d;
             return stream.getPid();
           case SI::AACDescriptorTag:
-            DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "AAC", langs);
             *type = stAAC;
             GetLanguage(stream, langs);
+            DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "AAC", langs);
             delete d;
             return stream.getPid();
           case SI::TeletextDescriptorTag:
-            DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "Teletext");
             *type = stTELETEXT;
+            DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "Teletext");
             delete d;
             return stream.getPid();
           case SI::SubtitlingDescriptorTag:
@@ -461,6 +461,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
           case stAC3:
           {
             m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, m_Streamer->m_NumStreams, stAC3, pids[i]);
+            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguage(langs[i]);
             m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
             m_Streamer->m_NumStreams++;
             break;
@@ -650,6 +651,8 @@ void cLiveStreamer::Action(void)
     if (buf == NULL || size <= TS_SIZE)
       continue;
 
+    DEBUGLOG("processing packet: %i bytes", size);
+
     /* Make sure we are looking at a TS packet */
     while (size > TS_SIZE)
     {
@@ -757,9 +760,9 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
       }
 
       const int *DPids = m_Channel->Dpids();
+      int index = 0;
       for ( ; *DPids && m_NumStreams < MAXRECEIVEPIDS; DPids++)
       {
-        int index = 0;
         if (!FindStreamDemuxer(*DPids))
         {
           m_Pids[m_NumStreams]    = *DPids;
