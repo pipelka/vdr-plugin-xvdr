@@ -627,7 +627,6 @@ void cLiveStreamer::Action(void)
 
   cTimeMs last_tick;
   cTimeMs last_info;
-  cTimeMs starttime;
 
   while (Running())
   {
@@ -641,22 +640,15 @@ void cLiveStreamer::Action(void)
       break;
     }
 
-    // prevent inifinite loop on encrypted channels
-    if(!IsReady() && (starttime.Elapsed() >= (uint64_t)(m_scanTimeout*1000))) {
-      INFOLOG("returning from streamer thread, timeout on starting streaming");
-      break;
+    // check for data
+    if(last_tick.Elapsed() >= (uint64_t)(m_scanTimeout*1000)) {
+      INFOLOG("timeout on stream. signal lost!");
+      last_tick.Set(0);
     }
 
     // no data
     if (buf == NULL || size <= TS_SIZE)
-    {
-      // keep client going
-      if(last_tick.Elapsed() >= 1000 && !IsReady()) {
-        m_Socket->write(m_packetEmpty->getPtr(), m_packetEmpty->getLen());
-        last_tick.Set(0);
-      }
       continue;
-    }
 
     /* Make sure we are looking at a TS packet */
     while (size > TS_SIZE)
@@ -691,6 +683,7 @@ void cLiveStreamer::Action(void)
       if (demuxer)
       {
         demuxer->ProcessTSPacket(buf);
+        last_tick.Set(0);
       }
 
       buf += TS_SIZE;
@@ -911,6 +904,8 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
     sendStreamInfo();
   }
 
+  DEBUGLOG("sendStreamPacket");
+
   m_streamHeader.channel  = htonl(XVDR_CHANNEL_STREAM);     // stream channel
   m_streamHeader.opcode   = htonl(XVDR_STREAM_MUXPKT);      // Stream packet operation code
   m_streamHeader.id       = htonl(pkt->id);                 // Stream ID
@@ -997,10 +992,29 @@ void cLiveStreamer::sendStreamChange()
   }
 
   resp->finaliseStream();
+
+  DEBUGLOG("sendStreamChange");
+
   m_Socket->write(resp->getPtr(), resp->getLen(), -1, true);
   delete resp;
 
   m_requestStreamChange = false;
+}
+
+void cLiveStreamer::sendStatus(int status)
+{
+  cResponsePacket *resp = new cResponsePacket();
+  if (!resp->initStream(XVDR_STREAM_STATUS, 0, 0, 0, 0))
+  {
+    ERRORLOG("stream status packet init fail");
+    delete resp;
+    return;
+  }
+
+  resp->add_U32(status);
+  resp->finaliseStream();
+  m_Socket->write(resp->getPtr(), resp->getLen(), -1, true);
+  delete resp;
 }
 
 void cLiveStreamer::sendSignalInfo()
@@ -1142,6 +1156,9 @@ void cLiveStreamer::sendSignalInfo()
       resp->add_U32(fe_unc);
 
       resp->finaliseStream();
+
+      DEBUGLOG("sendSignalInfo");
+
       m_Socket->write(resp->getPtr(), resp->getLen(), -1, true);
       delete resp;
     }
@@ -1201,6 +1218,9 @@ void cLiveStreamer::sendStreamInfo()
   }
 
   resp->finaliseStream();
+
+  DEBUGLOG("sendStreamInfo");
+
   m_Socket->write(resp->getPtr(), resp->getLen());
   delete resp;
 }
