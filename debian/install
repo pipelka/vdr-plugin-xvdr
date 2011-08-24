@@ -1,3 +1,3 @@
-libvdr-vnsiserver.so.*         usr/lib/vdr/plugins/
-debian/plugin.vnsiserver.conf  etc/vdr/plugins/
-vnsiserver/allowed_hosts.conf  var/lib/vdr/plugins/vnsiserver/
+libvdr-xvdr.so.*         usr/lib/vdr/plugins/
+debian/plugin.xvdr.conf  etc/vdr/plugins/
+xvdr/allowed_hosts.conf  var/lib/vdr/plugins/xvdr/

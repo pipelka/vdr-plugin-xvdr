@@ -1,19 +1,22 @@
-#! /bin/sh /usr/share/vdr-dev/make-special-vdr.sh
+#! /usr/bin/make -f
 
-include /usr/share/cdbs/1/rules/debhelper.mk
-include /usr/share/cdbs/1/rules/dpatch.mk
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
 
-DEB_INSTALL_CHANGELOGS_ALL = HISTORY
+MAKE_OPTIONS = VDRDIR=/usr/include/vdr LIBDIR=. LOCALEDIR=locale
 
-MAKE_OPTIONS = DVBDIR=/usr VDRDIR=/usr/include/vdr LIBDIR=.
+%:
+	dh $@
 
-common-build-arch::
-	$(MAKE) all $(MAKE_OPTIONS)
+override_dh_auto_build:
+	dh_auto_build -- all $(MAKE_OPTIONS)
 
-clean::
+override_dh_auto_clean:
 	$(MAKE) -o .dependencies clean $(MAKE_OPTIONS)
-	rm -f libvdr-*.so.*
+	rm -rf locale libvdr-*.so.*
 
-common-binary-predeb-arch::
+override_dh_gencontrol:
 	sh /usr/share/vdr-dev/dependencies.sh
+	dh_gencontrol
+
 
