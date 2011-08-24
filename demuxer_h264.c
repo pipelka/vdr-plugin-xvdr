@@ -163,8 +163,9 @@ bool cParserH264::Parse_H264(size_t len, uint32_t next_startcode, int sc_offset)
     if (!Parse_SPS(nal_data, nal_len))
       return true;
 
-    double PAR = m_PixelAspect.num/m_PixelAspect.den;
+    double PAR = (double)m_PixelAspect.num/(double)m_PixelAspect.den;
     double DAR = (PAR * m_Width) / m_Height;
+    DEBUGLOG("H.264 SPS: PAR %i:%i", m_PixelAspect.num, m_PixelAspect.den);
     DEBUGLOG("H.264 SPS: DAR %.2f", DAR);
 
     m_demuxer->SetVideoInformation(0,0, m_Height, m_Width, DAR);
