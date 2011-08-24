@@ -64,7 +64,7 @@ static bool IsRadio(const cChannel* channel)
 
 static uint32_t recid2uid(const char* recid)
 {
-  unsigned int uid = 0;
+  uint32_t uid = 0;
   sscanf(recid, "%8x", &uid);
   DEBUGLOG("lookup recid: %s (uid: %u)", recid, uid);
   return uid;
@@ -1434,7 +1434,7 @@ bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
     uint32_t uid = cRecordingsCache::GetInstance().Register(recording);
     if(m_protocolVersion >= 3) {
       char recid[9];
-      snprintf(recid, sizeof(recid), "%0x8", uid);
+      snprintf(recid, sizeof(recid), "%08x", uid);
       m_resp->add_String(recid);
     }
     else if(m_protocolVersion = 2) {
