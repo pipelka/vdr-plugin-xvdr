@@ -1,12 +1,12 @@
-Source: vdr-plugin-vnsiserver
+Source: vdr-plugin-xvdr
 Section: misc
 Priority: extra
 Maintainer: Alexander Pipelka <alexander.pipelka@gmail.com>
 Build-Depends: debhelper (>= 5), cdbs, dpatch, vdr-dev (>= 1.6.0)
 Standards-Version: 3.8.0
 
-Package: vdr-plugin-vnsiserver
+Package: vdr-plugin-xvdr
 Architecture: any
 Depends: ${shlibs:Depends}, ${vdr:Depends}
-Description: XBMC VNSI plugin for VDR
+Description: XBMC XVDR plugin for VDR
  This plugin for VDR allows XBMC clients to connect.
