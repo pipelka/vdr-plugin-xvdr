@@ -54,9 +54,9 @@
 #define ALLOWED_HOSTS_FILE  "allowed_hosts.conf"
 #define FRONTEND_DEVICE     "/dev/dvb/adapter%d/frontend%d"
 
-#define LISTEN_PORT       34890
-#define LISTEN_PORT_S    "34890"
-#define DISCOVERY_PORT    34890
+#define LISTEN_PORT       34891
+#define LISTEN_PORT_S    "34891"
+#define DISCOVERY_PORT    34891
 
 // backward compatibility
 
