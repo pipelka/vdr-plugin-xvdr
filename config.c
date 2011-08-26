@@ -35,7 +35,7 @@ cXVDRServerConfig::cXVDRServerConfig()
 {
   listen_port         = LISTEN_PORT;
   ConfigDirectory     = NULL;
-  stream_timeout      = 10;
+  stream_timeout      = 3;
 }
 
 /* Global instance */
