@@ -102,7 +102,6 @@ cXVDRClient::~cXVDRClient()
 
 void cXVDRClient::Action(void)
 {
-  uint32_t kaTimeStamp;
   uint32_t channelID;
   uint32_t requestID;
   uint32_t opcode;
@@ -163,20 +162,6 @@ void cXVDRClient::Action(void)
       cRequestPacket* req = new cRequestPacket(requestID, opcode, data, dataLength);
 
       processRequest(req);
-    }
-    else if (channelID == 3)
-    {
-      if (!m_socket.read((uint8_t*)&kaTimeStamp, sizeof(uint32_t), 1000)) break;
-      kaTimeStamp = ntohl(kaTimeStamp);
-
-      uint8_t buffer[8];
-      *(uint32_t*)&buffer[0] = htonl(3); // KA CHANNEL
-      *(uint32_t*)&buffer[4] = htonl(kaTimeStamp);
-      if (!m_socket.write(buffer, 8))
-      {
-        ERRORLOG("Could not send back KA reply");
-        break;
-      }
     }
     else
     {
