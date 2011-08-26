@@ -521,7 +521,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
 
 cLiveStreamer::cLiveStreamer(uint32_t timeout)
  : cThread("cLiveStreamer stream processor")
- , cRingBufferLinear(MEGABYTE(3), TS_SIZE, true)
+ , cRingBufferLinear(MEGABYTE(1), TS_SIZE, true)
  , m_scanTimeout(timeout)
 {
   m_Channel         = NULL;
@@ -630,7 +630,6 @@ void cLiveStreamer::Action(void)
   unsigned char *buf    = NULL;
   m_startup             = true;
 
-  cTimeMs last_tick;
   cTimeMs last_info;
 
   while (Running())
@@ -645,17 +644,16 @@ void cLiveStreamer::Action(void)
       break;
     }
 
-    // check for data
-    if(last_tick.Elapsed() >= (uint64_t)(m_scanTimeout*1000)) {
-      INFOLOG("timeout on stream. signal lost!");
-      last_tick.Set(0);
+    if(!IsStarting() && (m_last_tick.Elapsed() > (uint64_t)(m_scanTimeout*1000)) && !m_SignalLost)
+    {
+      INFOLOG("timeout. signal lost!");
+      sendStatus(XVDR_STREAM_STATUS_SIGNALLOST);
+      m_SignalLost = true;
     }
 
     // no data
     if (buf == NULL || size <= TS_SIZE)
       continue;
-
-    DEBUGLOG("processing packet: %i bytes", size);
 
     /* Make sure we are looking at a TS packet */
     while (size > TS_SIZE)
@@ -689,7 +687,6 @@ void cLiveStreamer::Action(void)
       if (demuxer)
       {
         demuxer->ProcessTSPacket(buf);
-        last_tick.Set(0);
       }
 
       buf += TS_SIZE;
@@ -926,10 +923,24 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
   *(int64_t*)&m_streamHeader.pts = __cpu_to_be64(pkt->pts); // PTS
 
   m_streamHeader.length   = htonl(pkt->size);               // Data length
-  m_Socket->write(&m_streamHeader, sizeof(m_streamHeader), -1, true);
 
-  m_Socket->write(pkt->data, pkt->size);
+  // get packet type
+  int type = m_Streams[pkt->id]->Type();
 
+  if(m_Socket->write(&m_streamHeader, sizeof(m_streamHeader), 2000, true) > 0)
+  {
+    if(m_Socket->write(pkt->data, pkt->size, 2000) > 0) {
+      // if a audio or video packet was sent, the signal is restored
+      if(type > stNone && type < stDVBSUB) {
+        if(m_SignalLost) {
+          INFOLOG("signal restored");
+          sendStatus(XVDR_STREAM_STATUS_SIGNALRESTORED);
+          m_SignalLost = false;
+        }
+        m_last_tick.Set(0);
+      }
+    }
+  }
 }
 
 void cLiveStreamer::sendStreamChange()

@@ -100,7 +100,8 @@
 #define XVDR_STREAM_CONTENTINFO  6
 
 /** Stream status codes */
-#define XVDR_STREAM_STATUS_SIGNALLOST 111
+#define XVDR_STREAM_STATUS_SIGNALLOST     111
+#define XVDR_STREAM_STATUS_SIGNALRESTORED 112
 
 /** Scan packet types (server -> client) */
 #define XVDR_SCANNER_PERCENTAGE  1
