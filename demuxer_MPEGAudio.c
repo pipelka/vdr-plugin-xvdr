@@ -370,27 +370,5 @@ bool cParserMPEG2Audio::DecodeHeader(MPADecodeHeader *s, uint32_t header)
   }
 
   m_demuxer->SetAudioInformation(s->nb_channels, s->sample_rate, s->bit_rate, 0, 0);
-
-#if defined(DEBUG)
-#define MODE_EXT_MS_STEREO 2
-#define MODE_EXT_I_STEREO  1
-  printf("layer%d, %d Hz, %d kbits/s, ", s->layer, s->sample_rate, s->bit_rate);
-  if (s->nb_channels == 2)
-  {
-    if (s->layer == 3)
-    {
-      if (s->mode_ext & MODE_EXT_MS_STEREO)
-        printf("ms-");
-      if (s->mode_ext & MODE_EXT_I_STEREO)
-        printf("i-");
-    }
-    printf("stereo");
-  }
-  else
-  {
-    printf("mono");
-  }
-  printf("\n");
-#endif
   return true;
 }
