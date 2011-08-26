@@ -79,13 +79,13 @@ ssize_t cxSocket::write(const void *buffer, size_t size, int timeout_ms, bool mo
       return written-size;
     }
 
-    ssize_t p = ::send(m_fd, ptr, size, MSG_NOSIGNAL | (more_data ? MSG_MORE : 0));
+    ssize_t p = ::send(m_fd, ptr, size, MSG_NOSIGNAL | MSG_DONTWAIT | (more_data ? MSG_MORE : 0));
 
     if (p <= 0)
     {
-      if (errno == EINTR || errno == EAGAIN)
+      if (errno == EWOULDBLOCK || errno == EAGAIN)
       {
-        DEBUGLOG("cxSocket::write: EINTR during write(), retrying");
+        DEBUGLOG("cxSocket::write: blocked, retrying");
         continue;
       }
       ERRORLOG("cxSocket::write: write() error");
