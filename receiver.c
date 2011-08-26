@@ -432,6 +432,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
       }
       m_Streamer->m_NumStreams  = 0;
       m_Streamer->m_streamReady = false;
+      m_Streamer->m_IFrameSeen  = false;
 
       for (int i = 0; i < streams; i++)
       {
@@ -535,6 +536,9 @@ cLiveStreamer::cLiveStreamer(uint32_t timeout)
   m_IsAudioOnly     = false;
   m_IsMPEGPS        = false;
   m_startup         = true;
+  m_SignalLost      = false;
+  m_IFrameSeen      = false;
+
   m_requestStreamChange = false;
 
   m_packetEmpty = new cResponsePacket;
@@ -668,9 +672,8 @@ void cLiveStreamer::Action(void)
     {
       INFOLOG("streaming of channel started");
       last_info.Set(0);
-      sendStreamChange();
-      sendStreamInfo();
-      sendSignalInfo();
+      m_last_tick.Set(0);
+      m_requestStreamChange = true;
       m_startup = false;
     }
 
@@ -901,13 +904,18 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
   if(pkt == NULL)
     return;
 
+  if(pkt->size == 0)
+    return;
+
+  if(!m_IFrameSeen && pkt->frametype != PKT_I_FRAME)
+    return;
+
   if(m_requestStreamChange)
   {
     sendStreamChange();
-    sendStreamInfo();
   }
 
-  DEBUGLOG("sendStreamPacket");
+  m_IFrameSeen = true;
 
   m_streamHeader.channel  = htonl(XVDR_CHANNEL_STREAM);     // stream channel
   m_streamHeader.opcode   = htonl(XVDR_STREAM_MUXPKT);      // Stream packet operation code

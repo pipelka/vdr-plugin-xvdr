@@ -188,6 +188,10 @@ enum eStreamType
 #define PKT_NTYPES  4
 struct sStreamPacket
 {
+  sStreamPacket() {
+    frametype = 0;
+  }
+
   int64_t   id;
   int64_t   dts;
   int64_t   pts;

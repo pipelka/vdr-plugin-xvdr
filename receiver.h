@@ -80,6 +80,10 @@ private:
   cResponsePacket*  m_packetEmpty;                  /*!> Empty stream packet */
   bool              m_requestStreamChange;
   uint32_t          m_scanTimeout;                  /*!> Channel scanning timeout (in seconds) */
+  cTimeMs           m_last_tick;
+  bool              m_SignalLost;
+  bool              m_IFrameSeen;
+
   struct {
     uint32_t channel;
     uint32_t opcode;
