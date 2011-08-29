@@ -27,6 +27,8 @@
 #include <sys/ioctl.h>
 #include <time.h>
 
+#include <map>
+
 #include <libsi/section.h>
 #include <libsi/descriptor.h>
 
@@ -589,7 +591,7 @@ cLiveStreamer::~cLiveStreamer()
     {
       if (m_Streams[idx])
       {
-        DEBUGLOG("Deleting stream demuxer %i for pid=%i and type=%i", m_Streams[idx]->GetStreamID(), m_Streams[idx]->GetPID(), m_Streams[idx]->Type());
+        DEBUGLOG("Deleting stream demuxer %i for pid=%i and type=%i", m_Streams[idx]->GetStreamIndex(), m_Streams[idx]->GetPID(), m_Streams[idx]->Type());
         DELETENULL(m_Streams[idx]);
         m_Pids[idx] = 0;
       }
@@ -914,9 +916,13 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
 
   m_IFrameSeen = true;
 
+  // get packet type
+  int type = m_Streams[pkt->id]->Type();
+  int streamid = m_Streams[pkt->id]->GetPID();
+
   m_streamHeader.channel  = htonl(XVDR_CHANNEL_STREAM);     // stream channel
   m_streamHeader.opcode   = htonl(XVDR_STREAM_MUXPKT);      // Stream packet operation code
-  m_streamHeader.id       = htonl(pkt->id);                 // Stream ID
+  m_streamHeader.id       = htonl(streamid);                // Stream ID
   m_streamHeader.duration = htonl(pkt->duration);           // Duration
 
   *(int64_t*)&m_streamHeader.dts = __cpu_to_be64(pkt->dts); // DTS
@@ -924,8 +930,7 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
 
   m_streamHeader.length   = htonl(pkt->size);               // Data length
 
-  // get packet type
-  int type = m_Streams[pkt->id]->Type();
+  DEBUGLOG("sendStreamPacket (type: %i)", type);
 
   if(m_Socket->write(&m_streamHeader, sizeof(m_streamHeader), 2000, true) > 0)
   {
@@ -953,15 +958,19 @@ void cLiveStreamer::sendStreamChange()
     return;
   }
 
+  DEBUGLOG("sendStreamChange");
+
   for (int idx = 0; idx < m_NumStreams; ++idx)
   {
     if (m_Streams[idx])
     {
-      resp->add_U32(m_Streams[idx]->GetStreamID());
+      int streamid = m_Streams[idx]->GetPID();
+      resp->add_U32(streamid);
       if (m_Streams[idx]->Type() == stMPEG2AUDIO)
       {
         resp->add_String("MPEG2AUDIO");
         resp->add_String(m_Streams[idx]->GetLanguage());
+        DEBUGLOG("MPEG2AUDIO: %i (index: %i) (%s)", streamid, idx, m_Streams[idx]->GetLanguage());
       }
       else if (m_Streams[idx]->Type() == stMPEG2VIDEO)
       {
@@ -971,11 +980,13 @@ void cLiveStreamer::sendStreamChange()
         resp->add_U32(m_Streams[idx]->GetHeight());
         resp->add_U32(m_Streams[idx]->GetWidth());
         resp->add_double(m_Streams[idx]->GetAspect());
+        DEBUGLOG("MPEG2VIDEO: %i (index: %i)", streamid, idx);
       }
       else if (m_Streams[idx]->Type() == stAC3)
       {
         resp->add_String("AC3");
         resp->add_String(m_Streams[idx]->GetLanguage());
+        DEBUGLOG("AC3: %i (index: %i)", streamid, idx);
       }
       else if (m_Streams[idx]->Type() == stH264)
       {
@@ -985,6 +996,7 @@ void cLiveStreamer::sendStreamChange()
         resp->add_U32(m_Streams[idx]->GetHeight());
         resp->add_U32(m_Streams[idx]->GetWidth());
         resp->add_double(m_Streams[idx]->GetAspect());
+        DEBUGLOG("H264: %i (index: %i)", streamid, idx);
       }
       else if (m_Streams[idx]->Type() == stDVBSUB)
       {
@@ -992,30 +1004,35 @@ void cLiveStreamer::sendStreamChange()
         resp->add_String(m_Streams[idx]->GetLanguage());
         resp->add_U32(m_Streams[idx]->CompositionPageId());
         resp->add_U32(m_Streams[idx]->AncillaryPageId());
+        DEBUGLOG("DVBSUB: %i (index: %i)", streamid, idx);
       }
       else if (m_Streams[idx]->Type() == stTELETEXT)
+      {
         resp->add_String("TELETEXT");
+        DEBUGLOG("TELETEXT: %i (index: %i)", streamid, idx);
+      }
       else if (m_Streams[idx]->Type() == stAAC)
       {
         resp->add_String("AAC");
         resp->add_String(m_Streams[idx]->GetLanguage());
+        DEBUGLOG("AAC: %i (index: %i)", streamid, idx);
       }
       else if (m_Streams[idx]->Type() == stEAC3)
       {
         resp->add_String("EAC3");
         resp->add_String(m_Streams[idx]->GetLanguage());
+        DEBUGLOG("EAC3: %i (index: %i)", streamid, idx);
       }
       else if (m_Streams[idx]->Type() == stDTS)
       {
         resp->add_String("DTS");
         resp->add_String(m_Streams[idx]->GetLanguage());
+        DEBUGLOG("DTS: %i (index: %i)", streamid, idx);
       }
     }
   }
 
   resp->finaliseStream();
-
-  DEBUGLOG("sendStreamChange");
 
   m_Socket->write(resp->getPtr(), resp->getLen(), -1, true);
   delete resp;
@@ -1212,7 +1229,7 @@ void cLiveStreamer::sendStreamInfo()
           m_Streams[idx]->Type() == stDTS ||
           m_Streams[idx]->Type() == stAAC)
       {
-        resp->add_U32(m_Streams[idx]->GetStreamID());
+        resp->add_U32(m_Streams[idx]->GetPID());
         resp->add_String(m_Streams[idx]->GetLanguage());
         resp->add_U32(m_Streams[idx]->GetChannels());
         resp->add_U32(m_Streams[idx]->GetSampleRate());
@@ -1222,7 +1239,7 @@ void cLiveStreamer::sendStreamInfo()
       }
       else if (m_Streams[idx]->Type() == stMPEG2VIDEO || m_Streams[idx]->Type() == stH264)
       {
-        resp->add_U32(m_Streams[idx]->GetStreamID());
+        resp->add_U32(m_Streams[idx]->GetPID());
         resp->add_U32(m_Streams[idx]->GetFpsScale());
         resp->add_U32(m_Streams[idx]->GetFpsRate());
         resp->add_U32(m_Streams[idx]->GetHeight());
@@ -1231,7 +1248,7 @@ void cLiveStreamer::sendStreamInfo()
       }
       else if (m_Streams[idx]->Type() == stDVBSUB)
       {
-        resp->add_U32(m_Streams[idx]->GetStreamID());
+        resp->add_U32(m_Streams[idx]->GetPID());
         resp->add_String(m_Streams[idx]->GetLanguage());
         resp->add_U32(m_Streams[idx]->CompositionPageId());
         resp->add_U32(m_Streams[idx]->AncillaryPageId());

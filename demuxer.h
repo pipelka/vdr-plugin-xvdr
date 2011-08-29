@@ -210,7 +210,7 @@ class cLiveStreamer;
 class cParser
 {
 public:
-  cParser(cLiveStreamer *streamer, int streamID);
+  cParser(cLiveStreamer *streamer, int streamIndex);
   virtual ~cParser() {};
 
   virtual void Parse(unsigned char *data, int size, bool pusi) = 0;
@@ -227,6 +227,7 @@ public:
   int64_t     m_epochDTS;
 
   int         m_badDTS;
+  int         m_streamIndex;
   int         m_streamID;
 
 protected:
@@ -238,7 +239,7 @@ class cTSDemuxer
 {
 private:
   cLiveStreamer        *m_Streamer;
-  const int             m_streamID;
+  const int             m_streamIndex;
   const int             m_pID;
   eStreamContent        m_streamContent;
   eStreamType           m_streamType;
@@ -275,7 +276,7 @@ public:
   const eStreamContent Content() const { return m_streamContent; }
   const eStreamType Type() const { return m_streamType; }
   const int GetPID() const { return m_pID; }
-  const int GetStreamID() const { return m_streamID; }
+  const int GetStreamIndex() const { return m_streamIndex; }
 
   /* Video Stream Information */
   void SetVideoInformation(int FpsScale, int FpsRate, int Height, int Width, float Aspect);

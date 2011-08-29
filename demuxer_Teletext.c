@@ -27,8 +27,8 @@
 
 #include "demuxer_Teletext.h"
 
-cParserTeletext::cParserTeletext(cTSDemuxer *demuxer, cLiveStreamer *streamer, int streamID)
- : cParser(streamer, streamID)
+cParserTeletext::cParserTeletext(cTSDemuxer *demuxer, cLiveStreamer *streamer, int streamIndex)
+ : cParser(streamer, streamIndex)
 {
   m_firstPUSIseen       = false;
   m_PESStart            = false;
@@ -85,7 +85,7 @@ void cParserTeletext::Parse(unsigned char *data, int size, bool pusi)
     if (m_teletextBuffer && m_teletextBufferPtr > 0)
     {
       sStreamPacket pkt;
-      pkt.id       = m_streamID;
+      pkt.id       = m_streamIndex;
       pkt.data     = m_teletextBuffer;
       pkt.size     = m_teletextBufferPtr;
       pkt.duration = m_curDTS-m_lastDTS;
