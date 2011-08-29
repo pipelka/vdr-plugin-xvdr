@@ -746,9 +746,9 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
       }
 
       const int *APids = m_Channel->Apids();
+      int index = 0;
       for ( ; *APids && m_NumStreams < MAXRECEIVEPIDS; APids++)
       {
-        int index = 0;
         if (!FindStreamDemuxer(*APids))
         {
           m_Pids[m_NumStreams]    = *APids;
@@ -760,7 +760,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
       }
 
       const int *DPids = m_Channel->Dpids();
-      int index = 0;
+      index = 0;
       for ( ; *DPids && m_NumStreams < MAXRECEIVEPIDS; DPids++)
       {
         if (!FindStreamDemuxer(*DPids))
