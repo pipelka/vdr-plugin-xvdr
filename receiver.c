@@ -1038,6 +1038,8 @@ void cLiveStreamer::sendStreamChange()
   delete resp;
 
   m_requestStreamChange = false;
+
+  sendStreamInfo();
 }
 
 void cLiveStreamer::sendStatus(int status)
