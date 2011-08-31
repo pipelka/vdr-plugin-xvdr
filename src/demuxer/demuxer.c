@@ -306,7 +306,7 @@ void cTSDemuxer::SetVideoInformation(int FpsScale, int FpsRate, int Height, int 
     return;
 
   // only register changed video information
-  if(Width == m_Width && Height == m_Height && Aspect == m_Aspect)
+  if(Width == m_Width && Height == m_Height && Aspect == m_Aspect && m_Streamer->IsReady())
     return;
 
   INFOLOG("--------------------------------------");
@@ -335,7 +335,7 @@ void cTSDemuxer::SetVideoInformation(int FpsScale, int FpsRate, int Height, int 
 
 void cTSDemuxer::SetAudioInformation(int Channels, int SampleRate, int BitRate, int BitsPerSample, int BlockAlign)
 {
-  if(m_Streamer->IsAudioOnly())
+  if(m_Streamer->IsAudioOnly() && !m_Streamer->IsReady())
     m_Streamer->SetReady();
 
   // only register changed audio information
