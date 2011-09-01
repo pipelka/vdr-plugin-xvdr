@@ -906,13 +906,11 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
   if(pkt->size == 0)
     return;
 
-  if(!m_IFrameSeen && pkt->frametype != PKT_I_FRAME)
+  if(!m_IsAudioOnly && !m_IFrameSeen && (pkt->frametype != PKT_I_FRAME))
     return;
 
   if(m_requestStreamChange)
-  {
     sendStreamChange();
-  }
 
   m_IFrameSeen = true;
 
