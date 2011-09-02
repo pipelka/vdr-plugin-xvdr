@@ -84,7 +84,7 @@ cXVDRClient::cXVDRClient(int fd, unsigned int id, const char *ClientAdr)
   m_resp                    = NULL;
   m_processSCAN_Response    = NULL;
   m_processSCAN_Socket      = NULL;
-
+  m_compressionLevel        = 0;
 
   m_socket.set_handle(fd);
 
@@ -515,7 +515,7 @@ bool cXVDRClient::process_Login() /* OPCODE 1 */
   if (m_req->getDataLength() <= 4) return false;
 
   m_protocolVersion      = m_req->extract_U32();
-                           m_req->extract_U8();
+  m_compressionLevel     = m_req->extract_U8();
   const char *clientName = m_req->extract_String();
 
   if (m_protocolVersion > XVDR_PROTOCOLVERSION)
@@ -849,6 +849,8 @@ bool cXVDRClient::processCHANNELS_GetChannels() /* OPCODE 63 */
   Channels.Unlock();
 
   m_resp->finalise();
+  m_resp->compress(m_compressionLevel);
+
   m_socket.write(m_resp->getPtr(), m_resp->getLen());
 
   return true;
@@ -1434,6 +1436,8 @@ bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
   }
 
   m_resp->finalise();
+  m_resp->compress(m_compressionLevel);
+
   m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
@@ -1684,6 +1688,8 @@ bool cXVDRClient::processEPG_GetForChannel() /* OPCODE 120 */
   }
 
   m_resp->finalise();
+  m_resp->compress(m_compressionLevel);
+
   m_socket.write(m_resp->getPtr(), m_resp->getLen());
 
   DEBUGLOG("written schedules packet");

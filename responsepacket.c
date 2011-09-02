@@ -37,6 +37,7 @@
 #include "responsepacket.h"
 #include "xvdrcommand.h"
 #include "config.h"
+#include "zlib.h"
 
 /* Packet format for an RR channel response:
 
@@ -211,4 +212,39 @@ bool cResponsePacket::checkExtend(uint32_t by)
   buffer = newBuf;
   bufSize += by;
   return true;
+}
+
+bool cResponsePacket::compress(int level)
+{
+  if(level <= 0)
+    return true;
+
+  DEBUGLOG("Compressing packet (%i bytes) with level %i", bufUsed, level);
+
+  int buffersize = bufUsed - headerLength; // header bytes
+  uint8_t* out = (uint8_t*)malloc(buffersize + headerLengthCompressed);
+  uLongf outsize = buffersize;
+
+  if(::compress2((out + headerLengthCompressed), &outsize, (buffer + headerLength), buffersize, level) == Z_OK) 
+  {
+    uint32_t* p = (uint32_t*)out;
+    *p++ = (*(uint32_t*)&buffer[0] | htonl(0x80000000)); // mark packet as compressed
+    *p++ = *(uint32_t*)&buffer[4];                       // request ID
+    *p++ = htonl(outsize + 4);                           // compressed packet size +4 bytes (original size)
+    *p++ = htonl(buffersize);                            // original uncompressed packet size
+
+    // remove old (uncompressed) buffer
+    free(buffer);
+    buffer = out;
+    bufSize = (outsize + headerLengthCompressed);
+    bufUsed = bufSize;
+
+    DEBUGLOG("Done. New size: %lu bytes", outsize);
+    return true;
+  }
+
+  DEBUGLOG("failed!");
+  free(out);
+
+  return false;
 }

@@ -57,6 +57,8 @@ public:
   uint8_t* getPtr() { return buffer; }
   uint32_t getLen() { return bufUsed; }
 
+  bool compress(int level = 6);
+
 private:
   uint8_t* buffer;
   uint32_t bufSize;
@@ -65,10 +67,11 @@ private:
   void initBuffers();
   bool checkExtend(uint32_t by);
 
-  const static uint32_t headerLength          = 12;
-  const static uint32_t userDataLenPos        = 8;
-  const static uint32_t headerLengthStream    = 36;
-  const static uint32_t userDataLenPosStream  = 32;
+  const static uint32_t headerLength           = 12;
+  const static uint32_t headerLengthCompressed = 16;
+  const static uint32_t userDataLenPos         = 8;
+  const static uint32_t headerLengthStream     = 36;
+  const static uint32_t userDataLenPosStream   = 32;
 };
 
 #endif // XVDR_RESPONSEPACKET_H

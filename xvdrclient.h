@@ -64,6 +64,7 @@ private:
   uint32_t         m_protocolVersion;
   cMutex           m_msgLock;
   static cMutex    m_timerLock;
+  int              m_compressionLevel;
 
 protected:
 
