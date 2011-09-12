@@ -1,0 +1,6 @@
+1. install ebuild
+$ ebuild media-plugins/vdr-plugin-xvdr/vdr-plugin-xvdr-9999.ebuild merge
+
+2. enable xvdr plugin
+$ eselect vdr-plugin enable xvdr
+
