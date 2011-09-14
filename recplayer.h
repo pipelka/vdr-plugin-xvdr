@@ -57,6 +57,8 @@ public:
   void closeFile();
 
   void scan();
+  void update();
+
   uint64_t positionFromFrameNumber(uint32_t frameNumber);
   uint32_t frameNumberFromPosition(uint64_t position);
   bool getNextIFrame(uint32_t frameNumber, uint32_t direction, uint64_t* rfilePosition, uint32_t* rframeNumber, uint32_t* rframeLength);
@@ -75,6 +77,8 @@ private:
   uint32_t    m_totalFrames;
   char       *m_recordingFilename;
   bool        m_pesrecording;
+  cTimeMs     m_rescanTime;
+  uint32_t    m_rescanInterval;
 };
 
 #endif // XVDR_RECPLAYER_H

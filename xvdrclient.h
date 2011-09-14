@@ -115,6 +115,7 @@ private:
   bool processRecStream_Open();
   bool processRecStream_Close();
   bool processRecStream_GetBlock();
+  bool processRecStream_Update();
   bool processRecStream_PositionFromFrameNumber();
   bool processRecStream_FrameNumberFromPosition();
   bool processRecStream_GetIFrame();

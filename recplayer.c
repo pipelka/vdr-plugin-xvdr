@@ -38,6 +38,7 @@ cRecPlayer::cRecPlayer(cRecording* rec)
 {
   m_file          = -1;
   m_fileOpen      = -1;
+  m_rescanInterval    = 2000; // 2000 ms rescan interval
   m_recordingFilename = strdup(rec->FileName());
 
   // FIXME find out max file path / name lengths
@@ -51,6 +52,14 @@ cRecPlayer::cRecPlayer(cRecording* rec)
 #endif
 
   scan();
+  m_rescanTime.Set(0);
+}
+
+cRecPlayer::~cRecPlayer()
+{
+  cleanup();
+  closeFile();
+  free(m_recordingFilename);
 }
 
 void cRecPlayer::cleanup() {
@@ -94,11 +103,20 @@ void cRecPlayer::scan()
   INFOLOG("total frames: %u", m_totalFrames);
 }
 
-cRecPlayer::~cRecPlayer()
+void cRecPlayer::update()
 {
-  cleanup();
-  closeFile();
-  free(m_recordingFilename);
+  // do not rescan too often
+  if(m_rescanTime.Elapsed() < m_rescanInterval)
+    return;
+
+  INFOLOG("%s", __FUNCTION__);
+  m_rescanTime.Set(0);
+
+  // no change ?
+  if(m_totalFrames == (uint32_t)m_indexFile->Last())
+    return;
+
+  scan();
 }
 
 char* cRecPlayer::fileNameFromIndex(int index) {

@@ -57,6 +57,7 @@
 #define XVDR_RECSTREAM_POSTOFRAME  43
 #define XVDR_RECSTREAM_FRAMETOPOS  44
 #define XVDR_RECSTREAM_GETIFRAME   45
+#define XVDR_RECSTREAM_UPDATE      46
 
 /* OPCODE 60 - 79: XVDR network functions for channel access */
 #define XVDR_CHANNELS_GETCOUNT     61

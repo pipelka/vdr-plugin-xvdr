@@ -388,6 +388,10 @@ bool cXVDRClient::processRequest(cRequestPacket* req)
       result = processRecStream_GetBlock();
       break;
 
+    case XVDR_RECSTREAM_UPDATE:
+      result = processRecStream_Update();
+      break;
+
     case XVDR_RECSTREAM_POSTOFRAME:
       result = processRecStream_PositionFromFrameNumber();
       break;
@@ -697,6 +701,20 @@ bool cXVDRClient::processRecStream_Close() /* OPCODE 41 */
   m_resp->add_U32(XVDR_RET_OK);
   m_resp->finalise();
   m_socket.write(m_resp->getPtr(), m_resp->getLen());
+  return true;
+}
+
+bool cXVDRClient::processRecStream_Update() /* OPCODE 46 */
+{
+  if(m_RecPlayer == NULL)
+    return false;
+
+  m_RecPlayer->update();
+  m_resp->add_U32(m_RecPlayer->getLengthFrames());
+  m_resp->add_U64(m_RecPlayer->getLengthBytes());
+  m_resp->finalise();
+  m_socket.write(m_resp->getPtr(), m_resp->getLen());
+
   return true;
 }
 
