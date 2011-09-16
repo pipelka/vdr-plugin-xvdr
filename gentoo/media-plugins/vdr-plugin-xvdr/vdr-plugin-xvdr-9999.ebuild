@@ -6,7 +6,7 @@ EAPI=2
 
 RESTRICT="strip"
 
-inherit vdr-plugin git
+inherit vdr-plugin git-2
 
 EGIT_REPO_URI="git://github.com/pipelka/vdr-plugin-xvdr.git"
 PATCHES=""
