@@ -415,6 +415,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
         newstreams++;
     }
 
+    m_Streamer->m_FilterMutex.Lock();
     if (newstreams > 0)
     {
       if (m_Streamer->m_Receiver)
@@ -516,6 +517,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
       INFOLOG("Currently unknown new streams found, receiver and demuxers reinited\n");
       m_Streamer->RequestStreamChange();
     }
+    m_Streamer->m_FilterMutex.Unlock();
   }
 }
 
@@ -685,11 +687,14 @@ void cLiveStreamer::Action(void)
       }
 
       unsigned int ts_pid = TsPid(buf);
+
+      m_FilterMutex.Lock();
       cTSDemuxer *demuxer = FindStreamDemuxer(ts_pid);
       if (demuxer)
       {
         demuxer->ProcessTSPacket(buf);
       }
+      m_FilterMutex.Unlock();
 
       buf += TS_SIZE;
       size -= TS_SIZE;
