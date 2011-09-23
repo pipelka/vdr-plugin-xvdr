@@ -38,7 +38,7 @@
 #include "xvdrcommand.h"
 #include "recordingscache.h"
 #include "xvdrclient.h"
-#include "receiver.h"
+#include "livestreamer.h"
 #include "xvdrserver.h"
 #include "recplayer.h"
 #include "requestpacket.h"

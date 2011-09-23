@@ -26,7 +26,7 @@
 #include <assert.h>
 #include "config.h"
 #include "bitstream.h"
-#include "receiver.h"
+#include "livestreamer.h"
 
 #include "demuxer_h264.h"
 

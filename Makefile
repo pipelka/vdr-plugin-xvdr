@@ -55,7 +55,7 @@ endif
 
 OBJS = xvdr.o bitstream.o xvdrclient.o config.o cxsocket.o demuxer.o demuxer_AAC.o \
        demuxer_AC3.o demuxer_DTS.o demuxer_h264.o demuxer_MPEGAudio.o demuxer_MPEGVideo.o \
-       demuxer_Subtitle.o demuxer_Teletext.o receiver.o recplayer.o requestpacket.o responsepacket.o \
+       demuxer_Subtitle.o demuxer_Teletext.o livepatfilter.o livereceiver.o livestreamer.o recplayer.o requestpacket.o responsepacket.o \
        xvdrserver.o hash.o recordingscache.o
 
 ### Implicit rules:
