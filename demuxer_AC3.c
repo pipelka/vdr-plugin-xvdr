@@ -288,8 +288,8 @@ int cParserAC3::FindHeaders(uint8_t **poutbuf, int *poutbuf_size,
 
         /*int substreamid =*/ bs.readBits(3);
 
-        int framesize = (bs.readBits(11) + 1) << 1;
-        if (framesize < AC3_HEADER_SIZE)
+        m_FrameSize = (bs.readBits(11) + 1) << 1;
+        if (m_FrameSize < AC3_HEADER_SIZE)
           return -1;
 
         int numBlocks = 6;
@@ -310,7 +310,7 @@ int cParserAC3::FindHeaders(uint8_t **poutbuf, int *poutbuf_size,
         int channelMode = bs.readBits(3);
         int lfeon = bs.readBits(1);
 
-        m_BitRate  = (uint32_t)(8.0 * framesize * m_SampleRate / (numBlocks * 256.0));
+        m_BitRate  = (uint32_t)(8.0 * m_FrameSize * m_SampleRate / (numBlocks * 256.0));
         m_Channels = AC3ChannelsTable[channelMode] + lfeon;
       }
       m_HeaderFound = true;

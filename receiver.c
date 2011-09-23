@@ -42,9 +42,6 @@
 #include "xvdrcommand.h"
 #include "responsepacket.h"
 
-// disable EAC3 by now
-//#define ENABLE_EAC3 1
-
 // --- cLiveReceiver -------------------------------------------------
 
 class cLiveReceiver: public cReceiver
@@ -225,14 +222,12 @@ int cLivePatFilter::GetPid(SI::PMT::Stream& stream, eStreamType *type, char *lan
             DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "AC3", langs);
             delete d;
             return stream.getPid();
-#ifdef ENABLE_EAC3
           case SI::EnhancedAC3DescriptorTag:
             *type = stEAC3;
             GetLanguage(stream, langs);
             DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "EAC3", langs);
             delete d;
             return stream.getPid();
-#endif
           case SI::DTSDescriptorTag:
             *type = stDTS;
             GetLanguage(stream, langs);
@@ -756,7 +751,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
       int index = 0;
       for ( ; *APids && m_NumStreams < MAXRECEIVEPIDS; APids++)
       {
-        if (!FindStreamDemuxer(*APids))
+        if (FindStreamDemuxer(*APids) != NULL)
         {
           m_Pids[m_NumStreams]    = *APids;
           m_Streams[m_NumStreams] = new cTSDemuxer(this, m_NumStreams, stMPEG2AUDIO, *APids);
@@ -770,7 +765,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
       index = 0;
       for ( ; *DPids && m_NumStreams < MAXRECEIVEPIDS; DPids++)
       {
-        if (!FindStreamDemuxer(*DPids))
+        if (!FindStreamDemuxer(*DPids) != NULL)
         {
           m_Pids[m_NumStreams]    = *DPids;
           m_Streams[m_NumStreams] = new cTSDemuxer(this, m_NumStreams, stAC3, *DPids);
