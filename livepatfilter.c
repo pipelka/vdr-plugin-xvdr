@@ -363,6 +363,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
           case stMPEG2AUDIO:
           {
             m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, m_Streamer->m_NumStreams, stMPEG2AUDIO, pids[i]);
+            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguage(langs[i]);
             m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
             m_Streamer->m_NumStreams++;
             break;
@@ -392,6 +393,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
           case stEAC3:
           {
             m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, m_Streamer->m_NumStreams, stEAC3, pids[i]);
+            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguage(langs[i]);
             m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
             m_Streamer->m_NumStreams++;
             break;
@@ -399,6 +401,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
           case stDTS:
           {
             m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, m_Streamer->m_NumStreams, stDTS, pids[i]);
+            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguage(langs[i]);
             m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
             m_Streamer->m_NumStreams++;
             break;
@@ -406,6 +409,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
           case stAAC:
           {
             m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, m_Streamer->m_NumStreams, stAAC, pids[i]);
+            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguage(langs[i]);
             m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
             m_Streamer->m_NumStreams++;
             break;
