@@ -353,7 +353,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
         }
       }
       m_Streamer->m_NumStreams  = 0;
-      m_Streamer->m_streamReady = false;
+      m_Streamer->m_streamReady = m_Streamer->m_IsAudioOnly;
       m_Streamer->m_IFrameSeen  = false;
 
       for (int i = 0; i < streams; i++)
