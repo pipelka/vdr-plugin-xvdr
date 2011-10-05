@@ -153,6 +153,7 @@ void cLiveStreamer::Action(void)
   m_startup             = true;
 
   cTimeMs last_info;
+  last_info.Set(0);
 
   while (Running())
   {
@@ -185,16 +186,6 @@ void cLiveStreamer::Action(void)
       used++;
       buf++;
       size--;
-    }
-
-    // Send stream information as the first packet on startup
-    if (IsStarting() && IsReady())
-    {
-      INFOLOG("streaming of channel started");
-      last_info.Set(0);
-      m_last_tick.Set(0);
-      m_requestStreamChange = true;
-      m_startup = false;
     }
 
     while (size >= TS_SIZE)
@@ -242,9 +233,12 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
   m_Socket    = Socket;
   m_Device    = cDevice::GetDevice(channel, m_Priority, true);
 
+  INFOLOG("--------------------------------------");
+  INFOLOG("Channel streaming request: %i - %s", m_Channel->Number(), m_Channel->Name());
+
   if (m_Device != NULL)
   {
-    DEBUGLOG("Successfully found following device: %p (%d) for receiving", m_Device, m_Device ? m_Device->CardIndex() + 1 : 0);
+    INFOLOG("Found available device %d", m_Device->CardIndex() + 1);
 
     if (m_Device->SwitchChannel(m_Channel, false))
     {
@@ -262,11 +256,6 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
       }
       else
       {
-        /* m_streamReady is set by the Video demuxers, to have always valid stream informations
-         * like height and width. But if no Video PID is present like for radio channels
-         * XVDR will deadlock
-         */
-        m_streamReady = true;
         m_IsAudioOnly = true;
       }
 
@@ -274,7 +263,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
       int index = 0;
       for ( ; *APids && m_NumStreams < MAXRECEIVEPIDS; APids++)
       {
-        if (FindStreamDemuxer(*APids) != NULL)
+        if (FindStreamDemuxer(*APids) == NULL)
         {
           m_Pids[m_NumStreams]    = *APids;
           m_Streams[m_NumStreams] = new cTSDemuxer(this, m_NumStreams, stMPEG2AUDIO, *APids);
@@ -288,7 +277,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
       index = 0;
       for ( ; *DPids && m_NumStreams < MAXRECEIVEPIDS; DPids++)
       {
-        if (!FindStreamDemuxer(*DPids) != NULL)
+        if (FindStreamDemuxer(*DPids) == NULL)
         {
           m_Pids[m_NumStreams]    = *DPids;
           m_Streams[m_NumStreams] = new cTSDemuxer(this, m_NumStreams, stAC3, *DPids);
@@ -304,7 +293,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
         int index = 0;
         for ( ; *SPids && m_NumStreams < MAXRECEIVEPIDS; SPids++)
         {
-          if (!FindStreamDemuxer(*SPids))
+          if (FindStreamDemuxer(*SPids) == NULL)
           {
             m_Pids[m_NumStreams]    = *SPids;
             m_Streams[m_NumStreams] = new cTSDemuxer(this, m_NumStreams, stDVBSUB, *SPids);
@@ -344,7 +333,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
 
       if (m_NumStreams > 0 && m_Socket)
       {
-        dsyslog("XVDR: Creating new live Receiver");
+        DEBUGLOG("Creating new live Receiver");
         m_Receiver  = new cLiveReceiver(this, m_Channel->GetChannelID(), m_Priority, m_Pids);
         m_PatFilter = new cLivePatFilter(this, m_Channel);
         m_Device->AttachReceiver(m_Receiver);
@@ -423,15 +412,23 @@ void cLiveStreamer::Detach(void)
 
 void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
 {
-  if(pkt == NULL)
-    return;
-
-  if(pkt->size == 0)
+  if(!IsReady() || pkt == NULL || pkt->size == 0)
     return;
 
   if(!m_IsAudioOnly && !m_IFrameSeen && (pkt->frametype != PKT_I_FRAME))
     return;
 
+  // Send stream information as the first packet on startup
+  if (IsStarting() && IsReady())
+  {
+    INFOLOG("streaming of channel started");
+    m_last_tick.Set(0);
+    m_requestStreamChange = true;
+    m_startup = false;
+  }
+
+
+  // send stream change on demand
   if(m_requestStreamChange)
     sendStreamChange();
 

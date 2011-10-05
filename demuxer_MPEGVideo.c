@@ -288,8 +288,6 @@ bool cParserMPEG2Video::Parse_MPEG2Video_SeqStart(cBitstream *bs)
       break;
   }
 
-  DEBUGLOG("MPEG2 DAR: %.2f", DAR);
-
   m_FrameDuration = mpeg2video_framedurations[bs->readBits(4)];
   bs->skipBits(18);
   bs->skipBits(1);
@@ -298,7 +296,7 @@ bool cParserMPEG2Video::Parse_MPEG2Video_SeqStart(cBitstream *bs)
     m_Streamer->SetReady();
 
   m_vbvSize = bs->readBits(10) * 16 * 1024 / 8;
-  m_demuxer->SetVideoInformation(0,0, m_Height, m_Width, DAR);
+  m_demuxer->SetVideoInformation(0,0, m_Height, m_Width, DAR, 1, 1);
 
   return false;
 }

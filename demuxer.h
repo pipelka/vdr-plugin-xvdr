@@ -279,7 +279,7 @@ public:
   const int GetStreamIndex() const { return m_streamIndex; }
 
   /* Video Stream Information */
-  void SetVideoInformation(int FpsScale, int FpsRate, int Height, int Width, float Aspect);
+  void SetVideoInformation(int FpsScale, int FpsRate, int Height, int Width, float Aspect, int num, int den);
   uint32_t GetFpsScale() const { return m_FpsScale; }
   uint32_t GetFpsRate() const { return m_FpsRate; }
   uint32_t GetHeight() const { return m_Height; }

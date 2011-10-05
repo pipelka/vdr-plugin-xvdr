@@ -180,11 +180,6 @@ void cParser::SendPacket(sStreamPacket *pkt)
   pkt->pts      = Rescale(pts);
   pkt->duration = Rescale(pkt->duration);
 
-  // skip packet if we are not ready to send
-  if (m_Streamer->IsStarting()) {
-    return;
-  }
-
   m_Streamer->sendStreamPacket(pkt);
 }
 
@@ -303,8 +298,29 @@ void cTSDemuxer::SetLanguage(const char *language)
   m_language[3] = 0;
 }
 
-void cTSDemuxer::SetVideoInformation(int FpsScale, int FpsRate, int Height, int Width, float Aspect)
+void cTSDemuxer::SetVideoInformation(int FpsScale, int FpsRate, int Height, int Width, float Aspect, int num, int den)
 {
+  // check for sane picture information
+  if(Width < 320 || Height < 240 || num <= 0 || den <= 0 || Aspect <= 0)
+    return;
+
+  // only register changed video information
+  if(Width == m_Width && Height == m_Height && Aspect == m_Aspect)
+    return;
+
+  INFOLOG("--------------------------------------");
+  INFOLOG("NEW PICTURE INFORMATION:");
+  INFOLOG("Picture Width: %i", Width);
+  INFOLOG("Picture Height: %i", Height);
+
+  if(num != 1 || den != 1)
+    INFOLOG("Pixel Aspect: %i:%i", num, den);
+
+  INFOLOG("Display Aspect Ratio: %.2f", Aspect);
+  INFOLOG("--------------------------------------");
+
+  m_Streamer->SetReady();
+
   m_FpsScale        = FpsScale;
   m_FpsRate         = FpsRate;
   m_Height          = Height;
@@ -314,6 +330,20 @@ void cTSDemuxer::SetVideoInformation(int FpsScale, int FpsRate, int Height, int 
 
 void cTSDemuxer::SetAudioInformation(int Channels, int SampleRate, int BitRate, int BitsPerSample, int BlockAlign)
 {
+  if(m_Streamer->IsAudioOnly())
+    m_Streamer->SetReady();
+
+  // only register changed audio information
+  if(Channels == m_Channels && SampleRate == m_SampleRate && BitRate == m_BitRate)
+    return;
+
+  INFOLOG("--------------------------------------");
+  INFOLOG("NEW AUDIO INFORMATION:");
+  INFOLOG("Channels: %i", Channels);
+  INFOLOG("Samplerate: %i Hz", SampleRate);
+  INFOLOG("Bitrate: %i bps", BitRate);
+  INFOLOG("--------------------------------------");
+
   m_Channels        = Channels;
   m_SampleRate      = SampleRate;
   m_BlockAlign      = BlockAlign;

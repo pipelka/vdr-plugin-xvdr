@@ -334,9 +334,9 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
         newstreams++;
     }
 
-    m_Streamer->m_FilterMutex.Lock();
     if (newstreams > 0)
     {
+      m_Streamer->m_FilterMutex.Lock();
       if (m_Streamer->m_Receiver)
       {
         DEBUGLOG("Detaching Live Receiver");
@@ -353,7 +353,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
         }
       }
       m_Streamer->m_NumStreams  = 0;
-      m_Streamer->m_streamReady = m_Streamer->m_IsAudioOnly;
+      m_Streamer->m_streamReady = false;
       m_Streamer->m_IFrameSeen  = false;
 
       for (int i = 0; i < streams; i++)
@@ -437,9 +437,9 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
 
       m_Streamer->m_Receiver  = new cLiveReceiver(m_Streamer, m_Channel->GetChannelID(), m_Streamer->m_Priority, m_Streamer->m_Pids);
       m_Streamer->m_Device->AttachReceiver(m_Streamer->m_Receiver);
-      INFOLOG("Currently unknown new streams found, receiver and demuxers reinited\n");
+      INFOLOG("Currently unknown new streams found, requesting stream change");
       m_Streamer->RequestStreamChange();
+      m_Streamer->m_FilterMutex.Unlock();
     }
-    m_Streamer->m_FilterMutex.Unlock();
   }
 }

@@ -66,7 +66,6 @@ cParserH264::cParserH264(cTSDemuxer *demuxer, cLiveStreamer *streamer, int strea
   m_demuxer           = demuxer;
   m_vbvDelay          = -1;
   m_vbvSize           = 0;
-  m_firstIFrame       = false;
   m_PixelAspect.den   = 1;
   m_PixelAspect.num   = 0;
   memset(&m_streamData, 0, sizeof(m_streamData));
@@ -165,11 +164,9 @@ bool cParserH264::Parse_H264(size_t len, uint32_t next_startcode, int sc_offset)
 
     double PAR = (double)m_PixelAspect.num/(double)m_PixelAspect.den;
     double DAR = (PAR * m_Width) / m_Height;
-    DEBUGLOG("H.264 SPS: PAR %i:%i", m_PixelAspect.num, m_PixelAspect.den);
-    DEBUGLOG("H.264 SPS: DAR %.2f", DAR);
 
     if(m_Height >= 576 && m_Width >= 1024 && m_PixelAspect.num > 0 && m_PixelAspect.den > 0)
-      m_demuxer->SetVideoInformation(0,0, m_Height, m_Width, DAR);
+      m_demuxer->SetVideoInformation(0,0, m_Height, m_Width, DAR, m_PixelAspect.num, m_PixelAspect.den);
     break;
   }
 
@@ -199,9 +196,6 @@ bool cParserH264::Parse_H264(size_t len, uint32_t next_startcode, int sc_offset)
     m_StreamPacket.duration   = m_FrameDuration;
     m_FoundFrame = true;
 
-    if (pkttype == PKT_I_FRAME)
-      m_firstIFrame = true;
-
     break;
   }
 
@@ -215,18 +209,12 @@ bool cParserH264::Parse_H264(size_t len, uint32_t next_startcode, int sc_offset)
     if (!m_FoundFrame)
       return true;
 
-    /* Discard Packets until we have the picture size (XBMC can't enable VDPAU without it) */
-    if (!m_firstIFrame || m_Width <= 0)
-      return true;
-
-    // send packet (will be cached if the stream isn't ready yet)
+    // send packet
     m_FoundFrame        = false;
     m_StreamPacket.data = m_pictureBuffer;
     m_StreamPacket.size = m_pictureBufferPtr;
     SendPacket(&m_StreamPacket);
 
-    // signal stream is ready
-    m_Streamer->SetReady();
     return true;
   }
 
@@ -383,9 +371,6 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len)
   m_Width  /* mbs */ = bs.readGolombUE() + 1;
   m_Height /* mbs */ = bs.readGolombUE() + 1;
   frame_mbs_only     = bs.readBits1();
-  DEBUGLOG("H.264 SPS: pic_width:  %u mbs", (unsigned) m_Width);
-  DEBUGLOG("H.264 SPS: pic_height: %u mbs", (unsigned) m_Height);
-  DEBUGLOG("H.264 SPS: frame only flag: %d", frame_mbs_only);
 
   m_Width  *= 16;
   m_Height *= 16 * (2-frame_mbs_only);
@@ -418,13 +403,11 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len)
     if (bs.readBits1())  /* aspect_ratio_info_present */
     {
       uint32_t aspect_ratio_idc = bs.readBits(8);
-      DEBUGLOG("H.264 SPS: aspect_ratio_idc %d", aspect_ratio_idc);
 
       if (aspect_ratio_idc == 255 /* Extended_SAR */)
       {
         m_PixelAspect.num = bs.readBits(16); /* sar_width */
         m_PixelAspect.den = bs.readBits(16); /* sar_height */
-        DEBUGLOG("H.264 SPS: -> sar %dx%d", m_PixelAspect.num, m_PixelAspect.den);
       }
       else
       {
