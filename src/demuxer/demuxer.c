@@ -26,8 +26,9 @@
 #include <assert.h>
 #include <vdr/remux.h>
 #include <vdr/channels.h>
-#include "config.h"
-#include "livestreamer.h"
+
+#include "config/config.h"
+#include "live/livestreamer.h"
 #include "demuxer.h"
 #include "demuxer_AAC.h"
 #include "demuxer_AC3.h"

@@ -31,13 +31,13 @@
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include <asm/byteorder.h>
+#include <zlib.h>
+
+#include "config/config.h"
+#include "xvdr/xvdrcommand.h"
 
 #include "responsepacket.h"
-#include "xvdrcommand.h"
-#include "config.h"
-#include "zlib.h"
 
 /* Packet format for an RR channel response:
 

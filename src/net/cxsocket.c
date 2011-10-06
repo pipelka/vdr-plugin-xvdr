@@ -45,7 +45,7 @@
 #include <vdr/config.h>
 #include <vdr/tools.h>
 
-#include "config.h"
+#include "config/config.h"
 #include "cxsocket.h"
 
 cxSocket::~cxSocket()

@@ -23,8 +23,8 @@
  */
 
 #include <stdlib.h>
-#include "config.h"
 
+#include "config/config.h"
 #include "demuxer_Teletext.h"
 
 cParserTeletext::cParserTeletext(cTSDemuxer *demuxer, cLiveStreamer *streamer, int streamIndex)

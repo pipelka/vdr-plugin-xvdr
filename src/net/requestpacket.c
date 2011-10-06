@@ -30,9 +30,10 @@
 
 #include <asm/byteorder.h>
 
-#include "config.h"
+#include "xvdr/xvdrcommand.h"
+#include "config/config.h"
+
 #include "requestpacket.h"
-#include "xvdrcommand.h"
 
 cRequestPacket::cRequestPacket(uint32_t requestID, uint32_t opcode, uint8_t* data, uint32_t dataLength)
  : userData(data), userDataLength(dataLength), opCode(opcode), requestID(requestID)

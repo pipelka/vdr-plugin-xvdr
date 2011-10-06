@@ -26,17 +26,16 @@
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <time.h>
-
 #include <map>
-
 #include <vdr/remux.h>
 #include <vdr/channels.h>
 #include <asm/byteorder.h>
 
-#include "config.h"
-#include "cxsocket.h"
-#include "xvdrcommand.h"
-#include "responsepacket.h"
+#include "config/config.h"
+#include "net/cxsocket.h"
+#include "net/responsepacket.h"
+#include "xvdr/xvdrcommand.h"
+
 #include "livestreamer.h"
 #include "livepatfilter.h"
 #include "livereceiver.h"

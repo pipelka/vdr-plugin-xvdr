@@ -20,9 +20,9 @@
  *
  */
 
-#include "config.h"
+#include "config/config.h"
 #include "recordingscache.h"
-#include "hash.h"
+#include "tools/hash.h"
 
 cRecordingsCache::cRecordingsCache() {
 }

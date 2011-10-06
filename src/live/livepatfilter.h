@@ -30,7 +30,7 @@
 #include <libsi/section.h>
 #include <libsi/descriptor.h>
 
-#include "demuxer.h"
+#include "demuxer/demuxer.h"
 
 class cLiveStreamer;
 

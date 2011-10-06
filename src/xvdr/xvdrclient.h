@@ -26,16 +26,15 @@
 #ifndef XVDR_CLIENT_H
 #define XVDR_CLIENT_H
 
+#include <map>
+#include <string>
+
 #include <vdr/thread.h>
 #include <vdr/tools.h>
 #include <vdr/receiver.h>
 #include <vdr/status.h>
 
-#include "config.h"
-#include "cxsocket.h"
-
-#include <map>
-#include <string>
+#include "net/cxsocket.h"
 
 class cChannel;
 class cDevice;

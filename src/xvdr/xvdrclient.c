@@ -34,18 +34,18 @@
 #include <vdr/menu.h>
 #include <vdr/device.h>
 
-#include "config.h"
+#include "config/config.h"
+#include "live/livestreamer.h"
+#include "net/requestpacket.h"
+#include "net/responsepacket.h"
+#include "recordings/recordingscache.h"
+#include "recordings/recplayer.h"
+#include "scanner/wirbelscanservice.h" /// copied from modified wirbelscan plugin
+#include "tools/hash.h"
+
 #include "xvdrcommand.h"
-#include "recordingscache.h"
 #include "xvdrclient.h"
-#include "livestreamer.h"
 #include "xvdrserver.h"
-#include "recplayer.h"
-#include "requestpacket.h"
-#include "responsepacket.h"
-#include "hash.h"
-#include "wirbelscanservice.h" /// copied from modified wirbelscan plugin
-                               /// must be hold up to date with wirbelscan
 
 
 static bool IsRadio(const cChannel* channel)

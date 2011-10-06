@@ -24,8 +24,8 @@
 
 #include <stdlib.h>
 #include <assert.h>
-#include "config.h"
 
+#include "config/config.h"
 #include "demuxer_AC3.h"
 #include "bitstream.h"
 

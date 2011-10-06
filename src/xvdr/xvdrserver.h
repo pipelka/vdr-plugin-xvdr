@@ -23,33 +23,35 @@
  *
  */
 
-#include "config.h"
-#include "livereceiver.h"
-#include "livestreamer.h"
+#ifndef XVDR_SERVER_H
+#define XVDR_SERVER_H
 
-cLiveReceiver::cLiveReceiver(cLiveStreamer *Streamer, tChannelID ChannelID, int Priority, const int *Pids)
- : cReceiver(ChannelID, Priority, 0, Pids)
- , m_Streamer(Streamer)
+#include <list>
+#include <vdr/thread.h>
+
+#include "config/config.h"
+
+class cXVDRClient;
+
+class cXVDRServer : public cThread
 {
-  DEBUGLOG("Starting live receiver");
-}
+protected:
 
-cLiveReceiver::~cLiveReceiver()
-{
-  DEBUGLOG("Killing live receiver");
-}
+  typedef std::list<cXVDRClient*> ClientList;
 
-void cLiveReceiver::Receive(uchar *Data, int Length)
-{
-  int p = m_Streamer->Put(Data, Length);
+  virtual void Action(void);
+  void NewClientConnected(int fd);
 
-  if (p != Length)
-    m_Streamer->ReportOverflow(Length - p);
-}
+  int           m_ServerPort;
+  int           m_ServerFD;
+  cString       m_AllowedHostsFile;
+  ClientList    m_clients;
 
-inline void cLiveReceiver::Activate(bool On)
-{
-  m_Streamer->Activate(On);
-}
+  static unsigned int m_IdCnt;
 
+public:
+  cXVDRServer(int listenPort);
+  virtual ~cXVDRServer();
+};
 
+#endif // XVDR_SERVER_H

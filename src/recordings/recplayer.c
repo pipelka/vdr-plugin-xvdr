@@ -34,6 +34,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "config/config.h"
+
 cRecPlayer::cRecPlayer(cRecording* rec)
 {
   m_file          = -1;

@@ -11,7 +11,7 @@ PLUGIN = xvdr
 
 ### The version number of this plugin (taken from the main source file):
 
-VERSION = $(shell grep 'static const char \*VERSION *=' xvdr.h | awk '{ print $$6 }' | sed -e 's/[";]//g')
+VERSION = $(shell grep 'static const char \*VERSION *=' src/xvdr/xvdr.h | awk '{ print $$6 }' | sed -e 's/[";]//g')
 
 ### The C++ compiler and options:
 
@@ -41,7 +41,7 @@ PACKAGE = vdr-$(ARCHIVE)
 
 ### Includes and Defines (add further entries here):
 
-INCLUDES += -I$(VDRDIR)/include -I$(DVBDIR)/include -I$(VDRDIR)
+INCLUDES += -I$(VDRDIR)/include -I$(DVBDIR)/include -I$(VDRDIR) -I./src -I.
 
 DEFINES += -DPLUGIN_NAME_I18N='"$(PLUGIN)"' -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -DXVDR_VERSION='"$(VERSION)"'
 ifeq ($(DEBUG),1)
@@ -53,17 +53,37 @@ endif
 
 ### The object files (add further files here):
 
-OBJS = xvdr.o bitstream.o xvdrclient.o config.o cxsocket.o demuxer.o demuxer_AAC.o \
-       demuxer_AC3.o demuxer_DTS.o demuxer_h264.o demuxer_MPEGAudio.o demuxer_MPEGVideo.o \
-       demuxer_Subtitle.o demuxer_Teletext.o livepatfilter.o livereceiver.o livestreamer.o recplayer.o requestpacket.o responsepacket.o \
-       xvdrserver.o hash.o recordingscache.o
+OBJS = \
+	src/config/config.o \
+	src/demuxer/bitstream.o \
+	src/demuxer/demuxer.o \
+	src/demuxer/demuxer_AAC.o \
+	src/demuxer/demuxer_AC3.o \
+	src/demuxer/demuxer_DTS.o \
+	src/demuxer/demuxer_h264.o \
+	src/demuxer/demuxer_MPEGAudio.o \
+	src/demuxer/demuxer_MPEGVideo.o \
+	src/demuxer/demuxer_Subtitle.o \
+	src/demuxer/demuxer_Teletext.o \
+	src/live/livepatfilter.o \
+	src/live/livereceiver.o \
+	src/live/livestreamer.o \
+	src/net/cxsocket.o \
+	src/net/requestpacket.o \
+	src/net/responsepacket.o \
+	src/recordings/recordingscache.o \
+	src/recordings/recplayer.o \
+	src/tools/hash.o \
+	src/xvdr/xvdr.o \
+	src/xvdr/xvdrclient.o \
+	src/xvdr/xvdrserver.o
 
 ### Implicit rules:
 
 all-redirect: all
 
 %.o: %.c
-	$(CXX) $(CXXFLAGS) -c $(DEFINES) $(INCLUDES) $<
+	$(CXX) $(CXXFLAGS) -c $(DEFINES) $(INCLUDES) -o $@ $<
 
 # Dependencies:
 

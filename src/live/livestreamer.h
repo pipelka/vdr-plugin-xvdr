@@ -34,7 +34,7 @@
 #include <vdr/thread.h>
 #include <vdr/ringbuffer.h>
 
-#include "demuxer.h"
+#include "demuxer/demuxer.h"
 
 class cxSocket;
 class cChannel;

@@ -24,10 +24,10 @@
 
 #include <stdlib.h>
 #include <assert.h>
-#include "config.h"
-#include "bitstream.h"
-#include "livestreamer.h"
 
+#include "config/config.h"
+#include "live/livestreamer.h"
+#include "bitstream.h"
 #include "demuxer_MPEGVideo.h"
 
 using namespace std;

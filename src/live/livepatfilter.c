@@ -23,7 +23,7 @@
  *
  */
 
-#include "config.h"
+#include "config/config.h"
 #include "livepatfilter.h"
 #include "livereceiver.h"
 #include "livestreamer.h"

@@ -35,8 +35,6 @@
 #include <vdr/recording.h>
 #include <vdr/tools.h>
 
-#include "config.h"
-
 class cSegment
 {
   public:

@@ -24,10 +24,10 @@
 
 #include <stdlib.h>
 #include <assert.h>
-#include "config.h"
-#include "bitstream.h"
-#include "livestreamer.h"
 
+#include "config/config.h"
+#include "live/livestreamer.h"
+#include "bitstream.h"
 #include "demuxer_h264.h"
 
 static const int h264_lev2cpbsize[][2] =
