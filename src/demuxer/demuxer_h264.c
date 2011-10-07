@@ -67,7 +67,7 @@ cParserH264::cParserH264(cTSDemuxer *demuxer, cLiveStreamer *streamer, int strea
   m_vbvDelay          = -1;
   m_vbvSize           = 0;
   m_PixelAspect.den   = 1;
-  m_PixelAspect.num   = 0;
+  m_PixelAspect.num   = 1;
   memset(&m_streamData, 0, sizeof(m_streamData));
 }
 
@@ -165,8 +165,7 @@ bool cParserH264::Parse_H264(size_t len, uint32_t next_startcode, int sc_offset)
     double PAR = (double)m_PixelAspect.num/(double)m_PixelAspect.den;
     double DAR = (PAR * m_Width) / m_Height;
 
-    if(m_Height >= 576 && m_Width >= 1024 && m_PixelAspect.num > 0 && m_PixelAspect.den > 0)
-      m_demuxer->SetVideoInformation(0,0, m_Height, m_Width, DAR, m_PixelAspect.num, m_PixelAspect.den);
+    m_demuxer->SetVideoInformation(0,0, m_Height, m_Width, DAR, m_PixelAspect.num, m_PixelAspect.den);
     break;
   }
 
