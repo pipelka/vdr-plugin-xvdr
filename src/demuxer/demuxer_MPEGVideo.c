@@ -292,9 +292,6 @@ bool cParserMPEG2Video::Parse_MPEG2Video_SeqStart(cBitstream *bs)
   bs->skipBits(18);
   bs->skipBits(1);
 
-  if (m_Width > 0)
-    m_Streamer->SetReady();
-
   m_vbvSize = bs->readBits(10) * 16 * 1024 / 8;
   m_demuxer->SetVideoInformation(0,0, m_Height, m_Width, DAR, 1, 1);
 
@@ -330,8 +327,7 @@ void cParserMPEG2Video::Parse_ComputePTS(sStreamPacket *pkt)
   /* PTS known and no other packets in queue, deliver at once */
   if (validpts && pkt->duration)
   {
-    if (m_Width > 0)
-      SendPacket(pkt);
+    SendPacket(pkt);
     free(pkt->data);
     delete pkt;
     return;
@@ -381,8 +377,7 @@ void cParserMPEG2Video::Parse_ComputePTS(sStreamPacket *pkt)
     }
     else
     {
-      if (m_Width > 0)
-        SendPacket(pkt);
+      SendPacket(pkt);
       free(pkt->data);
       delete pkt;
     }
@@ -405,8 +400,7 @@ void cParserMPEG2Video::Parse_ComputeDuration(sStreamPacket *pkt)
   if (duration >= 10)
   {
     pkt->duration = duration;
-    if (m_Width > 0)
-      SendPacket(pkt);
+    SendPacket(pkt);
   }
   free(pkt->data);
 }
