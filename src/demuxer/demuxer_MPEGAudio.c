@@ -24,7 +24,6 @@
 
 #include <stdlib.h>
 #include <assert.h>
-#include "config.h"
 
 #include "demuxer_MPEGAudio.h"
 
