@@ -65,28 +65,12 @@ cParserMPEG2Video::cParserMPEG2Video(cTSDemuxer *demuxer, cLiveStreamer *streame
   m_FrameDuration     = 0;
   m_vbvDelay          = -1;
   m_vbvSize           = 0;
-  m_Height            = 0;
-  m_Width             = 0;
   m_StreamPacket      = NULL;
   m_demuxer           = demuxer;
 }
 
 cParserMPEG2Video::~cParserMPEG2Video()
 {
-  while (!m_PTSQueue.empty())
-  {
-    sStreamPacket* pkt = m_PTSQueue.front();
-    m_PTSQueue.pop_front();
-    free(pkt->data);
-    delete pkt;
-  }
-  while (!m_DurationQueue.empty())
-  {
-    sStreamPacket* pkt = m_DurationQueue.front();
-    m_DurationQueue.pop_front();
-    free(pkt->data);
-    delete pkt;
-  }
   if (m_pictureBuffer)
   {
     free(m_pictureBuffer);
@@ -104,12 +88,6 @@ void cParserMPEG2Video::Parse(unsigned char *data, int size, bool pusi)
     int hlen;
 
     hlen = ParsePESHeader(data, size);
-  #if 0
-    int i;
-    for(i = 0; i < 16; i++)
-      printf("%02x.", data[i]);
-    printf(" %d\n", hlen);
-  #endif
     data += hlen;
     size  -= hlen;
 
@@ -210,11 +188,8 @@ bool cParserMPEG2Video::Parse_MPEG2Video(size_t len, uint32_t next_startcode, in
       switch(buf[4] >> 4) {
       case 0x1:
         /* sequence extension */
-        //      printf("Sequence extension, len = %d\n", len);
         if(len < 10)
           return true;
-        //      printf("Profile = %d\n", buf[4] & 0x7);
-        //      printf("  Level = %d\n", buf[5] >> 4);
         break;
       }
       break;
@@ -235,7 +210,13 @@ bool cParserMPEG2Video::Parse_MPEG2Video(size_t len, uint32_t next_startcode, in
         m_StreamPacket->size      = m_pictureBufferPtr - 4;
         m_StreamPacket->duration  = m_FrameDuration;
 
-        Parse_ComputePTS(m_StreamPacket);
+        // send packet if it has a valid PTS
+        if(m_StreamPacket->pts != DVD_NOPTS_VALUE)
+          SendPacket(m_StreamPacket);
+
+        // remove packet
+        free(m_StreamPacket->data);
+        delete m_StreamPacket;
         m_StreamPacket = NULL;
 
         m_pictureBuffer = (uint8_t*)malloc(m_pictureBufferSize);
@@ -261,8 +242,8 @@ bool cParserMPEG2Video::Parse_MPEG2Video_SeqStart(cBitstream *bs)
   if (bs->length() < 61)
     return true;
 
-  m_Width         = bs->readBits(12);
-  m_Height        = bs->readBits(12);
+  int width  = bs->readBits(12);
+  int height = bs->readBits(12);
 
   // figure out Display Aspect Ratio
   double DAR = 0;
@@ -293,7 +274,7 @@ bool cParserMPEG2Video::Parse_MPEG2Video_SeqStart(cBitstream *bs)
   bs->skipBits(1);
 
   m_vbvSize = bs->readBits(10) * 16 * 1024 / 8;
-  m_demuxer->SetVideoInformation(0,0, m_Height, m_Width, DAR, 1, 1);
+  m_demuxer->SetVideoInformation(0,0, height, width, DAR, 1, 1);
 
   return false;
 }
@@ -318,89 +299,4 @@ bool cParserMPEG2Video::Parse_MPEG2Video_PicStart(int *frametype, cBitstream *bs
     m_vbvDelay = Rescale(vbvDelay);
 
   return false;
-}
-
-void cParserMPEG2Video::Parse_ComputePTS(sStreamPacket *pkt)
-{
-  bool validpts = pkt->pts != DVD_NOPTS_VALUE && m_PTSQueue.size() == 0;
-
-  /* PTS known and no other packets in queue, deliver at once */
-  if (validpts && pkt->duration)
-  {
-    SendPacket(pkt);
-    free(pkt->data);
-    delete pkt;
-    return;
-  }
-
-  if (validpts)
-    return Parse_ComputeDuration(pkt);
-
-  m_PTSQueue.push_back(pkt);
-
-  while (!m_PTSQueue.empty())
-  {
-    pkt = m_PTSQueue.front();
-
-    switch (pkt->frametype)
-    {
-      case PKT_B_FRAME:
-        /* B-frames have same PTS as DTS, pass them on */
-        pkt->pts = pkt->dts;
-        break;
-
-      case PKT_I_FRAME:
-      case PKT_P_FRAME:
-        /* Presentation occures at DTS of next I or P frame, try to find it */
-        deque<sStreamPacket*>::iterator it;
-        it = m_PTSQueue.begin()+1;
-        while (1)
-        {
-          if (it >= m_PTSQueue.end())
-            return; /* not arrived yet, wait */
-
-          sStreamPacket* pkt2 = *it++;
-          if (pkt2->frametype <= PKT_P_FRAME)
-          {
-            pkt->pts = pkt2->dts;
-            break;
-          }
-        }
-        break;
-    }
-
-    m_PTSQueue.pop_front();
-
-    if (pkt->duration == 0)
-    {
-      Parse_ComputeDuration(pkt);
-    }
-    else
-    {
-      SendPacket(pkt);
-      free(pkt->data);
-      delete pkt;
-    }
-  }
-}
-
-void cParserMPEG2Video::Parse_ComputeDuration(sStreamPacket *pkt)
-{
-  m_DurationQueue.push_back(pkt);
-
-  pkt = m_DurationQueue.front();
-  if (m_DurationQueue.size() <= 1)
-    return;
-
-  sStreamPacket *next = m_DurationQueue[1];
-
-  int64_t duration = next->dts - pkt->dts;
-  m_DurationQueue.pop_front();
-
-  if (duration >= 10)
-  {
-    pkt->duration = duration;
-    SendPacket(pkt);
-  }
-  free(pkt->data);
 }
