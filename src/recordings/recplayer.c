@@ -111,7 +111,7 @@ void cRecPlayer::update()
   if(m_rescanTime.Elapsed() < m_rescanInterval)
     return;
 
-  INFOLOG("%s", __FUNCTION__);
+  DEBUGLOG("%s", __FUNCTION__);
   m_rescanTime.Set(0);
 
   // no change ?
@@ -214,7 +214,7 @@ int cRecPlayer::getBlock(unsigned char* buffer, uint64_t position, int amount)
 
   // try to read the block
   int bytes_read = read(m_file, buffer, amount);
-  INFOLOG("read %i bytes from file %i at position %llu", bytes_read, segmentNumber, filePosition);
+  DEBUGLOG("read %i bytes from file %i at position %llu", bytes_read, segmentNumber, filePosition);
 
   if(bytes_read <= 0) {
     return 0;
