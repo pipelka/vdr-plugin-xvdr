@@ -302,7 +302,7 @@ void cTSDemuxer::SetLanguage(const char *language)
 void cTSDemuxer::SetVideoInformation(int FpsScale, int FpsRate, int Height, int Width, float Aspect, int num, int den)
 {
   // check for sane picture information
-  if(Width < 320 || Height < 240 || num <= 0 || den <= 0 || Aspect <= 0)
+  if(Width < 320 || Height < 240 || num <= 0 || den <= 0 || Aspect < 0)
     return;
 
   // only register changed video information
@@ -317,7 +317,11 @@ void cTSDemuxer::SetVideoInformation(int FpsScale, int FpsRate, int Height, int 
   if(num != 1 || den != 1)
     INFOLOG("Pixel Aspect: %i:%i", num, den);
 
-  INFOLOG("Display Aspect Ratio: %.2f", Aspect);
+  if(Aspect == 0)
+    INFOLOG("Unknown Display Aspect Ratio");
+  else 
+    INFOLOG("Display Aspect Ratio: %.2f", Aspect);
+
   INFOLOG("--------------------------------------");
 
   m_Streamer->SetReady();
