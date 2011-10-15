@@ -210,9 +210,11 @@ bool cParserMPEG2Video::Parse_MPEG2Video(size_t len, uint32_t next_startcode, in
         m_StreamPacket->size      = m_pictureBufferPtr - 4;
         m_StreamPacket->duration  = m_FrameDuration;
 
-        // send packet if it has a valid PTS
-        if(m_StreamPacket->pts != DVD_NOPTS_VALUE)
-          SendPacket(m_StreamPacket);
+        // check if packet has a valid PTS
+        if(m_StreamPacket->pts == DVD_NOPTS_VALUE)
+          m_StreamPacket->pts = m_StreamPacket->dts;
+
+        SendPacket(m_StreamPacket);
 
         // remove packet
         free(m_StreamPacket->data);
