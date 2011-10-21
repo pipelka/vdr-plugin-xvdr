@@ -160,6 +160,7 @@ inline int TsGetAdaptationField(const uchar *p)
 
 enum eStreamContent
 {
+  scNONE,
   scVIDEO,
   scAUDIO,
   scSUBTITLE,

@@ -207,43 +207,68 @@ cTSDemuxer::cTSDemuxer(cLiveStreamer *streamer, int streamIndex, eStreamType typ
   m_BitsPerSample   = 0;
   m_BlockAlign      = 0;
 
-  if (m_streamType == stMPEG2VIDEO)
-    m_pesParser = new cParserMPEG2Video(this, m_Streamer, m_streamIndex);
-  else if (m_streamType == stH264)
-    m_pesParser = new cParserH264(this, m_Streamer, m_streamIndex);
-  else if (m_streamType == stMPEG2AUDIO)
-    m_pesParser = new cParserMPEG2Audio(this, m_Streamer, m_streamIndex);
-  else if (m_streamType == stAAC)
-    m_pesParser = new cParserAAC(this, m_Streamer, m_streamIndex);
-  else if (m_streamType == stAC3)
-    m_pesParser = new cParserAC3(this, m_Streamer, m_streamIndex);
-  else if (m_streamType == stDTS)
-    m_pesParser = new cParserDTS(this, m_Streamer, m_streamIndex);
-  else if (m_streamType == stEAC3)
-    m_pesParser = new cParserAC3(this, m_Streamer, m_streamIndex);
-  else if (m_streamType == stTELETEXT)
-    m_pesParser = new cParserTeletext(this, m_Streamer, m_streamIndex);
-  else if (m_streamType == stDVBSUB)
-    m_pesParser = new cParserSubtitle(this, m_Streamer, m_streamIndex);
-  else
+  switch (m_streamType)
   {
-    ERRORLOG("Unrecognised type %i inside stream %i", m_streamType, m_streamIndex);
-    return;
+    case  stMPEG2VIDEO:
+      m_pesParser = new cParserMPEG2Video(this, m_Streamer, m_streamIndex);
+      m_streamContent = scVIDEO;
+      break;
+
+    case stH264:
+      m_pesParser = new cParserH264(this, m_Streamer, m_streamIndex);
+      m_streamContent = scVIDEO;
+      break;
+
+    case stMPEG2AUDIO:
+      m_pesParser = new cParserMPEG2Audio(this, m_Streamer, m_streamIndex);
+      m_streamContent = scAUDIO;
+      break;
+
+    case stAAC:
+      m_pesParser = new cParserAAC(this, m_Streamer, m_streamIndex);
+      m_streamContent = scAUDIO;
+      break;
+
+    case stAC3:
+      m_pesParser = new cParserAC3(this, m_Streamer, m_streamIndex);
+      m_streamContent = scAUDIO;
+      break;
+
+    case stDTS:
+      m_pesParser = new cParserDTS(this, m_Streamer, m_streamIndex);
+      m_streamContent = scAUDIO;
+      break;
+
+    case stEAC3:
+      m_pesParser = new cParserAC3(this, m_Streamer, m_streamIndex);
+      m_streamContent = scAUDIO;
+      break;
+
+    case stTELETEXT:
+      m_pesParser = new cParserTeletext(this, m_Streamer, m_streamIndex);
+      m_streamContent = scTELETEXT;
+      break;
+
+    case stDVBSUB:
+      m_pesParser = new cParserSubtitle(this, m_Streamer, m_streamIndex);
+      m_streamContent = scSUBTITLE;
+      break;
+
+    default:
+      ERRORLOG("Unrecognised type %i inside stream %i", m_streamType, m_streamIndex);
+      m_streamContent = scNONE;
   }
 }
 
 cTSDemuxer::~cTSDemuxer()
 {
-  if (m_pesParser)
-  {
-    delete m_pesParser;
-    m_pesParser = NULL;
-  }
+  delete m_pesParser;
+  m_pesParser = NULL;
 }
 
 bool cTSDemuxer::ProcessTSPacket(unsigned char *data)
 {
-  if (!data)
+  if (data = NULL)
     return false;
 
   bool pusi  = TsPayloadStart(data);

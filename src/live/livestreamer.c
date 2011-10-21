@@ -426,7 +426,6 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
     m_startup = false;
   }
 
-
   // send stream change on demand
   if(m_requestStreamChange)
     sendStreamChange();
@@ -486,73 +485,81 @@ void cLiveStreamer::sendStreamChange()
 
   for (int idx = 0; idx < m_NumStreams; ++idx)
   {
-    if (m_Streams[idx])
+	cTSDemuxer* stream = m_Streams[idx];
+
+    if (stream == NULL)
+    	continue;
+
+    int streamid = stream->GetPID();
+    resp->add_U32(streamid);
+
+    switch(stream->Type())
     {
-      int streamid = m_Streams[idx]->GetPID();
-      resp->add_U32(streamid);
-      if (m_Streams[idx]->Type() == stMPEG2AUDIO)
-      {
+      case stMPEG2AUDIO:
         resp->add_String("MPEG2AUDIO");
-        resp->add_String(m_Streams[idx]->GetLanguage());
-        DEBUGLOG("MPEG2AUDIO: %i (index: %i) (%s)", streamid, idx, m_Streams[idx]->GetLanguage());
-      }
-      else if (m_Streams[idx]->Type() == stMPEG2VIDEO)
-      {
+        resp->add_String(stream->GetLanguage());
+        DEBUGLOG("MPEG2AUDIO: %i (index: %i) (%s)", streamid, idx, stream->GetLanguage());
+        break;
+
+      case stMPEG2VIDEO:
         resp->add_String("MPEG2VIDEO");
-        resp->add_U32(m_Streams[idx]->GetFpsScale());
-        resp->add_U32(m_Streams[idx]->GetFpsRate());
-        resp->add_U32(m_Streams[idx]->GetHeight());
-        resp->add_U32(m_Streams[idx]->GetWidth());
-        resp->add_double(m_Streams[idx]->GetAspect());
+        resp->add_U32(stream->GetFpsScale());
+        resp->add_U32(stream->GetFpsRate());
+        resp->add_U32(stream->GetHeight());
+        resp->add_U32(stream->GetWidth());
+        resp->add_double(stream->GetAspect());
         DEBUGLOG("MPEG2VIDEO: %i (index: %i)", streamid, idx);
-      }
-      else if (m_Streams[idx]->Type() == stAC3)
-      {
+        break;
+
+      case stAC3:
         resp->add_String("AC3");
-        resp->add_String(m_Streams[idx]->GetLanguage());
+        resp->add_String(stream->GetLanguage());
         DEBUGLOG("AC3: %i (index: %i)", streamid, idx);
-      }
-      else if (m_Streams[idx]->Type() == stH264)
-      {
+        break;
+
+      case stH264:
         resp->add_String("H264");
-        resp->add_U32(m_Streams[idx]->GetFpsScale());
-        resp->add_U32(m_Streams[idx]->GetFpsRate());
-        resp->add_U32(m_Streams[idx]->GetHeight());
-        resp->add_U32(m_Streams[idx]->GetWidth());
-        resp->add_double(m_Streams[idx]->GetAspect());
+        resp->add_U32(stream->GetFpsScale());
+        resp->add_U32(stream->GetFpsRate());
+        resp->add_U32(stream->GetHeight());
+        resp->add_U32(stream->GetWidth());
+        resp->add_double(stream->GetAspect());
         DEBUGLOG("H264: %i (index: %i)", streamid, idx);
-      }
-      else if (m_Streams[idx]->Type() == stDVBSUB)
-      {
+        break;
+
+      case stDVBSUB:
         resp->add_String("DVBSUB");
-        resp->add_String(m_Streams[idx]->GetLanguage());
-        resp->add_U32(m_Streams[idx]->CompositionPageId());
-        resp->add_U32(m_Streams[idx]->AncillaryPageId());
+        resp->add_String(stream->GetLanguage());
+        resp->add_U32(stream->CompositionPageId());
+        resp->add_U32(stream->AncillaryPageId());
         DEBUGLOG("DVBSUB: %i (index: %i)", streamid, idx);
-      }
-      else if (m_Streams[idx]->Type() == stTELETEXT)
-      {
+        break;
+
+      case stTELETEXT:
         resp->add_String("TELETEXT");
         DEBUGLOG("TELETEXT: %i (index: %i)", streamid, idx);
-      }
-      else if (m_Streams[idx]->Type() == stAAC)
-      {
+        break;
+
+      case stAAC:
         resp->add_String("AAC");
-        resp->add_String(m_Streams[idx]->GetLanguage());
+        resp->add_String(stream->GetLanguage());
         DEBUGLOG("AAC: %i (index: %i)", streamid, idx);
-      }
-      else if (m_Streams[idx]->Type() == stEAC3)
-      {
+        break;
+
+      case stEAC3:
         resp->add_String("EAC3");
-        resp->add_String(m_Streams[idx]->GetLanguage());
+        resp->add_String(stream->GetLanguage());
         DEBUGLOG("EAC3: %i (index: %i)", streamid, idx);
-      }
-      else if (m_Streams[idx]->Type() == stDTS)
-      {
+        break;
+
+      case stDTS:
         resp->add_String("DTS");
-        resp->add_String(m_Streams[idx]->GetLanguage());
+        resp->add_String(stream->GetLanguage());
         DEBUGLOG("DTS: %i (index: %i)", streamid, idx);
-      }
+        break;
+
+      default:
+    	break;
     }
   }
 
@@ -747,38 +754,41 @@ void cLiveStreamer::sendStreamInfo()
 
   for (int idx = 0; idx < m_NumStreams; ++idx)
   {
-    if (m_Streams[idx])
+    cTSDemuxer* stream = m_Streams[idx];
+
+    if (stream == NULL)
+    	continue;
+
+    switch (stream->Content())
     {
-      if (m_Streams[idx]->Type() == stMPEG2AUDIO ||
-          m_Streams[idx]->Type() == stAC3 ||
-          m_Streams[idx]->Type() == stEAC3 ||
-          m_Streams[idx]->Type() == stDTS ||
-          m_Streams[idx]->Type() == stAAC)
-      {
-        resp->add_U32(m_Streams[idx]->GetPID());
-        resp->add_String(m_Streams[idx]->GetLanguage());
-        resp->add_U32(m_Streams[idx]->GetChannels());
-        resp->add_U32(m_Streams[idx]->GetSampleRate());
-        resp->add_U32(m_Streams[idx]->GetBlockAlign());
-        resp->add_U32(m_Streams[idx]->GetBitRate());
-        resp->add_U32(m_Streams[idx]->GetBitsPerSample());
-      }
-      else if (m_Streams[idx]->Type() == stMPEG2VIDEO || m_Streams[idx]->Type() == stH264)
-      {
-        resp->add_U32(m_Streams[idx]->GetPID());
-        resp->add_U32(m_Streams[idx]->GetFpsScale());
-        resp->add_U32(m_Streams[idx]->GetFpsRate());
-        resp->add_U32(m_Streams[idx]->GetHeight());
-        resp->add_U32(m_Streams[idx]->GetWidth());
-        resp->add_double(m_Streams[idx]->GetAspect());
-      }
-      else if (m_Streams[idx]->Type() == stDVBSUB)
-      {
-        resp->add_U32(m_Streams[idx]->GetPID());
-        resp->add_String(m_Streams[idx]->GetLanguage());
-        resp->add_U32(m_Streams[idx]->CompositionPageId());
-        resp->add_U32(m_Streams[idx]->AncillaryPageId());
-      }
+      case scAUDIO:
+        resp->add_U32(stream->GetPID());
+        resp->add_String(stream->GetLanguage());
+        resp->add_U32(stream->GetChannels());
+        resp->add_U32(stream->GetSampleRate());
+        resp->add_U32(stream->GetBlockAlign());
+        resp->add_U32(stream->GetBitRate());
+        resp->add_U32(stream->GetBitsPerSample());
+        break;
+
+      case scVIDEO:
+        resp->add_U32(stream->GetPID());
+        resp->add_U32(stream->GetFpsScale());
+        resp->add_U32(stream->GetFpsRate());
+        resp->add_U32(stream->GetHeight());
+        resp->add_U32(stream->GetWidth());
+        resp->add_double(stream->GetAspect());
+        break;
+
+      case scSUBTITLE:
+        resp->add_U32(stream->GetPID());
+        resp->add_String(stream->GetLanguage());
+        resp->add_U32(stream->CompositionPageId());
+        resp->add_U32(stream->AncillaryPageId());
+        break;
+
+      default:
+    	break;
     }
   }
 
