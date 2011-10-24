@@ -105,8 +105,6 @@ ssize_t cxSocket::read(void *buffer, size_t size, int timeout_ms)
 
   int retryCounter = 0;
 
-  if(m_fd == -1) return -1;
-
   ssize_t missing = (ssize_t)size;
   unsigned char *ptr = (unsigned char *)buffer;
 
@@ -118,6 +116,7 @@ ssize_t cxSocket::read(void *buffer, size_t size, int timeout_ms)
       return size-missing;
     }
 
+    if(m_fd == -1) return -1;
     ssize_t p = ::read(m_fd, ptr, missing);
 
     if (p <= 0)
