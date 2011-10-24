@@ -75,6 +75,7 @@ cMutex cXVDRClient::m_timerLock;
 cXVDRClient::cXVDRClient(int fd, unsigned int id, const char *ClientAdr)
 {
   m_Id                      = id;
+  m_loggedIn                = false;
   m_Streamer                = NULL;
   m_isStreaming             = false;
   m_ClientAddress           = ClientAdr;
