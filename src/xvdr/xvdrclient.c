@@ -517,7 +517,7 @@ bool cXVDRClient::processRequest(cRequestPacket* req)
 
 bool cXVDRClient::process_Login() /* OPCODE 1 */
 {
-  if (m_req->getDataLength() <= 4) return false;
+  if (m_req->getDataLength() <= 6) return false;
 
   m_protocolVersion      = m_req->extract_U32();
   m_compressionLevel     = m_req->extract_U8();
