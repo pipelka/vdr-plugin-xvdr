@@ -124,6 +124,9 @@ cParserAC3::cParserAC3(cTSDemuxer *demuxer, cLiveStreamer *streamer, int streamI
   m_firstPUSIseen             = false;
   m_PESStart                  = false;
   m_FetchTimestamp            = true;
+  m_FrameOffset               = 0;
+  m_CurrentOffset             = 0;
+  m_NextFrameOffset           = 0;
   m_NextDTS                   = 0;
   m_AC3BufferPtr              = 0;
   m_HeaderFound               = false;
