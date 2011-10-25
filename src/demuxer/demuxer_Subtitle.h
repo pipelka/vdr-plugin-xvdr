@@ -43,7 +43,7 @@ private:
   int         m_curLength;
 
 public:
-  cParserSubtitle(cTSDemuxer *demuxer, cLiveStreamer *streamer, int streamIndex);
+  cParserSubtitle(cTSDemuxer *demuxer);
   virtual ~cParserSubtitle();
 
   virtual void Parse(unsigned char *data, int size, bool pusi);

@@ -50,8 +50,8 @@ static const int h264_lev2cpbsize[][2] =
   {-1, -1},
 };
 
-cParserH264::cParserH264(cTSDemuxer *demuxer, cLiveStreamer *streamer, int streamIndex)
- : cParser(streamer, streamIndex)
+cParserH264::cParserH264(cTSDemuxer *demuxer)
+ : cParser(demuxer)
 {
   m_pictureBuffer     = NULL;
   m_pictureBufferSize = 0;
@@ -63,11 +63,12 @@ cParserH264::cParserH264(cTSDemuxer *demuxer, cLiveStreamer *streamer, int strea
   m_Height            = 0;
   m_Width             = 0;
   m_FrameDuration     = 0;
-  m_demuxer           = demuxer;
   m_vbvDelay          = -1;
   m_vbvSize           = 0;
   m_PixelAspect.den   = 1;
   m_PixelAspect.num   = 1;
+  m_FoundFrame        = false;
+
   memset(&m_streamData, 0, sizeof(m_streamData));
 }
 
@@ -188,7 +189,6 @@ bool cParserH264::Parse_H264(size_t len, uint32_t next_startcode, int sc_offset)
     if (!Parse_SLH(nal_data, nal_len, &pkttype))
       return true;
 
-    m_StreamPacket.id         = m_streamIndex;
     m_StreamPacket.pts        = m_curPTS;
     m_StreamPacket.dts        = m_curDTS;
     m_StreamPacket.frametype  = pkttype;
@@ -212,7 +212,7 @@ bool cParserH264::Parse_H264(size_t len, uint32_t next_startcode, int sc_offset)
     m_FoundFrame        = false;
     m_StreamPacket.data = m_pictureBuffer;
     m_StreamPacket.size = m_pictureBufferPtr;
-    SendPacket(&m_StreamPacket);
+    m_demuxer->SendPacket(&m_StreamPacket);
 
     return true;
   }

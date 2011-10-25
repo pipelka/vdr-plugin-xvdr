@@ -170,15 +170,15 @@ enum eStreamContent
 
 enum eStreamType
 {
-  stNone,
+  stNone = -1,
+  stMPEG2AUDIO = 0,
   stAC3,
-  stMPEG2AUDIO,
   stEAC3,
   stAAC,
   stDTS,
-  stMPEG2VIDEO,
+  stMPEG2VIDEO = 10,
   stH264,
-  stDVBSUB,
+  stDVBSUB = 20,
   stTEXTSUB,
   stTELETEXT,
 };
@@ -191,9 +191,12 @@ struct sStreamPacket
 {
   sStreamPacket() {
     frametype = 0;
+    type = stNone;
   }
 
-  int64_t   id;
+  eStreamType type;
+
+  int64_t   pid;
   int64_t   dts;
   int64_t   pts;
   int       duration;
@@ -207,20 +210,17 @@ struct sStreamPacket
 };
 
 class cLiveStreamer;
+class cTSDemuxer;
 
 class cParser
 {
 public:
-  cParser(cLiveStreamer *streamer, int streamIndex);
+  cParser(cTSDemuxer* demuxer);
   virtual ~cParser() {};
 
   virtual void Parse(unsigned char *data, int size, bool pusi) = 0;
 
   int ParsePESHeader(uint8_t *buf, size_t len);
-  void SendPacket(sStreamPacket *pkt);
-  int64_t Rescale(int64_t a);
-
-  cLiveStreamer *m_Streamer;
 
   int64_t     m_LastDTS;
   int64_t     m_curPTS;
@@ -228,11 +228,10 @@ public:
   int64_t     m_epochDTS;
 
   int         m_badDTS;
-  int         m_streamIndex;
-  int         m_streamID;
+  int         m_PID;
 
 protected:
-  bool        m_FoundFrame;
+  cTSDemuxer* m_demuxer;
 };
 
 
@@ -240,10 +239,9 @@ class cTSDemuxer
 {
 private:
   cLiveStreamer        *m_Streamer;
-  const int             m_streamIndex;
-  const int             m_pID;
   eStreamContent        m_streamContent;
   eStreamType           m_streamType;
+  int                   m_PID;
 
   bool                  m_pesError;
   cParser              *m_pesParser;
@@ -266,18 +264,21 @@ private:
   uint16_t              m_compositionPageId;
   uint16_t              m_ancillaryPageId;
 
+  int64_t Rescale(int64_t a);
+
 public:
-  cTSDemuxer(cLiveStreamer *streamer, int id, eStreamType type, int pid);
+  cTSDemuxer(cLiveStreamer *streamer, eStreamType type, int pid);
   virtual ~cTSDemuxer();
 
   bool ProcessTSPacket(unsigned char *data);
+  void SendPacket(sStreamPacket *pkt);
 
   void SetLanguage(const char *language);
   const char *GetLanguage() { return m_language; }
   const eStreamContent Content() const { return m_streamContent; }
   const eStreamType Type() const { return m_streamType; }
-  const int GetPID() const { return m_pID; }
-  const int GetStreamIndex() const { return m_streamIndex; }
+  const int GetPID() const { return m_PID; }
+  bool IsMPEGPS();
 
   /* Video Stream Information */
   void SetVideoInformation(int FpsScale, int FpsRate, int Height, int Width, float Aspect, int num, int den);

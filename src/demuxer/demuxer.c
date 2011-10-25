@@ -93,10 +93,8 @@ int64_t PesGetDTS(const uint8_t *buf, int len)
 
 // --- cParser -------------------------------------------------
 
-cParser::cParser(cLiveStreamer *streamer, int streamIndex)
- : m_Streamer(streamer)
- , m_streamIndex(streamIndex)
- , m_FoundFrame(false)
+cParser::cParser(cTSDemuxer* demuxer)
+ : m_demuxer(demuxer)
 {
   m_curPTS    = DVD_NOPTS_VALUE;
   m_curDTS    = DVD_NOPTS_VALUE;
@@ -105,7 +103,111 @@ cParser::cParser(cLiveStreamer *streamer, int streamIndex)
   m_badDTS    = 0;
 }
 
-int64_t cParser::Rescale(int64_t a)
+/*
+ * Extract DTS and PTS and update current values in stream
+ */
+int cParser::ParsePESHeader(uint8_t *buf, size_t len)
+{
+  /* parse PES header */
+  unsigned int hdr_len = PesHeaderLength(buf);
+
+  /* parse PTS */
+  int64_t pts = PesGetPTS(buf, len);
+  int64_t dts = PesGetDTS(buf, len);
+  if (dts == DVD_NOPTS_VALUE)
+    dts = pts;
+  
+  dts = dts & PTS_MASK;
+  pts = pts & PTS_MASK;
+  
+  if(pts != 0) m_curDTS = dts;
+  if(dts != 0) m_curPTS = pts;
+  
+  return hdr_len;
+}
+
+
+// --- cTSDemuxer ----------------------------------------------------
+
+cTSDemuxer::cTSDemuxer(cLiveStreamer *streamer, eStreamType type, int pid)
+  : m_Streamer(streamer)
+  , m_streamType(type)
+  , m_PID(pid)
+{
+  m_pesError        = false;
+  m_pesParser       = NULL;
+  m_language[0]     = 0;
+  m_FpsScale        = 0;
+  m_FpsRate         = 0;
+  m_Height          = 0;
+  m_Width           = 0;
+  m_Aspect          = 0.0f;
+  m_Channels        = 0;
+  m_SampleRate      = 0;
+  m_BitRate         = 0;
+  m_BitsPerSample   = 0;
+  m_BlockAlign      = 0;
+
+  switch (m_streamType)
+  {
+    case stMPEG2VIDEO:
+      m_pesParser = new cParserMPEG2Video(this);
+      m_streamContent = scVIDEO;
+      break;
+
+    case stH264:
+      m_pesParser = new cParserH264(this);
+      m_streamContent = scVIDEO;
+      break;
+
+    case stMPEG2AUDIO:
+      m_pesParser = new cParserMPEG2Audio(this);
+      m_streamContent = scAUDIO;
+      break;
+
+    case stAAC:
+      m_pesParser = new cParserAAC(this);
+      m_streamContent = scAUDIO;
+      break;
+
+    case stAC3:
+      m_pesParser = new cParserAC3(this);
+      m_streamContent = scAUDIO;
+      break;
+
+    case stDTS:
+      m_pesParser = new cParserDTS(this);
+      m_streamContent = scAUDIO;
+      break;
+
+    case stEAC3:
+      m_pesParser = new cParserAC3(this);
+      m_streamContent = scAUDIO;
+      break;
+
+    case stTELETEXT:
+      m_pesParser = new cParserTeletext(this);
+      m_streamContent = scTELETEXT;
+      break;
+
+    case stDVBSUB:
+      m_pesParser = new cParserSubtitle(this);
+      m_streamContent = scSUBTITLE;
+      break;
+
+    default:
+      ERRORLOG("Unrecognised type %i", m_streamType);
+      m_streamContent = scNONE;
+  }
+}
+
+cTSDemuxer::~cTSDemuxer()
+{
+  delete m_pesParser;
+  m_pesParser = NULL;
+}
+
+int64_t cTSDemuxer::Rescale(int64_t a)
 {
   uint64_t b = DVD_TIME_BASE;
   uint64_t c = 90000;
@@ -145,30 +247,11 @@ int64_t cParser::Rescale(int64_t a)
   }
 }
 
-/*
- * Extract DTS and PTS and update current values in stream
- */
-int cParser::ParsePESHeader(uint8_t *buf, size_t len)
-{
-  /* parse PES header */
-  unsigned int hdr_len = PesHeaderLength(buf);
-
-  /* parse PTS */
-  int64_t pts = PesGetPTS(buf, len);
-  int64_t dts = PesGetDTS(buf, len);
-  if (dts == DVD_NOPTS_VALUE)
-    dts = pts;
-  
-  dts = dts & PTS_MASK;
-  pts = pts & PTS_MASK;
-  
-  if(pts != 0) m_curDTS = dts;
-  if(dts != 0) m_curPTS = pts;
-  
-  return hdr_len;
+bool cTSDemuxer::IsMPEGPS() {
+	return m_Streamer->IsMPEGPS();
 }
 
-void cParser::SendPacket(sStreamPacket *pkt)
+void cTSDemuxer::SendPacket(sStreamPacket *pkt)
 {
   if(pkt->dts == DVD_NOPTS_VALUE) return;
   if(pkt->pts == DVD_NOPTS_VALUE) return;
@@ -177,6 +260,8 @@ void cParser::SendPacket(sStreamPacket *pkt)
   int64_t pts = pkt->pts;
 
   // Rescale for XBMC
+  pkt->type     = m_streamType;
+  pkt->pid      = GetPID();
   pkt->dts      = Rescale(dts);
   pkt->pts      = Rescale(pts);
   pkt->duration = Rescale(pkt->duration);
@@ -184,91 +269,9 @@ void cParser::SendPacket(sStreamPacket *pkt)
   m_Streamer->sendStreamPacket(pkt);
 }
 
-
-// --- cTSDemuxer ----------------------------------------------------
-
-cTSDemuxer::cTSDemuxer(cLiveStreamer *streamer, int streamIndex, eStreamType type, int pid)
-  : m_Streamer(streamer)
-  , m_streamIndex(streamIndex)
-  , m_pID(pid)
-  , m_streamType(type)
-{
-  m_pesError        = false;
-  m_pesParser       = NULL;
-  m_language[0]     = 0;
-  m_FpsScale        = 0;
-  m_FpsRate         = 0;
-  m_Height          = 0;
-  m_Width           = 0;
-  m_Aspect          = 0.0f;
-  m_Channels        = 0;
-  m_SampleRate      = 0;
-  m_BitRate         = 0;
-  m_BitsPerSample   = 0;
-  m_BlockAlign      = 0;
-
-  switch (m_streamType)
-  {
-    case  stMPEG2VIDEO:
-      m_pesParser = new cParserMPEG2Video(this, m_Streamer, m_streamIndex);
-      m_streamContent = scVIDEO;
-      break;
-
-    case stH264:
-      m_pesParser = new cParserH264(this, m_Streamer, m_streamIndex);
-      m_streamContent = scVIDEO;
-      break;
-
-    case stMPEG2AUDIO:
-      m_pesParser = new cParserMPEG2Audio(this, m_Streamer, m_streamIndex);
-      m_streamContent = scAUDIO;
-      break;
-
-    case stAAC:
-      m_pesParser = new cParserAAC(this, m_Streamer, m_streamIndex);
-      m_streamContent = scAUDIO;
-      break;
-
-    case stAC3:
-      m_pesParser = new cParserAC3(this, m_Streamer, m_streamIndex);
-      m_streamContent = scAUDIO;
-      break;
-
-    case stDTS:
-      m_pesParser = new cParserDTS(this, m_Streamer, m_streamIndex);
-      m_streamContent = scAUDIO;
-      break;
-
-    case stEAC3:
-      m_pesParser = new cParserAC3(this, m_Streamer, m_streamIndex);
-      m_streamContent = scAUDIO;
-      break;
-
-    case stTELETEXT:
-      m_pesParser = new cParserTeletext(this, m_Streamer, m_streamIndex);
-      m_streamContent = scTELETEXT;
-      break;
-
-    case stDVBSUB:
-      m_pesParser = new cParserSubtitle(this, m_Streamer, m_streamIndex);
-      m_streamContent = scSUBTITLE;
-      break;
-
-    default:
-      ERRORLOG("Unrecognised type %i inside stream %i", m_streamType, m_streamIndex);
-      m_streamContent = scNONE;
-  }
-}
-
-cTSDemuxer::~cTSDemuxer()
-{
-  delete m_pesParser;
-  m_pesParser = NULL;
-}
-
 bool cTSDemuxer::ProcessTSPacket(unsigned char *data)
 {
-  if (data = NULL)
+  if (data == NULL)
     return false;
 
   bool pusi  = TsPayloadStart(data);
@@ -349,13 +352,16 @@ void cTSDemuxer::SetVideoInformation(int FpsScale, int FpsRate, int Height, int 
 
   INFOLOG("--------------------------------------");
 
-  m_Streamer->SetReady();
-
   m_FpsScale        = FpsScale;
   m_FpsRate         = FpsRate;
   m_Height          = Height;
   m_Width           = Width;
   m_Aspect          = Aspect;
+
+  if(m_Streamer->IsReady())
+	  m_Streamer->RequestStreamChange();
+  else
+    m_Streamer->SetReady();
 }
 
 void cTSDemuxer::SetAudioInformation(int Channels, int SampleRate, int BitRate, int BitsPerSample, int BlockAlign)

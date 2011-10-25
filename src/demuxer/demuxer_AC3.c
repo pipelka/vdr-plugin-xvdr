@@ -109,8 +109,8 @@ typedef enum {
   EAC3_FRAME_TYPE_RESERVED
 } EAC3FrameType;
 
-cParserAC3::cParserAC3(cTSDemuxer *demuxer, cLiveStreamer *streamer, int streamIndex)
- : cParser(streamer, streamIndex)
+cParserAC3::cParserAC3(cTSDemuxer *demuxer)
+ : cParser(demuxer)
 {
   m_CurrentFrameStartIndex    = 0;
   m_Offset                    = 0;
@@ -120,7 +120,6 @@ cParserAC3::cParserAC3(cTSDemuxer *demuxer, cLiveStreamer *streamer, int streamI
   m_SampleRate                = 0;
   m_Channels                  = 0;
   m_BitRate                   = 0;
-  m_demuxer                   = demuxer;
   m_firstPUSIseen             = false;
   m_PESStart                  = false;
   m_FetchTimestamp            = true;
@@ -195,7 +194,6 @@ void cParserAC3::Parse(unsigned char *data, int size, bool pusi)
     if (outlen)
     {
       sStreamPacket pkt;
-      pkt.id       = m_streamIndex;
       pkt.data     = outbuf;
       pkt.size     = outlen;
       pkt.duration = 90000 * 1536 / m_SampleRate;
@@ -206,8 +204,7 @@ void cParserAC3::Parse(unsigned char *data, int size, bool pusi)
       m_NextDTS    = pkt.dts + pkt.duration;
 
       m_demuxer->SetAudioInformation(m_Channels, m_SampleRate, m_BitRate, 0, 0);
-
-      SendPacket(&pkt);
+      m_demuxer->SendPacket(&pkt);
     }
     data += rlen;
     size -= rlen;

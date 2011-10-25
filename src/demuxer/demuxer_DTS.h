@@ -31,11 +31,8 @@
 
 class cParserDTS : public cParser
 {
-private:
-  cTSDemuxer *m_demuxer;
-
 public:
-  cParserDTS(cTSDemuxer *demuxer, cLiveStreamer *streamer, int streamIndex);
+  cParserDTS(cTSDemuxer *demuxer);
   virtual ~cParserDTS();
 
   virtual void Parse(unsigned char *data, int size, bool pusi);

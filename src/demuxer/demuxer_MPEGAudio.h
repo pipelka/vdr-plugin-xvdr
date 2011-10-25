@@ -46,7 +46,6 @@ private:
     int lsf;
   } MPADecodeHeader;
 
-  cTSDemuxer *m_demuxer;
   bool        m_firstPUSIseen;
   bool        m_PESStart;
 
@@ -108,7 +107,7 @@ private:
   bool DecodeHeader(MPADecodeHeader *s, uint32_t header);
 
 public:
-  cParserMPEG2Audio(cTSDemuxer *demuxer, cLiveStreamer *streamer, int streamIndex);
+  cParserMPEG2Audio(cTSDemuxer *demuxer);
   virtual ~cParserMPEG2Audio();
 
   virtual void Parse(unsigned char *data, int size, bool pusi);

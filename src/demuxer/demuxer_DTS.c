@@ -28,10 +28,9 @@
 #include "demuxer_DTS.h"
 #include "bitstream.h"
 
-cParserDTS::cParserDTS(cTSDemuxer *demuxer, cLiveStreamer *streamer, int streamIndex)
- : cParser(streamer, streamIndex)
+cParserDTS::cParserDTS(cTSDemuxer *demuxer)
+ : cParser(demuxer)
 {
-  m_demuxer                   = demuxer;
 }
 
 cParserDTS::~cParserDTS()

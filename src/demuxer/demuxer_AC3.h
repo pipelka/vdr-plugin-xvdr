@@ -32,7 +32,6 @@
 class cParserAC3 : public cParser
 {
 private:
-  cTSDemuxer *m_demuxer;
   bool        m_firstPUSIseen;
   bool        m_PESStart;
   int         m_SampleRate;
@@ -69,7 +68,7 @@ private:
   void FetchTimestamp(int off, bool remove);
 
 public:
-  cParserAC3(cTSDemuxer *demuxer, cLiveStreamer *streamer, int streamIndex);
+  cParserAC3(cTSDemuxer *demuxer);
   virtual ~cParserAC3();
 
   virtual void Parse(unsigned char *data, int size, bool pusi);

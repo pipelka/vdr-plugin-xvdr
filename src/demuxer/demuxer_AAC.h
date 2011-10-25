@@ -33,7 +33,6 @@
 class cParserAAC : public cParser
 {
 private:
-  cTSDemuxer *m_demuxer;
   uint8_t    *m_streamBuffer;
   int         m_streamBufferSize;
   int         m_streamBufferPtr;
@@ -49,7 +48,7 @@ private:
   int         m_SampleRate;
 
 public:
-  cParserAAC(cTSDemuxer *demuxer, cLiveStreamer *streamer, int streamIndex);
+  cParserAAC(cTSDemuxer *demuxer);
   virtual ~cParserAAC();
 
   virtual void Parse(unsigned char *data, int size, bool pusi);

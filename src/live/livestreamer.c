@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <time.h>
+#include <string.h>
 #include <map>
 #include <vdr/remux.h>
 #include <vdr/channels.h>
@@ -59,6 +60,8 @@ cLiveStreamer::cLiveStreamer(uint32_t timeout)
   m_startup         = true;
   m_SignalLost      = false;
   m_IFrameSeen      = false;
+  m_LangStreamType  = stMPEG2AUDIO;
+  m_Language[0]     = 0;
 
   m_requestStreamChange = false;
 
@@ -245,10 +248,10 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
       {
 #if APIVERSNUM >= 10701
         if (m_Channel->Vtype() == 0x1B)
-          m_Streams[m_NumStreams] = new cTSDemuxer(this, m_NumStreams, stH264, m_Channel->Vpid());
+          m_Streams[m_NumStreams] = new cTSDemuxer(this, stH264, m_Channel->Vpid());
         else
 #endif
-          m_Streams[m_NumStreams] = new cTSDemuxer(this, m_NumStreams, stMPEG2VIDEO, m_Channel->Vpid());
+          m_Streams[m_NumStreams] = new cTSDemuxer(this, stMPEG2VIDEO, m_Channel->Vpid());
 
         m_Pids[m_NumStreams] = m_Channel->Vpid();
         m_NumStreams++;
@@ -265,7 +268,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
         if (FindStreamDemuxer(*APids) == NULL)
         {
           m_Pids[m_NumStreams]    = *APids;
-          m_Streams[m_NumStreams] = new cTSDemuxer(this, m_NumStreams, stMPEG2AUDIO, *APids);
+          m_Streams[m_NumStreams] = new cTSDemuxer(this, stMPEG2AUDIO, *APids);
           m_Streams[m_NumStreams]->SetLanguage(m_Channel->Alang(index));
           m_NumStreams++;
         }
@@ -279,7 +282,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
         if (FindStreamDemuxer(*DPids) == NULL)
         {
           m_Pids[m_NumStreams]    = *DPids;
-          m_Streams[m_NumStreams] = new cTSDemuxer(this, m_NumStreams, stAC3, *DPids);
+          m_Streams[m_NumStreams] = new cTSDemuxer(this, stAC3, *DPids);
           m_Streams[m_NumStreams]->SetLanguage(m_Channel->Dlang(index));
           m_NumStreams++;
         }
@@ -295,7 +298,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
           if (FindStreamDemuxer(*SPids) == NULL)
           {
             m_Pids[m_NumStreams]    = *SPids;
-            m_Streams[m_NumStreams] = new cTSDemuxer(this, m_NumStreams, stDVBSUB, *SPids);
+            m_Streams[m_NumStreams] = new cTSDemuxer(this, stDVBSUB, *SPids);
             m_Streams[m_NumStreams]->SetLanguage(m_Channel->Slang(index));
 #if APIVERSNUM >= 10709
             m_Streams[m_NumStreams]->SetSubtitlingDescriptor(m_Channel->SubtitlingType(index),
@@ -310,7 +313,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
 
       if (m_Channel->Tpid())
       {
-        m_Streams[m_NumStreams] = new cTSDemuxer(this, m_NumStreams, stTELETEXT, m_Channel->Tpid());
+        m_Streams[m_NumStreams] = new cTSDemuxer(this, stTELETEXT, m_Channel->Tpid());
         m_Pids[m_NumStreams]    = m_Channel->Tpid();
         cCamSlot* cam = m_Device->CamSlot();
         if(cam != NULL) 
@@ -356,8 +359,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
 
 cTSDemuxer *cLiveStreamer::FindStreamDemuxer(int Pid)
 {
-  int idx;
-  for (idx = 0; idx < m_NumStreams; ++idx)
+  for (int idx = 0; idx < m_NumStreams; ++idx)
     if (m_Streams[idx] && m_Streams[idx]->GetPID() == Pid)
       return m_Streams[idx];
   return NULL;
@@ -365,8 +367,7 @@ cTSDemuxer *cLiveStreamer::FindStreamDemuxer(int Pid)
 
 int cLiveStreamer::HaveStreamDemuxer(int Pid, eStreamType streamType)
 {
-  int idx;
-  for (idx = 0; idx < m_NumStreams; ++idx)
+  for (int idx = 0; idx < m_NumStreams; ++idx)
     if (m_Streams[idx] && (Pid == 0 || m_Streams[idx]->GetPID() == Pid) && m_Streams[idx]->Type() == streamType)
       return idx;
   return -1;
@@ -432,13 +433,9 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
 
   m_IFrameSeen = true;
 
-  // get packet type
-  int type = m_Streams[pkt->id]->Type();
-  int streamid = m_Streams[pkt->id]->GetPID();
-
   m_streamHeader.channel  = htonl(XVDR_CHANNEL_STREAM);     // stream channel
   m_streamHeader.opcode   = htonl(XVDR_STREAM_MUXPKT);      // Stream packet operation code
-  m_streamHeader.id       = htonl(streamid);                // Stream ID
+  m_streamHeader.id       = htonl(pkt->pid);                // PID
   m_streamHeader.duration = htonl(pkt->duration);           // Duration
 
   *(int64_t*)&m_streamHeader.dts = __cpu_to_be64(pkt->dts); // DTS
@@ -447,7 +444,7 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
   m_streamHeader.length   = htonl(pkt->size);               // Data length
 
   // if a audio or video packet was sent, the signal is restored
-  if(type > stNone && type < stDVBSUB) {
+  if(pkt->type > stNone && pkt->type < stDVBSUB) {
     if(m_SignalLost) {
       INFOLOG("signal restored");
       sendStatus(XVDR_STREAM_STATUS_SIGNALRESTORED);
@@ -463,7 +460,7 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
   if(m_SignalLost)
     return;
 
-  DEBUGLOG("sendStreamPacket (type: %i)", type);
+  DEBUGLOG("sendStreamPacket (type: %i)", pkt->type);
 
   if(m_Socket->write(&m_streamHeader, sizeof(m_streamHeader), 2000, true) > 0)
     m_Socket->write(pkt->data, pkt->size, 2000);
@@ -483,12 +480,15 @@ void cLiveStreamer::sendStreamChange()
 
   DEBUGLOG("sendStreamChange");
 
+  // reorder streams as preferred
+  reorderStreams(m_LangStreamType, m_Language);
+
   for (int idx = 0; idx < m_NumStreams; ++idx)
   {
-	cTSDemuxer* stream = m_Streams[idx];
+    cTSDemuxer* stream = m_Streams[idx];
 
     if (stream == NULL)
-    	continue;
+      continue;
 
     int streamid = stream->GetPID();
     resp->add_U32(streamid);
@@ -752,12 +752,15 @@ void cLiveStreamer::sendStreamInfo()
     return;
   }
 
+  // reorder streams as preferred
+  reorderStreams(m_LangStreamType, m_Language);
+
   for (int idx = 0; idx < m_NumStreams; ++idx)
   {
     cTSDemuxer* stream = m_Streams[idx];
 
     if (stream == NULL)
-    	continue;
+      continue;
 
     switch (stream->Content())
     {
@@ -788,7 +791,7 @@ void cLiveStreamer::sendStreamInfo()
         break;
 
       default:
-    	break;
+        break;
     }
   }
 
@@ -798,4 +801,62 @@ void cLiveStreamer::sendStreamInfo()
 
   m_Socket->write(resp->getPtr(), resp->getLen());
   delete resp;
+}
+
+void cLiveStreamer::reorderStreams(eStreamType type, const char* lang)
+{
+  // do not reorder if there isn't any preferred language
+  if (lang == NULL || lang[0] == 0)
+    return;
+
+  std::map<int, cTSDemuxer*> weight;
+
+  // compute weights
+  for (int idx = 0; idx < m_NumStreams; ++idx)
+  {
+    cTSDemuxer* stream = m_Streams[idx];
+    if (stream == NULL)
+    {
+      continue;
+    }
+
+    // only for audio streams
+    if(stream->Content() != scAUDIO)
+    {
+      weight[1000 + idx] = stream;
+      continue;
+    }
+    // weight of streamtype
+    int wt = (stream->Type() == type) ? 0 : 200;
+
+    // weight of language;
+    int wl = (strcmp(lang, stream->GetLanguage()) == 0) ? 0 : 300;
+
+    // summed weight
+    weight[wt + wl + idx] = stream;
+  }
+
+  // lock processing
+  m_FilterMutex.Lock();
+
+  // reorder streams on weight
+  int idx = 0;
+  for(std::map<int, cTSDemuxer*>::iterator i = weight.begin(); i != weight.end(); i++, idx++)
+  {
+    cTSDemuxer* stream = i->second;
+    DEBUGLOG("Sream %i: Type %i / %s Weight: %i", idx, stream->Type(), stream->GetLanguage(), i->first);
+    m_Streams[idx] = stream;
+  }
+
+  // unlock processing
+  m_FilterMutex.Unlock();
+}
+
+void cLiveStreamer::SetLanguage(const char* lang, eStreamType streamtype)
+{
+  if(lang == NULL)
+    return;
+
+  strncpy(m_Language, lang, sizeof(m_Language));
+  m_LangStreamType = streamtype;
 }

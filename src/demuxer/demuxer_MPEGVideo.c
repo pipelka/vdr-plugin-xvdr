@@ -53,8 +53,8 @@ const unsigned int mpeg2video_framedurations[16] = {
   1500,
 };
 
-cParserMPEG2Video::cParserMPEG2Video(cTSDemuxer *demuxer, cLiveStreamer *streamer, int streamIndex)
- : cParser(streamer, streamIndex)
+cParserMPEG2Video::cParserMPEG2Video(cTSDemuxer *demuxer)
+ : cParser(demuxer)
 {
   m_pictureBuffer     = NULL;
   m_pictureBufferSize = 0;
@@ -66,7 +66,7 @@ cParserMPEG2Video::cParserMPEG2Video(cTSDemuxer *demuxer, cLiveStreamer *streame
   m_vbvDelay          = -1;
   m_vbvSize           = 0;
   m_StreamPacket      = NULL;
-  m_demuxer           = demuxer;
+  m_FoundFrame        = false;
 }
 
 cParserMPEG2Video::~cParserMPEG2Video()
@@ -83,7 +83,7 @@ void cParserMPEG2Video::Parse(unsigned char *data, int size, bool pusi)
   uint32_t startcode = m_StartCond;
 
   /* Parse PES header here for MPEG PS streams like from pvrinput */
-  if (pusi && m_Streamer->IsMPEGPS())
+  if (pusi && m_demuxer->IsMPEGPS())
   {
     int hlen;
 
@@ -167,7 +167,6 @@ bool cParserMPEG2Video::Parse_MPEG2Video(size_t len, uint32_t next_startcode, in
       }
 
       m_StreamPacket = new sStreamPacket;
-      m_StreamPacket->id        = m_streamIndex;
       m_StreamPacket->pts       = m_curPTS;
       m_StreamPacket->dts       = m_curDTS;
       m_StreamPacket->frametype = frametype;
@@ -214,7 +213,7 @@ bool cParserMPEG2Video::Parse_MPEG2Video(size_t len, uint32_t next_startcode, in
         if(m_StreamPacket->pts == DVD_NOPTS_VALUE)
           m_StreamPacket->pts = m_StreamPacket->dts;
 
-        SendPacket(m_StreamPacket);
+        m_demuxer->SendPacket(m_StreamPacket);
 
         // remove packet
         free(m_StreamPacket->data);
@@ -295,10 +294,10 @@ bool cParserMPEG2Video::Parse_MPEG2Video_PicStart(int *frametype, cBitstream *bs
   *frametype = pct;
 
   int vbvDelay = bs->readBits(16); /* vbv_delay */
-  if (vbvDelay  == 0xffff)
+  /*if (vbvDelay  == 0xffff)
     m_vbvDelay = -1;
   else
-    m_vbvDelay = Rescale(vbvDelay);
+    m_vbvDelay = Rescale(vbvDelay);*/
 
   return false;
 }

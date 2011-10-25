@@ -27,8 +27,8 @@
 #include "config/config.h"
 #include "demuxer_Teletext.h"
 
-cParserTeletext::cParserTeletext(cTSDemuxer *demuxer, cLiveStreamer *streamer, int streamIndex)
- : cParser(streamer, streamIndex)
+cParserTeletext::cParserTeletext(cTSDemuxer *demuxer)
+ : cParser(demuxer)
 {
   m_firstPUSIseen       = false;
   m_PESStart            = false;
@@ -85,13 +85,13 @@ void cParserTeletext::Parse(unsigned char *data, int size, bool pusi)
     if (m_teletextBuffer && m_teletextBufferPtr > 0)
     {
       sStreamPacket pkt;
-      pkt.id       = m_streamIndex;
       pkt.data     = m_teletextBuffer;
       pkt.size     = m_teletextBufferPtr;
       pkt.duration = m_curDTS-m_lastDTS;
       pkt.dts      = m_lastDTS;
       pkt.pts      = m_lastPTS;
-      SendPacket(&pkt);
+
+      m_demuxer->SendPacket(&pkt);
       m_teletextBufferPtr = 0;
     }
   }

@@ -35,7 +35,6 @@ class cBitstream;
 class cParserMPEG2Video : public cParser
 {
 private:
-  cTSDemuxer     *m_demuxer;
   uint8_t        *m_pictureBuffer;
   int             m_pictureBufferSize;
   int             m_pictureBufferPtr;
@@ -46,13 +45,14 @@ private:
   sStreamPacket  *m_StreamPacket;
   int             m_vbvDelay;       /* -1 if CBR */
   int             m_vbvSize;        /* Video buffer size (in bytes) */
+  bool            m_FoundFrame;
 
   bool Parse_MPEG2Video(size_t len, uint32_t next_startcode, int sc_offset);
   bool Parse_MPEG2Video_SeqStart(cBitstream *bs);
   bool Parse_MPEG2Video_PicStart(int *frametype, cBitstream *bs);
 
 public:
-  cParserMPEG2Video(cTSDemuxer *demuxer, cLiveStreamer *streamer, int streamIndex);
+  cParserMPEG2Video(cTSDemuxer *demuxer);
   virtual ~cParserMPEG2Video();
 
   virtual void Parse(unsigned char *data, int size, bool pusi);

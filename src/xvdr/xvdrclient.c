@@ -178,7 +178,9 @@ void cXVDRClient::Action(void)
 
 bool cXVDRClient::StartChannelStreaming(const cChannel *channel, uint32_t timeout)
 {
-  m_Streamer    = new cLiveStreamer(timeout);
+  m_Streamer = new cLiveStreamer(timeout);
+  m_Streamer->SetLanguage(m_Language.c_str(), m_LangStreamType);
+
   m_isStreaming = m_Streamer->StreamChannel(channel, 50, &m_socket, m_resp);
   return m_isStreaming;
 }
@@ -522,6 +524,16 @@ bool cXVDRClient::process_Login() /* OPCODE 1 */
   m_protocolVersion      = m_req->extract_U32();
   m_compressionLevel     = m_req->extract_U8();
   const char *clientName = m_req->extract_String();
+  const char *language   = NULL;
+
+  // get preferred language
+  if(!m_req->end())
+  {
+    language = m_req->extract_String();
+    m_Language = language;
+    delete[] language;
+    m_LangStreamType = (eStreamType)m_req->extract_U8();
+  }
 
   if (m_protocolVersion > XVDR_PROTOCOLVERSION)
   {
@@ -531,6 +543,10 @@ bool cXVDRClient::process_Login() /* OPCODE 1 */
   }
 
   INFOLOG("Welcome client '%s' with protocol version '%u'", clientName, m_protocolVersion);
+
+  if(!m_Language.empty()) {
+    INFOLOG("Preferred language: %s / type: %i", m_Language.c_str(), (int)m_LangStreamType);
+  }
 
   // Send the login reply
   time_t timeNow        = time(NULL);

@@ -47,12 +47,14 @@ class cLiveStreamer : public cThread
                     , public cRingBufferLinear
 {
 private:
-  friend class cParser;
+  friend class cTSDemuxer;
   friend class cLivePatFilter;
 
   void Detach(void);
   void Attach(void);
   cTSDemuxer *FindStreamDemuxer(int Pid);
+
+  void reorderStreams(eStreamType type, const char* lang);
 
   void sendStreamPacket(sStreamPacket *pkt);
   void sendStreamChange();
@@ -84,6 +86,8 @@ private:
   bool              m_SignalLost;
   bool              m_IFrameSeen;
   cMutex            m_FilterMutex;
+  char              m_Language[4];
+  eStreamType       m_LangStreamType;
 
   struct {
     uint32_t channel;
@@ -111,6 +115,8 @@ public:
   bool IsStarting() { return m_startup; }
   bool IsAudioOnly() { return m_IsAudioOnly; }
   bool IsMPEGPS() { return m_IsMPEGPS; }
+  void SetLanguage(const char* lang, eStreamType streamtype = stAC3);
+
   int HaveStreamDemuxer(int Pid, eStreamType streamType);
 
 };

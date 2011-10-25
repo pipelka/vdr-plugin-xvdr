@@ -34,6 +34,7 @@
 #include <vdr/receiver.h>
 #include <vdr/status.h>
 
+#include "demuxer/demuxer.h"
 #include "net/cxsocket.h"
 
 class cChannel;
@@ -64,6 +65,8 @@ private:
   cMutex           m_msgLock;
   static cMutex    m_timerLock;
   int              m_compressionLevel;
+  std::string      m_Language;
+  eStreamType      m_LangStreamType;
 
 protected:
 

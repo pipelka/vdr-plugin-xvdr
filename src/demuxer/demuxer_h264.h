@@ -64,7 +64,6 @@ private:
     NAL_END_SEQ = 0x0A  // End of Sequence
   };
 
-  cTSDemuxer     *m_demuxer;
   uint8_t        *m_pictureBuffer;
   int             m_pictureBufferSize;
   int             m_pictureBufferPtr;
@@ -81,6 +80,7 @@ private:
   int             m_vbvDelay;       /* -1 if CBR */
   int             m_vbvSize;        /* Video buffer size (in bytes) */
   bool            m_firstIFrame;
+  bool            m_FoundFrame;
 
   bool Parse_H264(size_t len, uint32_t next_startcode, int sc_offset);
   bool Parse_PPS(uint8_t *buf, int len);
@@ -89,7 +89,7 @@ private:
   int nalUnescape(uint8_t *dst, const uint8_t *src, int len);
 
 public:
-  cParserH264(cTSDemuxer *demuxer, cLiveStreamer *streamer, int streamIndex);
+  cParserH264(cTSDemuxer *demuxer);
   virtual ~cParserH264();
 
   virtual void Parse(unsigned char *data, int size, bool pusi);
