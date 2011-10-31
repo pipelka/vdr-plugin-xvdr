@@ -1,3 +1,9 @@
+vdr-plugin-xvdr (0.9.5-1) unstable; urgency=low
+
+  * version 0.9.5
+
+ -- Alexander Pipelka <pipelka@shuttle>  Mon, 31 Oct 2011 22:11:07 +0100
+
 vdr-plugin-xvdr (0.0.1-1) unstable; urgency=low
 
   * debianized
