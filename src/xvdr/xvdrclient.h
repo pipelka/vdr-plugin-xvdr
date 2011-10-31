@@ -65,7 +65,7 @@ private:
   cMutex           m_msgLock;
   static cMutex    m_timerLock;
   int              m_compressionLevel;
-  std::string      m_Language;
+  int              m_LanguageIndex;
   eStreamType      m_LangStreamType;
 
 protected:

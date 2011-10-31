@@ -54,7 +54,7 @@ private:
   void Attach(void);
   cTSDemuxer *FindStreamDemuxer(int Pid);
 
-  void reorderStreams(eStreamType type, const char* lang);
+  void reorderStreams(int lang, eStreamType type);
 
   void sendStreamPacket(sStreamPacket *pkt);
   void sendStreamChange();
@@ -86,7 +86,7 @@ private:
   bool              m_SignalLost;
   bool              m_IFrameSeen;
   cMutex            m_FilterMutex;
-  char              m_Language[4];
+  int               m_LanguageIndex;
   eStreamType       m_LangStreamType;
 
   struct {
@@ -115,7 +115,7 @@ public:
   bool IsStarting() { return m_startup; }
   bool IsAudioOnly() { return m_IsAudioOnly; }
   bool IsMPEGPS() { return m_IsMPEGPS; }
-  void SetLanguage(const char* lang, eStreamType streamtype = stAC3);
+  void SetLanguage(int lang, eStreamType streamtype = stAC3);
 
   int HaveStreamDemuxer(int Pid, eStreamType streamType);
 

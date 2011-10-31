@@ -28,6 +28,7 @@
 #include <time.h>
 #include <string.h>
 #include <map>
+#include <vdr/i18n.h>
 #include <vdr/remux.h>
 #include <vdr/channels.h>
 #include <asm/byteorder.h>
@@ -61,7 +62,7 @@ cLiveStreamer::cLiveStreamer(uint32_t timeout)
   m_SignalLost      = false;
   m_IFrameSeen      = false;
   m_LangStreamType  = stMPEG2AUDIO;
-  m_Language[0]     = 0;
+  m_LanguageIndex   = -1;
 
   m_requestStreamChange = false;
 
@@ -483,7 +484,7 @@ void cLiveStreamer::sendStreamChange()
   DEBUGLOG("sendStreamChange");
 
   // reorder streams as preferred
-  reorderStreams(m_LangStreamType, m_Language);
+  reorderStreams(m_LanguageIndex, m_LangStreamType);
 
   for (int idx = 0; idx < m_NumStreams; ++idx)
   {
@@ -755,7 +756,7 @@ void cLiveStreamer::sendStreamInfo()
   }
 
   // reorder streams as preferred
-  reorderStreams(m_LangStreamType, m_Language);
+  reorderStreams(m_LanguageIndex, m_LangStreamType);
 
   for (int idx = 0; idx < m_NumStreams; ++idx)
   {
@@ -805,10 +806,10 @@ void cLiveStreamer::sendStreamInfo()
   delete resp;
 }
 
-void cLiveStreamer::reorderStreams(eStreamType type, const char* lang)
+void cLiveStreamer::reorderStreams(int lang, eStreamType type)
 {
   // do not reorder if there isn't any preferred language
-  if (lang == NULL || lang[0] == 0)
+  if (lang == -1 && type == stNone)
     return;
 
   std::map<int, cTSDemuxer*> weight;
@@ -832,7 +833,8 @@ void cLiveStreamer::reorderStreams(eStreamType type, const char* lang)
     int wt = (stream->Type() == type) ? 0 : 200;
 
     // weight of language;
-    int wl = (strcmp(lang, stream->GetLanguage()) == 0) ? 0 : 300;
+    int streamLangIndex = I18nLanguageIndex(stream->GetLanguage());
+    int wl = (streamLangIndex == lang) ? 0 : 300;
 
     // summed weight
     weight[wt + wl + idx] = stream;
@@ -846,7 +848,7 @@ void cLiveStreamer::reorderStreams(eStreamType type, const char* lang)
   for(std::map<int, cTSDemuxer*>::iterator i = weight.begin(); i != weight.end(); i++, idx++)
   {
     cTSDemuxer* stream = i->second;
-    DEBUGLOG("Sream %i: Type %i / %s Weight: %i", idx, stream->Type(), stream->GetLanguage(), i->first);
+    DEBUGLOG("Stream %i: Type %i / %s Weight: %i", idx, stream->Type(), stream->GetLanguage(), i->first);
     m_Streams[idx] = stream;
   }
 
@@ -854,11 +856,11 @@ void cLiveStreamer::reorderStreams(eStreamType type, const char* lang)
   m_FilterMutex.Unlock();
 }
 
-void cLiveStreamer::SetLanguage(const char* lang, eStreamType streamtype)
+void cLiveStreamer::SetLanguage(int lang, eStreamType streamtype)
 {
-  if(lang == NULL)
+  if(lang == -1)
     return;
 
-  strncpy(m_Language, lang, sizeof(m_Language));
+  m_LanguageIndex = lang;
   m_LangStreamType = streamtype;
 }

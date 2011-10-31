@@ -28,6 +28,7 @@
 
 #include <vdr/recording.h>
 #include <vdr/channels.h>
+#include <vdr/i18n.h>
 #include <vdr/videodir.h>
 #include <vdr/plugin.h>
 #include <vdr/timers.h>
@@ -86,6 +87,8 @@ cXVDRClient::cXVDRClient(int fd, unsigned int id, const char *ClientAdr)
   m_processSCAN_Response    = NULL;
   m_processSCAN_Socket      = NULL;
   m_compressionLevel        = 0;
+  m_LanguageIndex           = -1;
+  m_LangStreamType          = stMPEG2AUDIO;
 
   m_socket.set_handle(fd);
 
@@ -179,7 +182,7 @@ void cXVDRClient::Action(void)
 bool cXVDRClient::StartChannelStreaming(const cChannel *channel, uint32_t timeout)
 {
   m_Streamer = new cLiveStreamer(timeout);
-  m_Streamer->SetLanguage(m_Language.c_str(), m_LangStreamType);
+  m_Streamer->SetLanguage(m_LanguageIndex, m_LangStreamType);
 
   m_isStreaming = m_Streamer->StreamChannel(channel, 50, &m_socket, m_resp);
   return m_isStreaming;
@@ -530,8 +533,7 @@ bool cXVDRClient::process_Login() /* OPCODE 1 */
   if(!m_req->end())
   {
     language = m_req->extract_String();
-    m_Language = language;
-    delete[] language;
+    m_LanguageIndex = I18nLanguageIndex(language);
     m_LangStreamType = (eStreamType)m_req->extract_U8();
   }
 
@@ -544,8 +546,8 @@ bool cXVDRClient::process_Login() /* OPCODE 1 */
 
   INFOLOG("Welcome client '%s' with protocol version '%u'", clientName, m_protocolVersion);
 
-  if(!m_Language.empty()) {
-    INFOLOG("Preferred language: %s / type: %i", m_Language.c_str(), (int)m_LangStreamType);
+  if(!m_LanguageIndex != -1) {
+    INFOLOG("Preferred language: %s / type: %i", I18nLanguageCode(m_LanguageIndex), (int)m_LangStreamType);
   }
 
   // Send the login reply
