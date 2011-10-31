@@ -235,6 +235,10 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
   m_Socket    = Socket;
   m_Device    = cDevice::GetDevice(channel, m_Priority, true);
 
+  // try a bit harder if we can't find a device
+  if(m_Device == NULL)
+    m_Device = cDevice::GetDevice(channel, m_Priority, false);
+
   INFOLOG("--------------------------------------");
   INFOLOG("Channel streaming request: %i - %s", m_Channel->Number(), m_Channel->Name());
 
