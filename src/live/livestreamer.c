@@ -447,7 +447,7 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
   m_streamHeader.length   = htonl(pkt->size);               // Data length
 
   // if a audio or video packet was sent, the signal is restored
-  if(pkt->type > stNone && pkt->type < stDVBSUB) {
+  if(pkt->type > stNONE && pkt->type < stDVBSUB) {
     if(m_SignalLost) {
       INFOLOG("signal restored");
       sendStatus(XVDR_STREAM_STATUS_SIGNALRESTORED);
@@ -809,7 +809,7 @@ void cLiveStreamer::sendStreamInfo()
 void cLiveStreamer::reorderStreams(int lang, eStreamType type)
 {
   // do not reorder if there isn't any preferred language
-  if (lang == -1 && type == stNone)
+  if (lang == -1 && type == stNONE)
     return;
 
   std::map<int, cTSDemuxer*> weight;

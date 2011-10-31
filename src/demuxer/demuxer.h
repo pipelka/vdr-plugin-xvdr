@@ -170,7 +170,7 @@ enum eStreamContent
 
 enum eStreamType
 {
-  stNone = -1,
+  stNONE = -1,
   stMPEG2AUDIO = 0,
   stAC3,
   stEAC3,
@@ -191,7 +191,7 @@ struct sStreamPacket
 {
   sStreamPacket() {
     frametype = 0;
-    type = stNone;
+    type = stNONE;
   }
 
   eStreamType type;
