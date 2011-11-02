@@ -178,6 +178,8 @@ void cXVDRServer::Action(void)
 {
   fd_set fds;
   struct timeval tv;
+  cTimeMs channelReloadTimer;
+  bool channelReloadTrigger = false;
 
   // get initial state of the recordings
   int recState = -1;
@@ -223,9 +225,16 @@ void cXVDRServer::Action(void)
         Channels.Lock(false);
         if(Channels.Modified() != 0)
         {
+          INFOLOG("Scheduling reload of channel list");
+          channelReloadTrigger = true;
+          channelReloadTimer.Set(0);
+        }
+        if(channelReloadTrigger && channelReloadTimer.Elapsed() >= 20*1000)
+        {
           INFOLOG("Requesting clients to reload channel list");
           for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++)
             (*i)->ChannelChange();
+          channelReloadTrigger = false;
         }
         Channels.Unlock();
       }
