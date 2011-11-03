@@ -36,8 +36,8 @@ APIVERSION = $(shell grep 'define APIVERSION ' $(VDRDIR)/config.h | awk '{ print
 
 ### The name of the distribution archive:
 
-ARCHIVE = $(PLUGIN)-$(VERSION)
-PACKAGE = vdr-$(ARCHIVE)
+ARCHIVE = vdr-plugin-$(PLUGIN)-$(VERSION)
+PACKAGE = $(ARCHIVE)
 
 ### Includes and Defines (add further entries here):
 
@@ -106,9 +106,16 @@ dist: clean
 	@-rm -rf $(TMPDIR)/$(ARCHIVE)
 	@mkdir $(TMPDIR)/$(ARCHIVE)
 	@cp -a * $(TMPDIR)/$(ARCHIVE)
-	@tar czf $(PACKAGE).tgz -C $(TMPDIR) $(ARCHIVE)
-	@-rm -rf $(TMPDIR)/$(ARCHIVE)
-	@echo Distribution package created as $(PACKAGE).tgz
+	@-rm -f $(TMPDIR)/$(ARCHIVE)/*.so.*
+	@-rm -f $(TMPDIR)/$(ARCHIVE)/*.so
+	@-rm -rf $(TMPDIR)/$(ARCHIVE)/debian/vdr-plugin-$(PLUGIN)
+	@-rm -rf $(TMPDIR)/$(ARCHIVE)/debian/*.log
+	@-rm -rf $(TMPDIR)/$(ARCHIVE)/debian/*.substvars
+	@-rm -rf $(TMPDIR)/$(ARCHIVE)/debian/.gitignore
+	@-rm -rf $(TMPDIR)/$(ARCHIVE)/.git*
+	@tar czf $(PACKAGE).tar.gz -C $(TMPDIR) $(ARCHIVE)
+	@-rm -rf $(TMPDIR)/$(ARCHIVE)/
+	@echo Distribution package created as $(PACKAGE).tar.gz
 
 clean:
 	@-rm -f $(OBJS) $(DEPFILE) *.so *.tgz core* *~
