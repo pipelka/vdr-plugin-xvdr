@@ -370,6 +370,9 @@ bool cXVDRClient::processRequest(cRequestPacket* req)
       result = process_Ping();
       break;
 
+    case XVDR_UPDATECHANNELS:
+      result = process_UpdateChannels();
+      break;
 
     /** OPCODE 20 - 39: XVDR network functions for live streaming */
     case XVDR_CHANNELSTREAM_OPEN:
@@ -597,6 +600,24 @@ bool cXVDRClient::process_EnableStatusInterface()
 bool cXVDRClient::process_Ping() /* OPCODE 7 */
 {
   m_resp->add_U32(1);
+  m_resp->finalise();
+  m_socket.write(m_resp->getPtr(), m_resp->getLen());
+  return true;
+}
+
+bool cXVDRClient::process_UpdateChannels()
+{
+  uint8_t updatechannels = m_req->extract_U8();
+
+  if(updatechannels <= 5)
+  {
+    Setup.UpdateChannels = updatechannels;
+    INFOLOG("Setting channel update method: %i", updatechannels);
+    m_resp->add_U32(XVDR_RET_OK);
+  }
+  else
+    m_resp->add_U32(XVDR_RET_DATAINVALID);
+
   m_resp->finalise();
   m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;

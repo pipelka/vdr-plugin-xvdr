@@ -110,6 +110,7 @@ private:
   bool process_GetTime();
   bool process_EnableStatusInterface();
   bool process_Ping();
+  bool process_UpdateChannels();
 
   bool processChannelStream_Open();
   bool processChannelStream_Close();
