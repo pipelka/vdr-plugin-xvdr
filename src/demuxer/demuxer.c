@@ -359,7 +359,7 @@ void cTSDemuxer::SetVideoInformation(int FpsScale, int FpsRate, int Height, int 
   m_Aspect          = Aspect;
 
   if(m_Streamer->IsReady())
-	  m_Streamer->RequestStreamChange();
+    m_Streamer->RequestStreamChange();
   else
     m_Streamer->SetReady();
 }
