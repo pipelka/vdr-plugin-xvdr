@@ -43,6 +43,8 @@
 #include "xvdrserver.h"
 #include "xvdrclient.h"
 
+//#define ENABLE_CHANNELTRIGGER 1
+
 unsigned int cXVDRServer::m_IdCnt = 0;
 
 class cAllowedHosts : public cSVDRPhosts
@@ -178,8 +180,10 @@ void cXVDRServer::Action(void)
 {
   fd_set fds;
   struct timeval tv;
+#ifdef ENABLE_CHANNELTRIGGER
   cTimeMs channelReloadTimer;
   bool channelReloadTrigger = false;
+#endif
 
   // get initial state of the recordings
   int recState = -1;
@@ -219,6 +223,7 @@ void cXVDRServer::Action(void)
         }
       }
 
+#ifdef ENABLE_CHANNELTRIGGER
       // trigger clients to reload the modified channel list
       if(m_clients.size() > 0)
       {
@@ -238,6 +243,7 @@ void cXVDRServer::Action(void)
         }
         Channels.Unlock();
       }
+#endif
 
       // reset inactivity timeout as long as there are clients connected
       if(m_clients.size() > 0) {
