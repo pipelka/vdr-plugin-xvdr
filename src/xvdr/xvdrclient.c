@@ -628,6 +628,8 @@ bool cXVDRClient::process_UpdateChannels()
 
 bool cXVDRClient::processChannelStream_Open() /* OPCODE 20 */
 {
+  cMutexLock lock(&m_timerLock);
+
   uint32_t uid = m_req->extract_U32();
   uint32_t timeout = m_req->extract_U32();
 
@@ -663,7 +665,6 @@ bool cXVDRClient::processChannelStream_Open() /* OPCODE 20 */
     }
 
     DEBUGLOG("Can't stream channel %s", channel->Name());
-    m_resp->add_U32(XVDR_RET_DATALOCKED);
   }
 
   m_resp->finalise();

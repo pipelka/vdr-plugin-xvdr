@@ -31,6 +31,7 @@
 #include <vdr/i18n.h>
 #include <vdr/remux.h>
 #include <vdr/channels.h>
+#include <vdr/timers.h>
 #include <asm/byteorder.h>
 
 #include "config/config.h"
@@ -246,6 +247,13 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
   if (m_Device == NULL)
   {
     ERRORLOG("Can't get device for channel %i - %s", m_Channel->Number(), m_Channel->Name());
+
+    // return status "recording running" if there is an active timer
+    if(Timers.GetNextActiveTimer() != NULL)
+      resp->add_U32(XVDR_RET_RECRUNNING);
+    else
+      resp->add_U32(XVDR_RET_DATALOCKED);
+
     return false;
   }
 
@@ -254,6 +262,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
   if (!m_Device->SwitchChannel(m_Channel, false))
   {
     ERRORLOG("Can't switch to channel %i - %s", m_Channel->Number(), m_Channel->Name());
+    resp->add_U32(XVDR_RET_ERROR);
     return false;
   }
 
