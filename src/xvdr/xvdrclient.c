@@ -112,6 +112,8 @@ void cXVDRClient::Action(void)
   uint32_t dataLength;
   uint8_t* data;
 
+  SetPriority(10);
+
   while (Running())
   {
     if (!m_socket.read((uint8_t*)&channelID, sizeof(uint32_t))) break;
@@ -630,6 +632,8 @@ bool cXVDRClient::processChannelStream_Open() /* OPCODE 20 */
 {
   cMutexLock lock(&m_timerLock);
 
+  SetPriority(-15);
+
   uint32_t uid = m_req->extract_U32();
   uint32_t timeout = m_req->extract_U32();
 
@@ -687,6 +691,8 @@ bool cXVDRClient::processChannelStream_Close() /* OPCODE 21 */
 bool cXVDRClient::processRecStream_Open() /* OPCODE 40 */
 {
   cRecording *recording = NULL;
+
+  SetPriority(-15);
 
   if(m_protocolVersion >= 3) {
     char* recid = m_req->extract_String();

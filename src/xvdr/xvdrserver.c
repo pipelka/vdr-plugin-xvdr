@@ -185,6 +185,8 @@ void cXVDRServer::Action(void)
   bool channelReloadTrigger = false;
 #endif
 
+  SetPriority(19);
+
   // get initial state of the recordings
   int recState = -1;
   Recordings.StateChanged(recState);
