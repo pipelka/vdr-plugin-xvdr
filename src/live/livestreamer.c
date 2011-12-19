@@ -235,7 +235,33 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
   m_Channel   = channel;
   m_Priority  = priority;
   m_Socket    = Socket;
-  m_Device    = cDevice::GetDevice(channel, m_Priority, true);
+
+  // check if any device is able to decrypt the channel - code taken from VDR
+  int NumCamSlots = CamSlots.Count();
+  int SlotPriority[NumCamSlots];
+  int NumUsableSlots = 0;
+
+  if (m_Channel->Ca() >= CA_ENCRYPTED_MIN) {
+    for (cCamSlot *CamSlot = CamSlots.First(); CamSlot; CamSlot = CamSlots.Next(CamSlot)) {
+      SlotPriority[CamSlot->Index()] = MAXPRIORITY + 1; // assumes it can't be used
+      if (CamSlot->ModuleStatus() == msReady) {
+        if (CamSlot->ProvidesCa(m_Channel->Caids())) {
+          if (!ChannelCamRelations.CamChecked(m_Channel->GetChannelID(), CamSlot->SlotNumber())) {
+            SlotPriority[CamSlot->Index()] = CamSlot->Priority();
+            NumUsableSlots++;
+          }
+       }
+      }
+    }
+    if (!NumUsableSlots) {
+      ERRORLOG("Unable to decrypt channel %i - %s", m_Channel->Number(), m_Channel->Name());
+      resp->add_U32(XVDR_RET_ENCRYPTED);
+      return false;
+    }
+  }
+
+  // get device for this channel
+  m_Device = cDevice::GetDevice(channel, m_Priority, true);
 
   // try a bit harder if we can't find a device
   if(m_Device == NULL)

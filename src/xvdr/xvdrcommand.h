@@ -46,6 +46,7 @@
 #define XVDR_ENABLESTATUSINTERFACE 3
 #define XVDR_PING                  7
 #define XVDR_UPDATECHANNELS        8
+#define XVDR_CHANNELFILTER         9
 
 /* OPCODE 20 - 39: XVDR network functions for live streaming */
 #define XVDR_CHANNELSTREAM_OPEN    20
@@ -124,6 +125,7 @@
 /** Packet return codes */
 #define XVDR_RET_OK              0
 #define XVDR_RET_RECRUNNING      1
+#define XVDR_RET_ENCRYPTED       994
 #define XVDR_RET_NOTSUPPORTED    995
 #define XVDR_RET_DATAUNKNOWN     996
 #define XVDR_RET_DATALOCKED      997
