@@ -72,6 +72,7 @@ static uint32_t recid2uid(const char* recid)
 }
 
 cMutex cXVDRClient::m_timerLock;
+cMutex cXVDRClient::m_switchLock;
 
 cXVDRClient::cXVDRClient(int fd, unsigned int id, const char *ClientAdr)
 {
@@ -183,6 +184,7 @@ void cXVDRClient::Action(void)
 
 bool cXVDRClient::StartChannelStreaming(const cChannel *channel, uint32_t timeout)
 {
+  cMutexLock lock(&m_switchLock);
   m_Streamer = new cLiveStreamer(timeout);
   m_Streamer->SetLanguage(m_LanguageIndex, m_LangStreamType);
 
@@ -192,12 +194,10 @@ bool cXVDRClient::StartChannelStreaming(const cChannel *channel, uint32_t timeou
 
 void cXVDRClient::StopChannelStreaming()
 {
+  cMutexLock lock(&m_switchLock);
+  delete m_Streamer;
+  m_Streamer = NULL;
   m_isStreaming = false;
-  if (m_Streamer)
-  {
-    delete m_Streamer;
-    m_Streamer = NULL;
-  }
 }
 
 void cXVDRClient::TimerChange(const cTimer *Timer, eTimerChange Change)
@@ -640,8 +640,7 @@ bool cXVDRClient::processChannelStream_Open() /* OPCODE 20 */
   if(timeout == 0)
     timeout = XVDRServerConfig.stream_timeout;
 
-  if (m_isStreaming)
-    StopChannelStreaming();
+  StopChannelStreaming();
 
   Channels.Lock(false);
   const cChannel *channel = NULL;
@@ -679,9 +678,7 @@ bool cXVDRClient::processChannelStream_Open() /* OPCODE 20 */
 
 bool cXVDRClient::processChannelStream_Close() /* OPCODE 21 */
 {
-  if (m_isStreaming)
-    StopChannelStreaming();
-
+  StopChannelStreaming();
   return true;
 }
 
