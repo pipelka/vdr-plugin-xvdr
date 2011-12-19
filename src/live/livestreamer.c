@@ -237,17 +237,13 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
   m_Socket    = Socket;
 
   // check if any device is able to decrypt the channel - code taken from VDR
-  int NumCamSlots = CamSlots.Count();
-  int SlotPriority[NumCamSlots];
   int NumUsableSlots = 0;
 
   if (m_Channel->Ca() >= CA_ENCRYPTED_MIN) {
     for (cCamSlot *CamSlot = CamSlots.First(); CamSlot; CamSlot = CamSlots.Next(CamSlot)) {
-      SlotPriority[CamSlot->Index()] = MAXPRIORITY + 1; // assumes it can't be used
       if (CamSlot->ModuleStatus() == msReady) {
         if (CamSlot->ProvidesCa(m_Channel->Caids())) {
           if (!ChannelCamRelations.CamChecked(m_Channel->GetChannelID(), CamSlot->SlotNumber())) {
-            SlotPriority[CamSlot->Index()] = CamSlot->Priority();
             NumUsableSlots++;
           }
        }
