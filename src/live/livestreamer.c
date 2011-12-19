@@ -249,7 +249,8 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
     ERRORLOG("Can't get device for channel %i - %s", m_Channel->Number(), m_Channel->Name());
 
     // return status "recording running" if there is an active timer
-    if(Timers.GetNextActiveTimer() != NULL)
+    time_t now = time(NULL);
+    if(Timers.GetMatch(now) != NULL)
       resp->add_U32(XVDR_RET_RECRUNNING);
     else
       resp->add_U32(XVDR_RET_DATALOCKED);
