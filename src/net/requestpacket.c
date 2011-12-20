@@ -28,7 +28,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <asm/byteorder.h>
+#ifdef __FreeBSD__
+#include <sys/endian.h>
+#else
+#include <endian.h>
+#endif
 
 #include "xvdr/xvdrcommand.h"
 #include "config/config.h"
@@ -59,7 +63,7 @@ bool cRequestPacket::end()
 
 int cRequestPacket::serverError()
 {
-  if ((packetPos == 0) && (userDataLength == 4) && !ntohl(*(uint32_t*)userData)) return 1;
+  if ((packetPos == 0) && (userDataLength == 4) && !be32toh(*(uint32_t*)userData)) return 1;
   else return 0;
 }
 
@@ -86,7 +90,7 @@ uint8_t cRequestPacket::extract_U8()
 uint32_t cRequestPacket::extract_U32()
 {
   if ((packetPos + sizeof(uint32_t)) > userDataLength) return 0;
-  uint32_t ul = ntohl(*(uint32_t*)&userData[packetPos]);
+  uint32_t ul = be32toh(*(uint32_t*)&userData[packetPos]);
   packetPos += sizeof(uint32_t);
   return ul;
 }
@@ -94,7 +98,7 @@ uint32_t cRequestPacket::extract_U32()
 uint64_t cRequestPacket::extract_U64()
 {
   if ((packetPos + sizeof(uint64_t)) > userDataLength) return 0;
-  uint64_t ull = __be64_to_cpu(*(uint64_t*)&userData[packetPos]);
+  uint64_t ull = be64toh(*(uint64_t*)&userData[packetPos]);
   packetPos += sizeof(uint64_t);
   return ull;
 }
@@ -102,7 +106,7 @@ uint64_t cRequestPacket::extract_U64()
 double cRequestPacket::extract_Double()
 {
   if ((packetPos + sizeof(uint64_t)) > userDataLength) return 0;
-  uint64_t ull = __be64_to_cpu(*(uint64_t*)&userData[packetPos]);
+  uint64_t ull = be64toh(*(uint64_t*)&userData[packetPos]);
   double d;
   memcpy(&d,&ull,sizeof(double));
   packetPos += sizeof(uint64_t);
@@ -112,7 +116,7 @@ double cRequestPacket::extract_Double()
 int32_t cRequestPacket::extract_S32()
 {
   if ((packetPos + sizeof(int32_t)) > userDataLength) return 0;
-  int32_t l = ntohl(*(int32_t*)&userData[packetPos]);
+  int32_t l = be32toh(*(int32_t*)&userData[packetPos]);
   packetPos += sizeof(int32_t);
   return l;
 }

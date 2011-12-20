@@ -32,7 +32,12 @@
 #include <vdr/remux.h>
 #include <vdr/channels.h>
 #include <vdr/timers.h>
-#include <asm/byteorder.h>
+
+#ifdef __FreeBSD__
+#include <sys/endian.h>
+#else
+#include <endian.h>
+#endif
 
 #include "config/config.h"
 #include "net/cxsocket.h"
@@ -468,15 +473,15 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
 
   m_IFrameSeen = true;
 
-  m_streamHeader.channel  = htonl(XVDR_CHANNEL_STREAM);     // stream channel
-  m_streamHeader.opcode   = htonl(XVDR_STREAM_MUXPKT);      // Stream packet operation code
-  m_streamHeader.id       = htonl(pkt->pid);                // PID
-  m_streamHeader.duration = htonl(pkt->duration);           // Duration
+  m_streamHeader.channel  = htobe32(XVDR_CHANNEL_STREAM);     // stream channel
+  m_streamHeader.opcode   = htobe32(XVDR_STREAM_MUXPKT);      // Stream packet operation code
+  m_streamHeader.id       = htobe32(pkt->pid);                // PID
+  m_streamHeader.duration = htobe32(pkt->duration);           // Duration
 
-  *(int64_t*)&m_streamHeader.dts = __cpu_to_be64(pkt->dts); // DTS
-  *(int64_t*)&m_streamHeader.pts = __cpu_to_be64(pkt->pts); // PTS
+  *(int64_t*)&m_streamHeader.dts = htobe64(pkt->dts); // DTS
+  *(int64_t*)&m_streamHeader.pts = htobe64(pkt->pts); // PTS
 
-  m_streamHeader.length   = htonl(pkt->size);               // Data length
+  m_streamHeader.length   = htobe32(pkt->size);               // Data length
 
   // if a audio or video packet was sent, the signal is restored
   if(pkt->type > stNONE && pkt->type < stDVBSUB) {

@@ -31,7 +31,13 @@
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <string.h>
-#include <asm/byteorder.h>
+
+#ifdef __FreeBSD__
+#include <sys/endian.h>
+#else
+#include <endian.h>
+#endif
+
 #include <zlib.h>
 
 #include "config/config.h"
@@ -71,8 +77,8 @@ bool cResponsePacket::init(uint32_t requestID)
 {
   initBuffers();
 
-  *(uint32_t*)&buffer[0] = htonl(XVDR_CHANNEL_REQUEST_RESPONSE); // RR channel
-  *(uint32_t*)&buffer[4] = htonl(requestID);
+  *(uint32_t*)&buffer[0] = htobe32(XVDR_CHANNEL_REQUEST_RESPONSE); // RR channel
+  *(uint32_t*)&buffer[4] = htobe32(requestID);
   *(uint32_t*)&buffer[userDataLenPos] = 0;
   bufUsed = headerLength;
 
@@ -83,8 +89,8 @@ bool cResponsePacket::initScan(uint32_t opCode)
 {
   initBuffers();
 
-  *(uint32_t*)&buffer[0] = htonl(XVDR_CHANNEL_SCAN); // RR channel
-  *(uint32_t*)&buffer[4] = htonl(opCode);
+  *(uint32_t*)&buffer[0] = htobe32(XVDR_CHANNEL_SCAN); // RR channel
+  *(uint32_t*)&buffer[4] = htobe32(opCode);
   *(uint32_t*)&buffer[userDataLenPos] = 0;
   bufUsed = headerLength;
 
@@ -95,8 +101,8 @@ bool cResponsePacket::initStatus(uint32_t opCode)
 {
   initBuffers();
 
-  *(uint32_t*)&buffer[0] = htonl(XVDR_CHANNEL_STATUS); // RR channel
-  *(uint32_t*)&buffer[4] = htonl(opCode);
+  *(uint32_t*)&buffer[0] = htobe32(XVDR_CHANNEL_STATUS); // RR channel
+  *(uint32_t*)&buffer[4] = htobe32(opCode);
   *(uint32_t*)&buffer[userDataLenPos] = 0;
   bufUsed = headerLength;
 
@@ -107,12 +113,12 @@ bool cResponsePacket::initStream(uint32_t opCode, uint32_t streamID, uint32_t du
 {
   initBuffers();
 
-  *(uint32_t*)&buffer[0]  = htonl(XVDR_CHANNEL_STREAM); // stream channel
-  *(uint32_t*)&buffer[4]  = htonl(opCode);         // Stream packet operation code
-  *(uint32_t*)&buffer[8]  = htonl(streamID);       // Stream ID
-  *(uint32_t*)&buffer[12] = htonl(duration);       // Duration
-  *(int64_t*) &buffer[16] = __cpu_to_be64(dts);    // DTS
-  *(int64_t*) &buffer[24] = __cpu_to_be64(pts);    // PTS
+  *(uint32_t*)&buffer[0]  = htobe32(XVDR_CHANNEL_STREAM); // stream channel
+  *(uint32_t*)&buffer[4]  = htobe32(opCode);         // Stream packet operation code
+  *(uint32_t*)&buffer[8]  = htobe32(streamID);       // Stream ID
+  *(uint32_t*)&buffer[12] = htobe32(duration);       // Duration
+  *(int64_t*) &buffer[16] = htobe64(dts);    // DTS
+  *(int64_t*) &buffer[24] = htobe64(pts);    // PTS
   *(uint32_t*)&buffer[userDataLenPosStream] = 0;
   bufUsed = headerLengthStream;
 
@@ -121,12 +127,12 @@ bool cResponsePacket::initStream(uint32_t opCode, uint32_t streamID, uint32_t du
 
 void cResponsePacket::finalise()
 {
-  *(uint32_t*)&buffer[userDataLenPos] = htonl(bufUsed - headerLength);
+  *(uint32_t*)&buffer[userDataLenPos] = htobe32(bufUsed - headerLength);
 }
 
 void cResponsePacket::finaliseStream()
 {
-  *(uint32_t*)&buffer[userDataLenPosStream] = htonl(bufUsed - headerLengthStream);
+  *(uint32_t*)&buffer[userDataLenPosStream] = htobe32(bufUsed - headerLengthStream);
 }
 
 
@@ -163,7 +169,7 @@ bool cResponsePacket::add_String(const char* string)
 bool cResponsePacket::add_U32(uint32_t ul)
 {
   if (!checkExtend(sizeof(uint32_t))) return false;
-  *(uint32_t*)&buffer[bufUsed] = htonl(ul);
+  *(uint32_t*)&buffer[bufUsed] = htobe32(ul);
   bufUsed += sizeof(uint32_t);
   return true;
 }
@@ -179,7 +185,7 @@ bool cResponsePacket::add_U8(uint8_t c)
 bool cResponsePacket::add_S32(int32_t l)
 {
   if (!checkExtend(sizeof(int32_t))) return false;
-  *(int32_t*)&buffer[bufUsed] = htonl(l);
+  *(int32_t*)&buffer[bufUsed] = htobe32(l);
   bufUsed += sizeof(int32_t);
   return true;
 }
@@ -187,7 +193,7 @@ bool cResponsePacket::add_S32(int32_t l)
 bool cResponsePacket::add_U64(uint64_t ull)
 {
   if (!checkExtend(sizeof(uint64_t))) return false;
-  *(uint64_t*)&buffer[bufUsed] = __cpu_to_be64(ull);
+  *(uint64_t*)&buffer[bufUsed] = htobe64(ull);
   bufUsed += sizeof(uint64_t);
   return true;
 }
@@ -197,7 +203,7 @@ bool cResponsePacket::add_double(double d)
   if (!checkExtend(sizeof(double))) return false;
   uint64_t ull;
   memcpy(&ull,&d,sizeof(double));
-  *(uint64_t*)&buffer[bufUsed] = __cpu_to_be64(ull);
+  *(uint64_t*)&buffer[bufUsed] = htobe64(ull);
   bufUsed += sizeof(uint64_t);
   return true;
 }
@@ -228,10 +234,10 @@ bool cResponsePacket::compress(int level)
   if(::compress2((out + headerLengthCompressed), &outsize, (buffer + headerLength), buffersize, level) == Z_OK) 
   {
     uint32_t* p = (uint32_t*)out;
-    *p++ = (*(uint32_t*)&buffer[0] | htonl(0x80000000)); // mark packet as compressed
+    *p++ = (*(uint32_t*)&buffer[0] | htobe32(0x80000000)); // mark packet as compressed
     *p++ = *(uint32_t*)&buffer[4];                       // request ID
-    *p++ = htonl(outsize + 4);                           // compressed packet size +4 bytes (original size)
-    *p++ = htonl(buffersize);                            // original uncompressed packet size
+    *p++ = htobe32(outsize + 4);                           // compressed packet size +4 bytes (original size)
+    *p++ = htobe32(buffersize);                            // original uncompressed packet size
 
     // remove old (uncompressed) buffer
     free(buffer);
