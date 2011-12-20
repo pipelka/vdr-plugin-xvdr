@@ -27,6 +27,7 @@
 #define XVDR_CLIENT_H
 
 #include <map>
+#include <list>
 #include <string>
 
 #include <vdr/thread.h>
@@ -68,6 +69,9 @@ private:
   int              m_compressionLevel;
   int              m_LanguageIndex;
   eStreamType      m_LangStreamType;
+  std::list<int>   m_caids;
+  bool             m_wantfta;
+  bool             m_filterlanguage;
 
 protected:
 
@@ -107,11 +111,14 @@ private:
 
   std::map<std::string, ChannelGroup> m_channelgroups[2];
 
+  bool IsChannelWanted(cChannel* channel, bool radio = false);
+
   bool process_Login();
   bool process_GetTime();
   bool process_EnableStatusInterface();
   bool process_Ping();
   bool process_UpdateChannels();
+  bool process_ChannelFilter();
 
   bool processChannelStream_Open();
   bool processChannelStream_Close();

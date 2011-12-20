@@ -92,6 +92,8 @@ cXVDRClient::cXVDRClient(int fd, unsigned int id, const char *ClientAdr)
   m_LangStreamType          = stMPEG2AUDIO;
 
   m_socket.set_handle(fd);
+  m_wantfta = true;
+  m_filterlanguage = false;
 
   Start();
 }
@@ -336,6 +338,85 @@ void cXVDRClient::OsdStatusMessage(const char *Message)
   }
 }
 
+bool cXVDRClient::IsChannelWanted(cChannel* channel, bool radio)
+{
+  // dismiss invalid channels
+  if(channel == NULL)
+    return false;
+
+  // right type ?
+  if (radio != IsRadio(channel))
+    return false;
+
+  // skip channels witout SID
+  if (channel->Sid() == 0)
+    return false;
+
+  if (strcmp(channel->Name(), ".") == 0)
+    return false;
+
+  // check language
+  if(m_filterlanguage && m_LanguageIndex != -1)
+  {
+    bool bLanguageFound = false;
+    const char* lang = NULL;
+
+    // check MP2 languages
+    for(int i = 0; i < MAXAPIDS; i++) {
+      lang = channel->Alang(i);
+
+      if(lang == NULL)
+        break;
+
+      if(m_LanguageIndex == I18nLanguageIndex(lang))
+      {
+        bLanguageFound = true;
+        break;
+      }
+    }
+
+    // check other digital languages
+    for(int i = 0; i < MAXDPIDS; i++) {
+      lang = channel->Dlang(i);
+
+      if(lang == NULL)
+        break;
+
+      if(m_LanguageIndex == I18nLanguageIndex(lang))
+      {
+        bLanguageFound = true;
+        break;
+      }
+    }
+
+    if(!bLanguageFound)
+      return false;
+  }
+
+  // user selection for FTA channels
+  if(channel->Ca(0) == 0)
+    return m_wantfta;
+
+  // we want all encrypted channels if there isn't any CaID filter
+  if(m_caids.size() == 0)
+    return true;
+
+  // check if we have a matching CaID
+  for(std::list<int>::iterator i = m_caids.begin(); i != m_caids.end(); i++)
+  {
+    for(int j = 0; j < MAXCAIDS; j++) {
+
+      if(channel->Ca(j) == 0)
+        break;
+
+      if(channel->Ca(j) == *i)
+        return true;
+    }
+  }
+
+  return false;
+}
+
 bool cXVDRClient::processRequest(cRequestPacket* req)
 {
   cMutexLock lock(&m_msgLock);
@@ -374,6 +455,10 @@ bool cXVDRClient::processRequest(cRequestPacket* req)
 
     case XVDR_UPDATECHANNELS:
       result = process_UpdateChannels();
+      break;
+
+   case XVDR_CHANNELFILTER:
+      result = process_ChannelFilter();
       break;
 
     /** OPCODE 20 - 39: XVDR network functions for live streaming */
@@ -625,6 +710,42 @@ bool cXVDRClient::process_UpdateChannels()
   return true;
 }
 
+bool cXVDRClient::process_ChannelFilter()
+{
+  INFOLOG("Channellist filter:");
+
+  // do we want fta channels ?
+  m_wantfta = m_req->extract_U32();
+  INFOLOG("Free To Air channels: %s", m_wantfta ? "Yes" : "No");
+
+  // display only channels with native language audio ?
+  m_filterlanguage = m_req->extract_U32();
+  INFOLOG("Only native language: %s", m_filterlanguage ? "Yes" : "No");
+
+  // read caids
+  m_caids.clear();
+  uint32_t count = m_req->extract_U32();
+
+  INFOLOG("Enabled CaIDs: ");
+
+  // sanity check (maximum of 20 caids)
+  if(count < 20) {
+    for(uint32_t i = 0; i < count; i++) {
+      int caid = m_req->extract_U32();
+      m_caids.push_back(caid);
+      INFOLOG("%04X", caid);
+    }
+  }
+
+
+  m_resp->add_U32(XVDR_RET_OK);
+  m_resp->finalise();
+  m_socket.write(m_resp->getPtr(), m_resp->getLen());
+
+  return true;
+}
+
+
 
 /** OPCODE 20 - 39: XVDR network functions for live streaming */
 
@@ -864,7 +985,14 @@ bool cXVDRClient::processRecStream_GetIFrame() /* OPCODE 45 */
 bool cXVDRClient::processCHANNELS_ChannelsCount() /* OPCODE 61 */
 {
   Channels.Lock(false);
-  int count = Channels.MaxNumber();
+  int count = 0;
+
+  for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel))
+  {
+    if(IsChannelWanted(channel, false)) count++;
+    if(IsChannelWanted(channel, true)) count++;
+  }
+
   Channels.Unlock();
 
   m_resp->add_U32(count);
@@ -884,11 +1012,7 @@ bool cXVDRClient::processCHANNELS_GetChannels() /* OPCODE 63 */
 
   for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel))
   {
-    if (radio != IsRadio(channel))
-      continue;
-
-    // skip invalid channels
-    if (channel->Sid() == 0)
+    if(!IsChannelWanted(channel, radio))
       continue;
 
     m_resp->add_U32(channel->Number());
@@ -1003,7 +1127,7 @@ bool cXVDRClient::processCHANNELS_GetGroupMembers()
     if(name.empty())
       continue;
 
-    if(IsRadio(channel) != radio)
+    if(!IsChannelWanted(channel, radio))
       continue;
 
     if(name == groupname)
@@ -1035,6 +1159,9 @@ void cXVDRClient::CreateChannelGroups(bool automatic)
       groupname = channel->Name();
 
     if(groupname.empty())
+      continue;
+
+    if(!IsChannelWanted(channel, isRadio))
       continue;
 
     if(m_channelgroups[isRadio].find(groupname) == m_channelgroups[isRadio].end())
