@@ -30,6 +30,7 @@
 #include <inttypes.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <vdr/thread.h>
 #include <vdr/tools.h>
 
