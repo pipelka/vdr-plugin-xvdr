@@ -36,6 +36,10 @@
 
 #include "config/config.h"
 
+#ifndef O_NOATIME
+#define O_NOATIME 0
+#endif
+
 cRecPlayer::cRecPlayer(cRecording* rec)
 {
   m_file          = -1;
