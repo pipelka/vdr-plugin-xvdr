@@ -182,10 +182,8 @@ void cXVDRServer::Action(void)
 {
   fd_set fds;
   struct timeval tv;
-#ifdef ENABLE_CHANNELTRIGGER
   cTimeMs channelReloadTimer;
   bool channelReloadTrigger = false;
-#endif
 
   SetPriority(19);
 
@@ -227,27 +225,25 @@ void cXVDRServer::Action(void)
         }
       }
 
-#ifdef ENABLE_CHANNELTRIGGER
       // trigger clients to reload the modified channel list
       if(m_clients.size() > 0)
       {
         Channels.Lock(false);
         if(Channels.Modified() != 0)
         {
-          INFOLOG("Scheduling reload of channel list");
           channelReloadTrigger = true;
           channelReloadTimer.Set(0);
         }
-        if(channelReloadTrigger && channelReloadTimer.Elapsed() >= 20*1000)
+        if(channelReloadTrigger && channelReloadTimer.Elapsed() >= 10*1000)
         {
-          INFOLOG("Requesting clients to reload channel list");
+          INFOLOG("Checking for channel updates ...");
           for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++)
             (*i)->ChannelChange();
           channelReloadTrigger = false;
+          INFOLOG("Done.");
         }
         Channels.Unlock();
       }
-#endif
 
       // reset inactivity timeout as long as there are clients connected
       if(m_clients.size() > 0) {

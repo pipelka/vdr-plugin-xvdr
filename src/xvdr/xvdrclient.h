@@ -72,6 +72,7 @@ private:
   std::list<int>   m_caids;
   bool             m_wantfta;
   bool             m_filterlanguage;
+  int              m_channelCount;
 
 protected:
 
@@ -112,6 +113,7 @@ private:
   std::map<std::string, ChannelGroup> m_channelgroups[2];
 
   bool IsChannelWanted(cChannel* channel, bool radio = false);
+  int  ChannelsCount();
 
   bool process_Login();
   bool process_GetTime();

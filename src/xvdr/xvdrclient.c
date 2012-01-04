@@ -90,6 +90,7 @@ cXVDRClient::cXVDRClient(int fd, unsigned int id, const char *ClientAdr)
   m_compressionLevel        = 0;
   m_LanguageIndex           = -1;
   m_LangStreamType          = stMPEG2AUDIO;
+  m_channelCount            = 0;
 
   m_socket.set_handle(fd);
   m_wantfta = true;
@@ -230,8 +231,20 @@ void cXVDRClient::ChannelChange()
 {
   cMutexLock lock(&m_msgLock);
 
-  if (!m_StatusInterfaceEnabled)
+  if(!m_StatusInterfaceEnabled)
     return;
+
+  int count = ChannelsCount();
+  if (m_channelCount == count)
+  {
+    INFOLOG("Client %i: %i channels, no change", m_Id, count);
+    return;
+  }
+
+  if (m_channelCount == 0)
+    INFOLOG("Client %i: no channels - sending request", m_Id);
+  else
+    INFOLOG("Client %i : %i channels, %i available - sending request", m_Id, m_channelCount, count);
 
   cResponsePacket *resp = new cResponsePacket();
   if (!resp->initStatus(XVDR_STATUS_CHANNELCHANGE))
@@ -979,10 +992,7 @@ bool cXVDRClient::processRecStream_GetIFrame() /* OPCODE 45 */
   return true;
 }
 
-
-/** OPCODE 60 - 79: XVDR network functions for channel access */
-
-bool cXVDRClient::processCHANNELS_ChannelsCount() /* OPCODE 61 */
+int cXVDRClient::ChannelsCount()
 {
   Channels.Lock(false);
   int count = 0;
@@ -994,8 +1004,15 @@ bool cXVDRClient::processCHANNELS_ChannelsCount() /* OPCODE 61 */
   }
 
   Channels.Unlock();
+  return count;
+}
 
-  m_resp->add_U32(count);
+/** OPCODE 60 - 79: XVDR network functions for channel access */
+
+bool cXVDRClient::processCHANNELS_ChannelsCount() /* OPCODE 61 */
+{
+  m_channelCount = ChannelsCount();
+  m_resp->add_U32(m_channelCount);
 
   m_resp->finalise();
   m_socket.write(m_resp->getPtr(), m_resp->getLen());
@@ -1008,6 +1025,7 @@ bool cXVDRClient::processCHANNELS_GetChannels() /* OPCODE 63 */
 
   bool radio = m_req->extract_U32();
 
+  m_channelCount = ChannelsCount();
   Channels.Lock(false);
 
   for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel))
@@ -1107,6 +1125,8 @@ bool cXVDRClient::processCHANNELS_GetGroupMembers()
 
   bool automatic = m_channelgroups[radio][groupname].automatic;
   std::string name;
+
+  m_channelCount = ChannelsCount();
 
   Channels.Lock(false);
 
