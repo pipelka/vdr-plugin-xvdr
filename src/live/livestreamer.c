@@ -69,11 +69,10 @@ cLiveStreamer::cLiveStreamer(uint32_t timeout)
   m_IFrameSeen      = false;
   m_LangStreamType  = stMPEG2AUDIO;
   m_LanguageIndex   = -1;
+  m_streamPacket    = new cResponsePacket;
 
   m_requestStreamChange = false;
 
-  m_packetEmpty = new cResponsePacket;
-  m_packetEmpty->initStream(XVDR_STREAM_MUXPKT, 0, 0, 0, 0);
 
   memset(&m_FrontendInfo, 0, sizeof(m_FrontendInfo));
   for (int idx = 0; idx < MAXRECEIVEPIDS; ++idx)
@@ -144,7 +143,7 @@ cLiveStreamer::~cLiveStreamer()
     m_Frontend = -1;
   }
 
-  delete m_packetEmpty;
+  delete m_streamPacket;
 
   DEBUGLOG("Finished to delete live streamer");
 }
@@ -473,15 +472,8 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
 
   m_IFrameSeen = true;
 
-  m_streamHeader.channel  = htobe32(XVDR_CHANNEL_STREAM);     // stream channel
-  m_streamHeader.opcode   = htobe32(XVDR_STREAM_MUXPKT);      // Stream packet operation code
-  m_streamHeader.id       = htobe32(pkt->pid);                // PID
-  m_streamHeader.duration = htobe32(pkt->duration);           // Duration
-
-  *(int64_t*)&m_streamHeader.dts = htobe64(pkt->dts); // DTS
-  *(int64_t*)&m_streamHeader.pts = htobe64(pkt->pts); // PTS
-
-  m_streamHeader.length   = htobe32(pkt->size);               // Data length
+  // initialise stream packet
+  m_streamPacket->initStream(XVDR_STREAM_MUXPKT, pkt->pid, pkt->duration, pkt->dts, pkt->pts);
 
   // if a audio or video packet was sent, the signal is restored
   if(pkt->type > stNONE && pkt->type < stDVBSUB) {
@@ -502,8 +494,15 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
 
   DEBUGLOG("sendStreamPacket (type: %i)", pkt->type);
 
-  if(m_Socket->write(&m_streamHeader, sizeof(m_streamHeader), 2000, true) > 0)
-    m_Socket->write(pkt->data, pkt->size, 2000);
+  // write payload into stream packet
+  m_streamPacket->copyin(pkt->data, pkt->size);
+  m_streamPacket->finaliseStream();
+
+  if(m_Socket->write(m_streamPacket->getPtr(), m_streamPacket->getLen(), 3000) <= 0)
+  {
+    ERRORLOG("%s - error writing packet", __FUNCTION__);
+    return;
+  }
 
   m_last_tick.Set(0);
 }

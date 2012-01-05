@@ -71,6 +71,7 @@ void cResponsePacket::initBuffers()
     bufSize = 512;
     buffer = (uint8_t*)malloc(bufSize);
   }
+  bufUsed = 0;
 }
 
 bool cResponsePacket::init(uint32_t requestID)
@@ -117,8 +118,8 @@ bool cResponsePacket::initStream(uint32_t opCode, uint32_t streamID, uint32_t du
   *(uint32_t*)&buffer[4]  = htobe32(opCode);         // Stream packet operation code
   *(uint32_t*)&buffer[8]  = htobe32(streamID);       // Stream ID
   *(uint32_t*)&buffer[12] = htobe32(duration);       // Duration
-  *(int64_t*) &buffer[16] = htobe64(dts);    // DTS
-  *(int64_t*) &buffer[24] = htobe64(pts);    // PTS
+  *(int64_t*) &buffer[16] = htobe64(pts);    // PTS
+  *(int64_t*) &buffer[24] = htobe64(dts);    // DTS
   *(uint32_t*)&buffer[userDataLenPosStream] = 0;
   bufUsed = headerLengthStream;
 

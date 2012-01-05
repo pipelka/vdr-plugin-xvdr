@@ -79,7 +79,7 @@ private:
   bool              m_startup;
   bool              m_IsAudioOnly;                  /*!> Set to true if streams contains only audio */
   bool              m_IsMPEGPS;                     /*!> TS Stream contains MPEG PS data like from pvrinput */
-  cResponsePacket*  m_packetEmpty;                  /*!> Empty stream packet */
+  cResponsePacket*  m_streamPacket;
   bool              m_requestStreamChange;
   uint32_t          m_scanTimeout;                  /*!> Channel scanning timeout (in seconds) */
   cTimeMs           m_last_tick;
@@ -88,16 +88,6 @@ private:
   cMutex            m_FilterMutex;
   int               m_LanguageIndex;
   eStreamType       m_LangStreamType;
-
-  struct {
-    uint32_t channel;
-    uint32_t opcode;
-    uint32_t id;
-    uint32_t duration;
-    uint8_t pts[sizeof(int64_t)];
-    uint8_t dts[sizeof(int64_t)];
-    uint32_t length;
-  } m_streamHeader;
 
 protected:
   virtual void Action(void);
