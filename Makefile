@@ -66,6 +66,7 @@ OBJS = \
 	src/demuxer/demuxer_Subtitle.o \
 	src/demuxer/demuxer_Teletext.o \
 	src/live/livepatfilter.o \
+	src/live/livequeue.o \
 	src/live/livereceiver.o \
 	src/live/livestreamer.o \
 	src/net/cxsocket.o \

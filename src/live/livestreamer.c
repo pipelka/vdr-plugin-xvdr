@@ -47,6 +47,7 @@
 #include "livestreamer.h"
 #include "livepatfilter.h"
 #include "livereceiver.h"
+#include "livequeue.h"
 
 cLiveStreamer::cLiveStreamer(uint32_t timeout)
  : cThread("cLiveStreamer stream processor")
@@ -58,6 +59,7 @@ cLiveStreamer::cLiveStreamer(uint32_t timeout)
   m_Socket          = NULL;
   m_Device          = NULL;
   m_Receiver        = NULL;
+  m_Queue           = NULL;
   m_PatFilter       = NULL;
   m_Frontend        = -1;
   m_NumStreams      = 0;
@@ -69,7 +71,6 @@ cLiveStreamer::cLiveStreamer(uint32_t timeout)
   m_IFrameSeen      = false;
   m_LangStreamType  = stMPEG2AUDIO;
   m_LanguageIndex   = -1;
-  m_streamPacket    = new cResponsePacket;
 
   m_requestStreamChange = false;
 
@@ -91,6 +92,7 @@ cLiveStreamer::~cLiveStreamer()
 {
   DEBUGLOG("Started to delete live streamer");
 
+  cTimeMs t;
   Cancel(-1);
 
   if (m_Device)
@@ -119,7 +121,7 @@ cLiveStreamer::~cLiveStreamer()
     {
       if (m_Streams[idx])
       {
-        DEBUGLOG("Deleting stream demuxer %i for pid=%i and type=%i", m_Streams[idx]->GetStreamIndex(), m_Streams[idx]->GetPID(), m_Streams[idx]->Type());
+        DEBUGLOG("Deleting stream demuxer for pid=%i and type=%i", m_Streams[idx]->GetPID(), m_Streams[idx]->Type());
         DELETENULL(m_Streams[idx]);
         m_Pids[idx] = 0;
       }
@@ -143,9 +145,9 @@ cLiveStreamer::~cLiveStreamer()
     m_Frontend = -1;
   }
 
-  delete m_streamPacket;
+  delete m_Queue;
 
-  DEBUGLOG("Finished to delete live streamer");
+  DEBUGLOG("Finished to delete live streamer (took %llu ms)", t.Elapsed());
 }
 
 void cLiveStreamer::RequestStreamChange()
@@ -383,6 +385,13 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
 
   if (m_Channel && ((m_Channel->Source() >> 24) == 'V')) m_IsMPEGPS = true;
 
+  // create send queue
+  if (m_Queue == NULL)
+  {
+    m_Queue = new cLiveQueue(Socket);
+    m_Queue->Start();
+  }
+
   if (m_NumStreams > 0 && m_Socket)
   {
     DEBUGLOG("Creating new live Receiver");
@@ -472,9 +481,6 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
 
   m_IFrameSeen = true;
 
-  // initialise stream packet
-  m_streamPacket->initStream(XVDR_STREAM_MUXPKT, pkt->pid, pkt->duration, pkt->dts, pkt->pts);
-
   // if a audio or video packet was sent, the signal is restored
   if(pkt->type > stNONE && pkt->type < stDVBSUB) {
     if(m_SignalLost) {
@@ -492,17 +498,16 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
   if(m_SignalLost)
     return;
 
-  DEBUGLOG("sendStreamPacket (type: %i)", pkt->type);
+  // initialise stream packet
+  cResponsePacket* packet = new cResponsePacket;
+  packet->initStream(XVDR_STREAM_MUXPKT, pkt->pid, pkt->duration, pkt->dts, pkt->pts);
 
   // write payload into stream packet
-  m_streamPacket->copyin(pkt->data, pkt->size);
-  m_streamPacket->finaliseStream();
+  packet->copyin(pkt->data, pkt->size);
+  packet->finaliseStream();
 
-  if(m_Socket->write(m_streamPacket->getPtr(), m_streamPacket->getLen(), 3000) <= 0)
-  {
-    ERRORLOG("%s - error writing packet", __FUNCTION__);
+  if(!m_Queue->Add(packet))
     return;
-  }
 
   m_last_tick.Set(0);
 }
@@ -598,15 +603,13 @@ void cLiveStreamer::sendStreamChange()
         break;
 
       default:
-    	break;
+        break;
     }
   }
 
   resp->finaliseStream();
 
-  m_Socket->write(resp->getPtr(), resp->getLen(), -1, true);
-  delete resp;
-
+  m_Queue->Add(resp);
   m_requestStreamChange = false;
 
   sendStreamInfo();
@@ -624,8 +627,8 @@ void cLiveStreamer::sendStatus(int status)
 
   resp->add_U32(status);
   resp->finaliseStream();
-  m_Socket->write(resp->getPtr(), resp->getLen(), -1, true);
-  delete resp;
+
+  m_Queue->Add(resp);
 }
 
 void cLiveStreamer::sendSignalInfo()
@@ -650,8 +653,7 @@ void cLiveStreamer::sendSignalInfo()
     resp->add_U32(0);
 
     resp->finaliseStream();
-    m_Socket->write(resp->getPtr(), resp->getLen(), -1, true);
-    delete resp;
+    m_Queue->Add(resp);
     return;
   }
 
@@ -697,8 +699,7 @@ void cLiveStreamer::sendSignalInfo()
       resp->add_U32(0);
 
       resp->finaliseStream();
-      m_Socket->write(resp->getPtr(), resp->getLen(), -1, true);
-      delete resp;
+      m_Queue->Add(resp);
     }
   }
   else
@@ -770,8 +771,7 @@ void cLiveStreamer::sendSignalInfo()
 
       DEBUGLOG("sendSignalInfo");
 
-      m_Socket->write(resp->getPtr(), resp->getLen(), -1, true);
-      delete resp;
+      m_Queue->Add(resp);
     }
   }
 }
@@ -838,8 +838,7 @@ void cLiveStreamer::sendStreamInfo()
 
   DEBUGLOG("sendStreamInfo");
 
-  m_Socket->write(resp->getPtr(), resp->getLen());
-  delete resp;
+  m_Queue->Add(resp);
 }
 
 void cLiveStreamer::reorderStreams(int lang, eStreamType type)

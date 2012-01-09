@@ -42,6 +42,7 @@ class cLiveReceiver;
 class cTSDemuxer;
 class cResponsePacket;
 class cLivePatFilter;
+class cLiveQueue;
 
 class cLiveStreamer : public cThread
                     , public cRingBufferLinear
@@ -79,7 +80,6 @@ private:
   bool              m_startup;
   bool              m_IsAudioOnly;                  /*!> Set to true if streams contains only audio */
   bool              m_IsMPEGPS;                     /*!> TS Stream contains MPEG PS data like from pvrinput */
-  cResponsePacket*  m_streamPacket;
   bool              m_requestStreamChange;
   uint32_t          m_scanTimeout;                  /*!> Channel scanning timeout (in seconds) */
   cTimeMs           m_last_tick;
@@ -88,6 +88,7 @@ private:
   cMutex            m_FilterMutex;
   int               m_LanguageIndex;
   eStreamType       m_LangStreamType;
+  cLiveQueue*       m_Queue;
 
 protected:
   virtual void Action(void);
