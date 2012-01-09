@@ -781,11 +781,12 @@ bool cXVDRClient::processChannelStream_Open() /* OPCODE 20 */
 
   // try to find channel by uid first
   channel = FindChannelByUID(uid);
-  Channels.Unlock();
 
   // try channelnumber
   if (channel == NULL)
     channel = Channels.GetByNumber(uid);
+
+  Channels.Unlock();
 
   if (channel == NULL) {
     ERRORLOG("Can't find channel %08x", uid);
