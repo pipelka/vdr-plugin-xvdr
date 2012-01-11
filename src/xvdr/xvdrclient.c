@@ -103,8 +103,13 @@ cXVDRClient::~cXVDRClient()
 {
   DEBUGLOG("%s", __FUNCTION__);
   StopChannelStreaming();
-  m_socket.close(); // force closing connection
+
+  // shutdown connection
+  m_socket.abort(); 
   Cancel(10);
+
+  // close connection
+  m_socket.close(); 
   DEBUGLOG("done");
 }
 

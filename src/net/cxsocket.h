@@ -54,6 +54,8 @@ class cxSocket {
 
   void set_handle(int h);
 
+  void abort();
+
   void close(void);
 
   ssize_t read(void *buffer, size_t size, int timeout_ms = -1);

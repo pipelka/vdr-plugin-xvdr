@@ -59,6 +59,12 @@ cxSocket::~cxSocket()
   delete m_pollerWrite;
 }
 
+void cxSocket::abort() {
+  if(m_fd >= 0) {
+    shutdown(m_fd, SHUT_RDWR);
+  }
+}
+
 void cxSocket::close() {
   if(m_fd >= 0) { 
     ::close(m_fd);
