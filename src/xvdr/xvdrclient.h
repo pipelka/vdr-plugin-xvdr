@@ -99,7 +99,7 @@ protected:
 
   void SetLoggedIn(bool yesNo) { m_loggedIn = yesNo; }
   void SetStatusInterface(bool yesNo) { m_StatusInterfaceEnabled = yesNo; }
-  bool StartChannelStreaming(const cChannel *channel, uint32_t timeout);
+  bool StartChannelStreaming(const cChannel *channel, uint32_t timeout, int32_t priority);
   void StopChannelStreaming();
 
 private:
