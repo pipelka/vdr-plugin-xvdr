@@ -51,7 +51,7 @@
 
 cLiveStreamer::cLiveStreamer(uint32_t timeout)
  : cThread("cLiveStreamer stream processor")
- , cRingBufferLinear(MEGABYTE(1), TS_SIZE*2, true)
+ , cRingBufferLinear(MEGABYTE(5), TS_SIZE*2, true)
  , m_scanTimeout(timeout)
 {
   m_Channel         = NULL;
@@ -85,7 +85,7 @@ cLiveStreamer::cLiveStreamer(uint32_t timeout)
   if(m_scanTimeout == 0)
     m_scanTimeout = XVDRServerConfig.stream_timeout;
 
-  SetTimeouts(0, 100);
+  SetTimeouts(0, 50);
 }
 
 cLiveStreamer::~cLiveStreamer()

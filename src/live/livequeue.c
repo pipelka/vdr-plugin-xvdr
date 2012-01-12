@@ -120,7 +120,7 @@ bool cLiveQueue::write(cResponsePacket* packet)
   FD_SET(fd, &set);
 
   to.tv_sec = 0;
-  to.tv_usec = 10 * 1000;
+  to.tv_usec = 100 * 1000;
 
   if(select(fd + 1, NULL, &set, NULL, &to) <= 0 || !Running())
     return false;
