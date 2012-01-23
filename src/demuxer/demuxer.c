@@ -30,7 +30,7 @@
 #include "config/config.h"
 #include "live/livestreamer.h"
 #include "demuxer.h"
-#include "demuxer_AAC.h"
+#include "demuxer_LATM.h"
 #include "demuxer_AC3.h"
 #include "demuxer_DTS.h"
 #include "demuxer_h264.h"
@@ -166,7 +166,12 @@ cTSDemuxer::cTSDemuxer(cLiveStreamer *streamer, eStreamType type, int pid)
       break;
 
     case stAAC:
-      m_pesParser = new cParserAAC(this);
+      m_pesParser = NULL;
+      m_streamContent = scAUDIO;
+      break;
+
+    case stLATM:
+      m_pesParser = new cParserLATM(this);
       m_streamContent = scAUDIO;
       break;
 

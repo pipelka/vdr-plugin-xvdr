@@ -590,6 +590,12 @@ void cLiveStreamer::sendStreamChange()
         DEBUGLOG("AAC: %i (index: %i)", streamid, idx);
         break;
 
+      case stLATM:
+        resp->add_String("LATM");
+        resp->add_String(stream->GetLanguage());
+        DEBUGLOG("LATM: %i (index: %i)", streamid, idx);
+        break;
+
       case stEAC3:
         resp->add_String("EAC3");
         resp->add_String(stream->GetLanguage());

@@ -57,7 +57,7 @@ OBJS = \
 	src/config/config.o \
 	src/demuxer/bitstream.o \
 	src/demuxer/demuxer.o \
-	src/demuxer/demuxer_AAC.o \
+	src/demuxer/demuxer_LATM.o \
 	src/demuxer/demuxer_AC3.o \
 	src/demuxer/demuxer_DTS.o \
 	src/demuxer/demuxer_h264.o \

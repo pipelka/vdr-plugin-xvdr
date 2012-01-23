@@ -113,10 +113,14 @@ int cLivePatFilter::GetPid(SI::PMT::Stream& stream, eStreamType *type, char *lan
       DEBUGLOG("cStreamdevPatFilter PMT scanner adding PID %d (%s) (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], langs);
       return stream.getPid();
     case 0x0f: // ISO/IEC 13818-7 Audio with ADTS transport syntax
+      *type = stAAC;
+      GetLanguage(stream, langs);
+      DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "AAC", langs);
+      return stream.getPid();
     case 0x11: // ISO/IEC 14496-3 Audio with LATM transport syntax
-       *type = stAAC;
-       GetLanguage(stream, langs);
-       DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "AAC", langs);
+      *type = stLATM;
+      GetLanguage(stream, langs);
+      DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "LATM", langs);
       return stream.getPid();
 #if 1
     case 0x07: // ISO/IEC 13512 MHEG

@@ -1,6 +1,7 @@
 /*
  *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
+ *      Copyright (C) 2012 Alexander Pipelka
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
  *
  *      http://www.xbmc.org
@@ -22,15 +23,15 @@
  *
  */
 
-#ifndef XVDR_DEMUXER_AAC_H
-#define XVDR_DEMUXER_AAC_H
+#ifndef XVDR_DEMUXER_LATM_H
+#define XVDR_DEMUXER_LATM_H
 
 #include "demuxer.h"
 #include "bitstream.h"
 
-// --- cParserAAC -------------------------------------------------
+// --- cParserLATM -------------------------------------------------
 
-class cParserAAC : public cParser
+class cParserLATM : public cParser
 {
 private:
   uint8_t    *m_streamBuffer;
@@ -48,8 +49,8 @@ private:
   int         m_SampleRate;
 
 public:
-  cParserAAC(cTSDemuxer *demuxer);
-  virtual ~cParserAAC();
+  cParserLATM(cTSDemuxer *demuxer);
+  virtual ~cParserLATM();
 
   virtual void Parse(unsigned char *data, int size, bool pusi);
   void ParseLATMAudioMuxElement(uint8_t *data, int len);
@@ -58,4 +59,4 @@ public:
   uint32_t LATMGetValue(cBitstream *bs) { return bs->readBits(bs->readBits(2) * 8); }
 };
 
-#endif // XVDR_DEMUXER_AAC_H
+#endif // XVDR_DEMUXER_LATM_H

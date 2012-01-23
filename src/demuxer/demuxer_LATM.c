@@ -1,6 +1,7 @@
 /*
  *      vdr-plugin-xvdr - XBMC server plugin for VDR
  *
+ *      Copyright (C) 2012 Alexander Pipelka
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
  *
  *      http://www.xbmc.org
@@ -25,7 +26,8 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "demuxer_AAC.h"
+#include "config/config.h"
+#include "demuxer_LATM.h"
 
 static int aac_sample_rates[16] =
 {
@@ -34,7 +36,7 @@ static int aac_sample_rates[16] =
 };
 
 
-cParserAAC::cParserAAC(cTSDemuxer *demuxer)
+cParserLATM::cParserLATM(cTSDemuxer *demuxer)
  : cParser(demuxer)
 {
   m_streamBuffer              = NULL;
@@ -48,13 +50,13 @@ cParserAAC::cParserAAC(cTSDemuxer *demuxer)
   m_SampleRate                = 0;
 }
 
-cParserAAC::~cParserAAC()
+cParserLATM::~cParserLATM()
 {
   if (m_streamBuffer)
     free(m_streamBuffer);
 }
 
-void cParserAAC::Parse(unsigned char *data, int size, bool pusi)
+void cParserLATM::Parse(unsigned char *data, int size, bool pusi)
 {
   if (pusi)
   {
@@ -101,25 +103,24 @@ void cParserAAC::Parse(unsigned char *data, int size, bool pusi)
   {
     if(m_streamBuffer[p] == 0x56 && (m_streamBuffer[p + 1] & 0xe0) == 0xe0)
     {
-      int muxlen = (m_streamBuffer[p + 1] & 0x1f) << 8 | m_streamBuffer[p + 2];
+      int muxlen = (m_streamBuffer[p + 1] & 0x1f) << 8 | m_streamBuffer[p + 2] + 3;
 
-      if(l < muxlen + 3)
+      if(l < muxlen)
         break;
 
-      ParseLATMAudioMuxElement(m_streamBuffer + p + 3, muxlen);
-      p += muxlen + 3;
+      ParseLATMAudioMuxElement(m_streamBuffer + p, muxlen);
+      p += muxlen;
     }
     else
-    {
       p++;
-    }
   }
   m_streamParserPtr = p;
 }
 
-void cParserAAC::ParseLATMAudioMuxElement(uint8_t *data, int len)
+void cParserLATM::ParseLATMAudioMuxElement(uint8_t *data, int len)
 {
   cBitstream bs(data, len * 8);
+  bs.skipBits(24);
 
   if (!bs.readBits1())
     ReadStreamMuxConfig(&bs);
@@ -127,55 +128,15 @@ void cParserAAC::ParseLATMAudioMuxElement(uint8_t *data, int len)
   if (!m_Configured)
     return;
 
-  if (m_FrameLengthType != 0)
-    return;
-
-  int tmp;
-  unsigned int slotLen = 0;
-  do
-  {
-    tmp = bs.readBits(8);
-    slotLen += tmp;
-  } while (tmp == 255);
-
-  if (slotLen * 8 > bs.remainingBits())
-    return;
-
   if (m_curDTS == DVD_NOPTS_VALUE)
     return;
 
   sStreamPacket pkt;
-  pkt.size     = slotLen + 7;
-  pkt.data     = (uint8_t*)malloc(pkt.size);
+  pkt.size     = len;
+  pkt.data     = data;
   pkt.dts      = m_curDTS;
-  pkt.pts      = m_curDTS;
+  pkt.pts      = m_curPTS;
   pkt.duration = m_FrameDuration;
-
-  /* 7 bytes of ADTS header */
-  cBitstream out(pkt.data, 56);
-
-  out.putBits(0xfff, 12); // Sync marker
-  out.putBits(0, 1);      // ID 0 = MPEG 4
-  out.putBits(0, 2);      // Layer
-  out.putBits(1, 1);      // Protection absent
-  out.putBits(2, 2);      // AOT
-  out.putBits(m_SampleRateIndex, 4);
-  out.putBits(1, 1);      // Private bit
-  out.putBits(m_ChannelConfig, 3);
-  out.putBits(1, 1);      // Original
-  out.putBits(1, 1);      // Copy
-  out.putBits(1, 1);      // Copyright identification bit
-  out.putBits(1, 1);      // Copyright identification start
-  out.putBits(slotLen, 13);
-  out.putBits(0, 11);     // Buffer fullness
-  out.putBits(0, 2);      // RDB in frame
-
-  assert(out.remainingBits() == 0);
-
-  /* AAC RDB */
-  uint8_t *buf = pkt.data + 7;
-  for (unsigned int i = 0; i < slotLen; i++)
-    *buf++ = bs.readBits(8);
 
   m_curDTS += m_FrameDuration;
 
@@ -183,15 +144,17 @@ void cParserAAC::ParseLATMAudioMuxElement(uint8_t *data, int len)
   return;
 }
 
-void cParserAAC::ReadStreamMuxConfig(cBitstream *bs)
+void cParserLATM::ReadStreamMuxConfig(cBitstream *bs)
 {
   int AudioMuxVersion = bs->readBits(1);
   m_AudioMuxVersion_A = 0;
   if (AudioMuxVersion)                       // audioMuxVersion
     m_AudioMuxVersion_A = bs->readBits(1);
 
-  if(m_AudioMuxVersion_A)
+  if(m_AudioMuxVersion_A) {
+    ERRORLOG("Unsupported AudioMuxVersion");
     return;
+  }
 
   if (AudioMuxVersion)
     LATMGetValue(bs);                  // taraFullness
@@ -252,7 +215,7 @@ void cParserAAC::ReadStreamMuxConfig(cBitstream *bs)
   m_Configured = true;
 }
 
-void cParserAAC::ReadAudioSpecificConfig(cBitstream *bs)
+void cParserLATM::ReadAudioSpecificConfig(cBitstream *bs)
 {
   int aot = bs->readBits(5);
   if (aot != 2)

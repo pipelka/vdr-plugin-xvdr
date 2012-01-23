@@ -175,6 +175,7 @@ enum eStreamType
   stAC3,
   stEAC3,
   stAAC,
+  stLATM,
   stDTS,
   stMPEG2VIDEO = 10,
   stH264,
