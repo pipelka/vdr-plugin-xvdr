@@ -382,7 +382,8 @@ void cTSDemuxer::SetAudioInformation(int Channels, int SampleRate, int BitRate, 
   INFOLOG("NEW AUDIO INFORMATION:");
   INFOLOG("Channels: %i", Channels);
   INFOLOG("Samplerate: %i Hz", SampleRate);
-  INFOLOG("Bitrate: %i bps", BitRate);
+  if(BitRate > 0)
+    INFOLOG("Bitrate: %i bps", BitRate);
   INFOLOG("--------------------------------------");
 
   m_Channels        = Channels;

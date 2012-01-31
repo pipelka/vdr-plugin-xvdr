@@ -418,6 +418,14 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
             m_Streamer->m_NumStreams++;
             break;
           }
+          case stLATM:
+          {
+            m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, stLATM, pids[i]);
+            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguage(langs[i]);
+            m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
+            m_Streamer->m_NumStreams++;
+            break;
+          }
           case stDVBSUB:
           {
             m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, stDVBSUB, pids[i]);

@@ -312,12 +312,17 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
 
   const int *APids = m_Channel->Apids();
   int index = 0;
+  eStreamType audiotype = stMPEG2AUDIO;
   for ( ; *APids && m_NumStreams < MAXRECEIVEPIDS; APids++)
   {
     if (FindStreamDemuxer(*APids) == NULL)
     {
       m_Pids[m_NumStreams]    = *APids;
-      m_Streams[m_NumStreams] = new cTSDemuxer(this, stMPEG2AUDIO, *APids);
+      if(m_Channel->Atype(index) == 0x11) {
+        audiotype = stLATM;
+      }
+
+      m_Streams[m_NumStreams] = new cTSDemuxer(this, audiotype, *APids);
       m_Streams[m_NumStreams]->SetLanguage(m_Channel->Alang(index));
       m_NumStreams++;
     }
@@ -326,12 +331,18 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
 
   const int *DPids = m_Channel->Dpids();
   index = 0;
+  audiotype = stAC3;
   for ( ; *DPids && m_NumStreams < MAXRECEIVEPIDS; DPids++)
   {
     if (FindStreamDemuxer(*DPids) == NULL)
     {
       m_Pids[m_NumStreams]    = *DPids;
-      m_Streams[m_NumStreams] = new cTSDemuxer(this, stAC3, *DPids);
+
+      if(m_Channel->Dtype(index) == 0x11) {
+        audiotype = stLATM;
+      }
+
+      m_Streams[m_NumStreams] = new cTSDemuxer(this, audiotype, *DPids);
       m_Streams[m_NumStreams]->SetLanguage(m_Channel->Dlang(index));
       m_NumStreams++;
     }

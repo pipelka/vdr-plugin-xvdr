@@ -217,10 +217,7 @@ void cParserLATM::ReadStreamMuxConfig(cBitstream *bs)
 
 void cParserLATM::ReadAudioSpecificConfig(cBitstream *bs)
 {
-  int aot = bs->readBits(5);
-  if (aot != 2)
-    return;
-
+  bs->skipBits(5); // AOT
   m_SampleRateIndex = bs->readBits(4);
 
   if (m_SampleRateIndex == 0xf)
