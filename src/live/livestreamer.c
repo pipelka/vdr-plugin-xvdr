@@ -79,7 +79,6 @@ cLiveStreamer::cLiveStreamer(uint32_t timeout)
   for (int idx = 0; idx < MAXRECEIVEPIDS; ++idx)
   {
     m_Streams[idx] = NULL;
-    m_Pids[idx]    = 0;
   }
 
   if(m_scanTimeout == 0)
@@ -92,11 +91,18 @@ cLiveStreamer::~cLiveStreamer()
 {
   DEBUGLOG("Started to delete live streamer");
 
+  // clear buffer
+  Clear();
+
   cTimeMs t;
   Cancel(-1);
 
   if (m_Device)
   {
+    cCamSlot* cam = m_Device->CamSlot();
+    if(cam != NULL)
+      cam->StopDecrypting();
+
     if (m_Receiver)
     {
       DEBUGLOG("Detaching Live Receiver");
@@ -123,7 +129,6 @@ cLiveStreamer::~cLiveStreamer()
       {
         DEBUGLOG("Deleting stream demuxer for pid=%i and type=%i", m_Streams[idx]->GetPID(), m_Streams[idx]->Type());
         DELETENULL(m_Streams[idx]);
-        m_Pids[idx] = 0;
       }
     }
 
@@ -238,9 +243,10 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
     return false;
   }
 
-  m_Channel   = channel;
-  m_Priority  = priority;
-  m_Socket    = Socket;
+  m_Channel    = channel;
+  m_Priority   = priority;
+  m_Socket     = Socket;
+  m_NumStreams = 0;
 
   // check if any device is able to decrypt the channel - code taken from VDR
   int NumUsableSlots = 0;
@@ -295,106 +301,15 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
     return false;
   }
 
-  if (m_Channel->Vpid())
-  {
-#if APIVERSNUM >= 10701
-    if (m_Channel->Vtype() == 0x1B)
-      m_Streams[m_NumStreams] = new cTSDemuxer(this, stH264, m_Channel->Vpid());
-    else
-#endif
-      m_Streams[m_NumStreams] = new cTSDemuxer(this, stMPEG2VIDEO, m_Channel->Vpid());
-
-    m_Pids[m_NumStreams] = m_Channel->Vpid();
-    m_NumStreams++;
-  }
-  else
+  if (m_Channel->Vpid() == 0)
     m_IsAudioOnly = true;
 
-  const int *APids = m_Channel->Apids();
-  int index = 0;
-  eStreamType audiotype = stMPEG2AUDIO;
-  for ( ; *APids && m_NumStreams < MAXRECEIVEPIDS; APids++)
-  {
-    if (FindStreamDemuxer(*APids) == NULL)
-    {
-      m_Pids[m_NumStreams]    = *APids;
-      if(m_Channel->Atype(index) == 0x11) {
-        audiotype = stLATM;
-      }
-
-      m_Streams[m_NumStreams] = new cTSDemuxer(this, audiotype, *APids);
-      m_Streams[m_NumStreams]->SetLanguageDescriptor(m_Channel->Alang(index), m_Channel->Atype(index));
-      m_NumStreams++;
-    }
-    index++;
-  }
-
-  const int *DPids = m_Channel->Dpids();
-  index = 0;
-  audiotype = stAC3;
-  for ( ; *DPids && m_NumStreams < MAXRECEIVEPIDS; DPids++)
-  {
-    if (FindStreamDemuxer(*DPids) == NULL)
-    {
-      m_Pids[m_NumStreams]    = *DPids;
-
-      if(m_Channel->Dtype(index) == 0x11) {
-        audiotype = stLATM;
-      }
-
-      m_Streams[m_NumStreams] = new cTSDemuxer(this, audiotype, *DPids);
-      m_Streams[m_NumStreams]->SetLanguageDescriptor(m_Channel->Dlang(index), m_Channel->Atype(index));
-      m_NumStreams++;
-    }
-    index++;
-  }
-
-  const int *SPids = m_Channel->Spids();
-  if (SPids)
-  {
-    int index = 0;
-    for ( ; *SPids && m_NumStreams < MAXRECEIVEPIDS; SPids++)
-    {
-      if (FindStreamDemuxer(*SPids) == NULL)
-      {
-        m_Pids[m_NumStreams]    = *SPids;
-        m_Streams[m_NumStreams] = new cTSDemuxer(this, stDVBSUB, *SPids);
-        m_Streams[m_NumStreams]->SetLanguageDescriptor(m_Channel->Slang(index), m_Channel->Atype(index));
-#if APIVERSNUM >= 10709
-        m_Streams[m_NumStreams]->SetSubtitlingDescriptor(m_Channel->SubtitlingType(index),
-                                                         m_Channel->CompositionPageId(index),
-                                                         m_Channel->AncillaryPageId(index));
-#endif
-        m_NumStreams++;
-      }
-      index++;
-    }
-  }
-
-  if (m_Channel->Tpid())
-  {
-    m_Streams[m_NumStreams] = new cTSDemuxer(this, stTELETEXT, m_Channel->Tpid());
-    m_Pids[m_NumStreams]    = m_Channel->Tpid();
-
-    // add teletext pid if there is a CAM connected
-    // (some broadcasters encrypt teletext data)
-    cCamSlot* cam = m_Device->CamSlot();
-    if(cam != NULL) 
-    {
-      cam->AddPid(m_Channel->Sid(), m_Channel->Tpid(), 0x06);
-    }
-    m_NumStreams++;
-  }
-
-  m_Streams[m_NumStreams] = NULL;
-  m_Pids[m_NumStreams]    = 0;
-
-  /* Send the OK response here, that it is before the Stream end message */
+  // Send the OK response here, that it is before the Stream end message
   resp->add_U32(XVDR_RET_OK);
   resp->finalise();
   m_Socket->write(resp->getPtr(), resp->getLen());
 
-  if (m_Channel && ((m_Channel->Source() >> 24) == 'V')) m_IsMPEGPS = true;
+  if ((m_Channel->Source() >> 24) == 'V') m_IsMPEGPS = true;
 
   // create send queue
   if (m_Queue == NULL)
@@ -403,14 +318,11 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
     m_Queue->Start();
   }
 
-  if (m_NumStreams > 0 && m_Socket)
-  {
-    DEBUGLOG("Creating new live Receiver");
-    m_Receiver  = new cLiveReceiver(this, m_Channel->GetChannelID(), m_Priority, m_Pids);
-    m_PatFilter = new cLivePatFilter(this, m_Channel);
-    m_Device->AttachReceiver(m_Receiver);
-    m_Device->AttachFilter(m_PatFilter);
-  }
+  DEBUGLOG("Starting PAT scanner");
+  m_PatFilter = new cLivePatFilter(this, m_Channel);
+  m_Receiver = new cLiveReceiver(this, m_Channel, m_Priority);
+  m_Device->AttachFilter(m_PatFilter);
+  m_Device->AttachReceiver(m_Receiver);
 
   INFOLOG("Successfully switched to channel %i - %s", m_Channel->Number(), m_Channel->Name());
   return true;

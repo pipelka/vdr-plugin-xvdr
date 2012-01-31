@@ -66,6 +66,10 @@ class cxSocket {
 
   inline int fd() { return m_fd; }
 
+  inline void LockWrite() { m_MutexWrite.Lock(); }
+
+  inline void UnlockWrite() { m_MutexWrite.Unlock(); }
+
 };
 
 #endif // XVDR_CXSOCKET_H

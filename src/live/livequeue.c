@@ -116,21 +116,33 @@ bool cLiveQueue::write(cResponsePacket* packet)
   fd_set set;
   struct timeval to;
 
-  FD_ZERO(&set);
-  FD_SET(fd, &set);
-
-  to.tv_sec = 0;
-  to.tv_usec = 100 * 1000;
-
-  if(select(fd + 1, NULL, &set, NULL, &to) <= 0 || !Running())
-    return false;
+  m_socket->LockWrite();
 
   while (size > 0)
   {
+    FD_ZERO(&set);
+    FD_SET(fd, &set);
+
+    to.tv_sec = 0;
+    to.tv_usec = 50 * 1000;
+
+    int rc = select(fd + 1, NULL, &set, NULL, &to);
+    if(rc == 0 && Running())
+      continue;
+
+    if(rc < 0 || !Running())
+    {
+      m_socket->UnlockWrite();
+      return false;
+    }
+
     ssize_t p = ::send(fd, ptr, size, MSG_NOSIGNAL | MSG_DONTWAIT);
 
     if (!Running())
+    {
+      m_socket->UnlockWrite();
       return false;
+    }
 
     if (p <= 0)
     {
@@ -140,6 +152,7 @@ bool cLiveQueue::write(cResponsePacket* packet)
         continue;
       }
       ERRORLOG("cxSocket::write: write() error");
+      m_socket->UnlockWrite();
       return false;
     }
 
@@ -147,5 +160,6 @@ bool cLiveQueue::write(cResponsePacket* packet)
     size -= p;
   }
 
+  m_socket->UnlockWrite();
   return true;
 }

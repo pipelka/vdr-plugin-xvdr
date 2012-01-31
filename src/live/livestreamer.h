@@ -68,7 +68,6 @@ private:
   cLiveReceiver    *m_Receiver;                     /*!> Our stream transceiver */
   cLivePatFilter   *m_PatFilter;                    /*!> Filter processor to get changed pid's */
   int               m_Priority;                     /*!> The priority over other streamers */
-  int               m_Pids[MAXRECEIVEPIDS + 1];     /*!> PID for cReceiver also as extra array */
   cTSDemuxer       *m_Streams[MAXRECEIVEPIDS + 1];  /*!> Stream information data (partly filled, rest is done by cLiveReceiver */
   int               m_NumStreams;                   /*!> Number of streams selected */
   cxSocket         *m_Socket;                       /*!> The socket class to communicate with client */

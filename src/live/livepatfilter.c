@@ -97,13 +97,6 @@ int cLivePatFilter::GetPid(SI::PMT::Stream& stream, eStreamType *type, char *lan
   if (!stream.getPid())
     return 0;
 
-  if(m_Channel->Tpid() == stream.getPid())
-  {
-    DEBUGLOG("cStreamdevPatFilter PMT scanner: adding PID %d %s\n", stream.getPid(), "Teletext");
-    *type = stTELETEXT;
-    return stream.getPid();
-  }
-
   switch (stream.getStreamType())
   {
     case 0x01: // ISO/IEC 11172 Video
@@ -308,7 +301,6 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
     {
       if (m_pmtVersion != pmt.getVersionNumber())
       {
-//        printf("cStreamdevPatFilter: PMT version changed, detaching all pids\n");
         cFilter::Del(m_pmtPid, 0x02);
         m_pmtPid = 0; // this triggers PAT scan
       }
@@ -316,7 +308,6 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
     }
     m_pmtVersion = pmt.getVersionNumber();
 
-    SI::PMT::Stream stream;
     int         pids[MAXRECEIVEPIDS + 1];
     eStreamType types[MAXRECEIVEPIDS + 1];
     char        langs[MAXRECEIVEPIDS + 1][MAXLANGCODE2];
@@ -325,140 +316,104 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
     int         compositionPageId[MAXRECEIVEPIDS + 1];
     int         ancillaryPageId[MAXRECEIVEPIDS + 1];
     int         streams = 0;
+
+    // get all streams and check if there are new (currently unknown) streams
+    bool newstreams = false;
+    SI::PMT::Stream stream;
     for (SI::Loop::Iterator it; pmt.streamLoop.getNext(stream, it); )
     {
       eStreamType type;
       int pid = GetPid(stream, &type, langs[streams], atypes[streams], &subtitlingType[streams], &compositionPageId[streams], &ancillaryPageId[streams]);
       if (0 != pid && streams < MAXRECEIVEPIDS)
       {
-        pids[streams]   = pid;
-        types[streams]  = type;
+        pids[streams]  = pid;
+        types[streams] = type;
         streams++;
+
+        if (m_Streamer->HaveStreamDemuxer(pid, type) == -1)
+          newstreams = true;
       }
     }
     pids[streams] = 0;
 
-    int newstreams = 0;
+    // no new streams found -> exit
+    if (!newstreams)
+      return;
+
+    m_Streamer->m_FilterMutex.Lock();
+
+    // remove old streams
+    m_Streamer->m_Receiver->SetPids(NULL);
+    for (int idx = 0; idx < MAXRECEIVEPIDS; ++idx)
+      DELETENULL(m_Streamer->m_Streams[idx]);
+
+    m_Streamer->m_NumStreams  = 0;
+    m_Streamer->m_streamReady = false;
+    m_Streamer->m_IFrameSeen  = false;
+
+    // create new stream demuxers
     for (int i = 0; i < streams; i++)
     {
-      if (m_Streamer->HaveStreamDemuxer(pids[i], types[i]) == -1)
-        newstreams++;
+      cTSDemuxer* stream = NULL;
+      switch (types[i])
+      {
+        // hande video streams
+        case stMPEG2VIDEO:
+        case stH264:
+          stream = new cTSDemuxer(m_Streamer, types[i], pids[i]);
+          break;
+
+        // handle audio streams
+        case stMPEG2AUDIO:
+        case stAC3:
+        case stEAC3:
+        case stDTS:
+        case stAAC:
+        case stLATM:
+        {
+          stream = new cTSDemuxer(m_Streamer, types[i], pids[i]);
+          stream->SetLanguageDescriptor(langs[i], atypes[i]);
+          break;
+        }
+
+        // subtitles
+        case stDVBSUB:
+        {
+          stream = new cTSDemuxer(m_Streamer, stDVBSUB, pids[i]);
+          stream->SetLanguageDescriptor(langs[i], atypes[i]);
+          stream->SetSubtitlingDescriptor(subtitlingType[i], compositionPageId[i], ancillaryPageId[i]);
+          break;
+        }
+
+        // teletext
+        case stTELETEXT:
+        {
+          stream = new cTSDemuxer(m_Streamer, stTELETEXT, pids[i]);
+
+          // add teletext pid if there is a CAM connected
+          // (some broadcasters encrypt teletext data)
+          cCamSlot* cam = m_Streamer->m_Device->CamSlot();
+          if(cam != NULL)
+            cam->AddPid(m_Channel->Sid(), pids[i], 0x06);
+
+          break;
+        }
+
+        // unsupported stream
+        default:
+          break;
+      }
+
+      if (stream != NULL)
+      {
+        m_Streamer->m_Streams[m_Streamer->m_NumStreams] = stream;
+        m_Streamer->m_NumStreams++;
+        m_Streamer->m_Receiver->AddPid(pids[i]);
+      }
     }
 
-    if (newstreams > 0)
-    {
-      m_Streamer->m_FilterMutex.Lock();
-      if (m_Streamer->m_Receiver)
-      {
-        DEBUGLOG("Detaching Live Receiver");
-        m_Streamer->m_Device->Detach(m_Streamer->m_Receiver);
-        DELETENULL(m_Streamer->m_Receiver);
-      }
-
-      for (int idx = 0; idx < MAXRECEIVEPIDS; ++idx)
-      {
-        if (m_Streamer->m_Streams[idx])
-        {
-          DELETENULL(m_Streamer->m_Streams[idx]);
-          m_Streamer->m_Pids[idx] = 0;
-        }
-      }
-      m_Streamer->m_NumStreams  = 0;
-      m_Streamer->m_streamReady = false;
-      m_Streamer->m_IFrameSeen  = false;
-
-      for (int i = 0; i < streams; i++)
-      {
-        switch (types[i])
-        {
-          case stMPEG2AUDIO:
-          {
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, stMPEG2AUDIO, pids[i]);
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguageDescriptor(langs[i], atypes[i]);
-            m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
-            m_Streamer->m_NumStreams++;
-            break;
-          }
-          case stMPEG2VIDEO:
-          {
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, stMPEG2VIDEO, pids[i]);
-            m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
-            m_Streamer->m_NumStreams++;
-            break;
-          }
-          case stH264:
-          {
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, stH264, pids[i]);
-            m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
-            m_Streamer->m_NumStreams++;
-            break;
-          }
-          case stAC3:
-          {
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, stAC3, pids[i]);
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguageDescriptor(langs[i], atypes[i]);
-            m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
-            m_Streamer->m_NumStreams++;
-            break;
-          }
-          case stEAC3:
-          {
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, stEAC3, pids[i]);
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguageDescriptor(langs[i], atypes[i]);
-            m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
-            m_Streamer->m_NumStreams++;
-            break;
-          }
-          case stDTS:
-          {
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, stDTS, pids[i]);
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguageDescriptor(langs[i], atypes[i]);
-            m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
-            m_Streamer->m_NumStreams++;
-            break;
-          }
-          case stAAC:
-          {
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, stAAC, pids[i]);
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguageDescriptor(langs[i], atypes[i]);
-            m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
-            m_Streamer->m_NumStreams++;
-            break;
-          }
-          case stLATM:
-          {
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, stLATM, pids[i]);
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguageDescriptor(langs[i], atypes[i]);
-            m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
-            m_Streamer->m_NumStreams++;
-            break;
-          }
-          case stDVBSUB:
-          {
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, stDVBSUB, pids[i]);
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguageDescriptor(langs[i], atypes[i]);
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetSubtitlingDescriptor(subtitlingType[i], compositionPageId[i], ancillaryPageId[i]);
-            m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
-            m_Streamer->m_NumStreams++;
-            break;
-          }
-          case stTELETEXT:
-          {
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, stTELETEXT, pids[i]);
-            m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
-            m_Streamer->m_NumStreams++;
-            break;
-          }
-          default:
-            break;
-        }
-      }
-
-      m_Streamer->m_Receiver  = new cLiveReceiver(m_Streamer, m_Channel->GetChannelID(), m_Streamer->m_Priority, m_Streamer->m_Pids);
-      m_Streamer->m_Device->AttachReceiver(m_Streamer->m_Receiver);
-      INFOLOG("Currently unknown new streams found, requesting stream change");
-      m_Streamer->RequestStreamChange();
-      m_Streamer->m_FilterMutex.Unlock();
-    }
+    INFOLOG("Currently unknown new streams found, requesting stream change");
+    m_Streamer->RequestStreamChange();
+    m_Streamer->m_FilterMutex.Unlock();
   }
 }

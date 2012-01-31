@@ -42,7 +42,7 @@ protected:
   virtual void Receive(uchar *Data, int Length);
 
 public:
-  cLiveReceiver(cLiveStreamer *Streamer, tChannelID ChannelID, int Priority, const int *Pids);
+  cLiveReceiver(cLiveStreamer *Streamer, const cChannel* channel, int Priority);
   virtual ~cLiveReceiver();
 };
 
