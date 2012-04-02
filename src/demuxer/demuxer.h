@@ -248,6 +248,7 @@ private:
   cParser              *m_pesParser;
 
   char                  m_language[4];  // ISO 639 3-letter language code (empty string if undefined)
+  uint8_t               m_audiotype;    // ISO 639 audio type
 
   int                   m_FpsScale;     // scale of 1000 and a rate of 29970 will result in 29.97 fps
   int                   m_FpsRate;
@@ -274,8 +275,9 @@ public:
   bool ProcessTSPacket(unsigned char *data);
   void SendPacket(sStreamPacket *pkt);
 
-  void SetLanguage(const char *language);
+  void SetLanguageDescriptor(const char *language, uint8_t atype);
   const char *GetLanguage() { return m_language; }
+  uint8_t GetAudioType() { return m_audiotype; }
   const eStreamContent Content() const { return m_streamContent; }
   const eStreamType Type() const { return m_streamType; }
   const int GetPID() const { return m_PID; }
