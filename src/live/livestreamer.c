@@ -323,7 +323,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
       }
 
       m_Streams[m_NumStreams] = new cTSDemuxer(this, audiotype, *APids);
-      m_Streams[m_NumStreams]->SetLanguageDescriptor(m_Channel->Alang(index));
+      m_Streams[m_NumStreams]->SetLanguageDescriptor(m_Channel->Alang(index), m_Channel->Atype(index));
       m_NumStreams++;
     }
     index++;
@@ -343,7 +343,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
       }
 
       m_Streams[m_NumStreams] = new cTSDemuxer(this, audiotype, *DPids);
-      m_Streams[m_NumStreams]->SetLanguageDescriptor(m_Channel->Dlang(index));
+      m_Streams[m_NumStreams]->SetLanguageDescriptor(m_Channel->Dlang(index), m_Channel->Atype(index));
       m_NumStreams++;
     }
     index++;
@@ -359,7 +359,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
       {
         m_Pids[m_NumStreams]    = *SPids;
         m_Streams[m_NumStreams] = new cTSDemuxer(this, stDVBSUB, *SPids);
-        m_Streams[m_NumStreams]->SetLanguageDescriptor(m_Channel->Slang(index));
+        m_Streams[m_NumStreams]->SetLanguageDescriptor(m_Channel->Slang(index), m_Channel->Atype(index));
 #if APIVERSNUM >= 10709
         m_Streams[m_NumStreams]->SetSubtitlingDescriptor(m_Channel->SubtitlingType(index),
                                                          m_Channel->CompositionPageId(index),

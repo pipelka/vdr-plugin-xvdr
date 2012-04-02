@@ -275,7 +275,7 @@ public:
   bool ProcessTSPacket(unsigned char *data);
   void SendPacket(sStreamPacket *pkt);
 
-  void SetLanguageDescriptor(const char *language);
+  void SetLanguageDescriptor(const char *language, uint8_t atype);
   const char *GetLanguage() { return m_language; }
   uint8_t GetAudioType() { return m_audiotype; }
   const eStreamContent Content() const { return m_streamContent; }
