@@ -75,6 +75,7 @@ void cLivePatFilter::GetLanguage(SI::PMT::Stream& stream, char *langs)
       {
         SI::ISO639LanguageDescriptor *ld = (SI::ISO639LanguageDescriptor *)d;
         strn0cpy(langs, I18nNormalizeLanguageCode(ld->languageCode), MAXLANGCODE1);
+        langs[3] = ld->languageCode[3];
         break;
       }
       default: ;
@@ -367,7 +368,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
           case stMPEG2AUDIO:
           {
             m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, stMPEG2AUDIO, pids[i]);
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguage(langs[i]);
+            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguageDescriptor(langs[i]);
             m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
             m_Streamer->m_NumStreams++;
             break;
@@ -389,7 +390,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
           case stAC3:
           {
             m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, stAC3, pids[i]);
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguage(langs[i]);
+            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguageDescriptor(langs[i]);
             m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
             m_Streamer->m_NumStreams++;
             break;
@@ -397,7 +398,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
           case stEAC3:
           {
             m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, stEAC3, pids[i]);
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguage(langs[i]);
+            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguageDescriptor(langs[i]);
             m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
             m_Streamer->m_NumStreams++;
             break;
@@ -405,7 +406,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
           case stDTS:
           {
             m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, stDTS, pids[i]);
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguage(langs[i]);
+            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguageDescriptor(langs[i]);
             m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
             m_Streamer->m_NumStreams++;
             break;
@@ -413,7 +414,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
           case stAAC:
           {
             m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, stAAC, pids[i]);
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguage(langs[i]);
+            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguageDescriptor(langs[i]);
             m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
             m_Streamer->m_NumStreams++;
             break;
@@ -421,7 +422,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
           case stLATM:
           {
             m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, stLATM, pids[i]);
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguage(langs[i]);
+            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguageDescriptor(langs[i]);
             m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
             m_Streamer->m_NumStreams++;
             break;
@@ -429,7 +430,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
           case stDVBSUB:
           {
             m_Streamer->m_Streams[m_Streamer->m_NumStreams] = new cTSDemuxer(m_Streamer, stDVBSUB, pids[i]);
-            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguage(langs[i]);
+            m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetLanguageDescriptor(langs[i]);
             m_Streamer->m_Streams[m_Streamer->m_NumStreams]->SetSubtitlingDescriptor(subtitlingType[i], compositionPageId[i], ancillaryPageId[i]);
             m_Streamer->m_Pids[m_Streamer->m_NumStreams] = pids[i];
             m_Streamer->m_NumStreams++;

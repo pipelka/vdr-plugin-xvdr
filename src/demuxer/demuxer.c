@@ -133,6 +133,7 @@ cTSDemuxer::cTSDemuxer(cLiveStreamer *streamer, eStreamType type, int pid)
   : m_Streamer(streamer)
   , m_streamType(type)
   , m_PID(pid)
+  , m_audiotype(0)
 {
   m_pesError        = false;
   m_pesParser       = NULL;
@@ -324,12 +325,13 @@ bool cTSDemuxer::ProcessTSPacket(unsigned char *data)
   return true;
 }
 
-void cTSDemuxer::SetLanguage(const char *language)
+void cTSDemuxer::SetLanguageDescriptor(const char *language)
 {
   m_language[0] = language[0];
   m_language[1] = language[1];
   m_language[2] = language[2];
   m_language[3] = 0;
+  m_audiotype = language[3];
 }
 
 void cTSDemuxer::SetVideoInformation(int FpsScale, int FpsRate, int Height, int Width, float Aspect, int num, int den)
