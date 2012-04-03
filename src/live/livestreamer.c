@@ -323,7 +323,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
       }
 
       m_Streams[m_NumStreams] = new cTSDemuxer(this, audiotype, *APids);
-      m_Streams[m_NumStreams]->SetLanguageDescriptor(m_Channel->Alang(index), m_Channel->Atype(index));
+      m_Streams[m_NumStreams]->SetLanguage(m_Channel->Alang(index));
       m_NumStreams++;
     }
     index++;
@@ -343,7 +343,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
       }
 
       m_Streams[m_NumStreams] = new cTSDemuxer(this, audiotype, *DPids);
-      m_Streams[m_NumStreams]->SetLanguageDescriptor(m_Channel->Dlang(index), m_Channel->Atype(index));
+      m_Streams[m_NumStreams]->SetLanguage(m_Channel->Dlang(index));
       m_NumStreams++;
     }
     index++;
@@ -359,7 +359,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
       {
         m_Pids[m_NumStreams]    = *SPids;
         m_Streams[m_NumStreams] = new cTSDemuxer(this, stDVBSUB, *SPids);
-        m_Streams[m_NumStreams]->SetLanguageDescriptor(m_Channel->Slang(index), m_Channel->Atype(index));
+        m_Streams[m_NumStreams]->SetLanguage(m_Channel->Slang(index));
 #if APIVERSNUM >= 10709
         m_Streams[m_NumStreams]->SetSubtitlingDescriptor(m_Channel->SubtitlingType(index),
                                                          m_Channel->CompositionPageId(index),
@@ -553,8 +553,6 @@ void cLiveStreamer::sendStreamChange()
       case stMPEG2AUDIO:
         resp->add_String("MPEG2AUDIO");
         resp->add_String(stream->GetLanguage());
-        // for future protocol versions: add audio_type
-        //resp->add_U8(stream->GetAudioType());
         DEBUGLOG("MPEG2AUDIO: %i (index: %i) (%s)", streamid, idx, stream->GetLanguage());
         break;
 
@@ -571,9 +569,7 @@ void cLiveStreamer::sendStreamChange()
       case stAC3:
         resp->add_String("AC3");
         resp->add_String(stream->GetLanguage());
-        // for future protocol versions: add audio_type
-        //resp->add_U8(stream->GetAudioType());
-        DEBUGLOG("AC3: %i (index: %i) (%s)", streamid, idx, stream->GetLanguage());
+        DEBUGLOG("AC3: %i (index: %i)", streamid, idx);
         break;
 
       case stH264:
@@ -602,33 +598,25 @@ void cLiveStreamer::sendStreamChange()
       case stAAC:
         resp->add_String("AAC");
         resp->add_String(stream->GetLanguage());
-        // for future protocol versions: add audio_type
-        //resp->add_U8(stream->GetAudioType());
-        DEBUGLOG("AAC: %i (index: %i) (%s)", streamid, idx, stream->GetLanguage());
+        DEBUGLOG("AAC: %i (index: %i)", streamid, idx);
         break;
 
       case stLATM:
         resp->add_String("LATM");
         resp->add_String(stream->GetLanguage());
-        // for future protocol versions: add audio_type
-        //resp->add_U8(stream->GetAudioType());
-        DEBUGLOG("LATM: %i (index: %i) (%s)", streamid, idx, stream->GetLanguage());
+        DEBUGLOG("LATM: %i (index: %i)", streamid, idx);
         break;
 
       case stEAC3:
         resp->add_String("EAC3");
         resp->add_String(stream->GetLanguage());
-        // for future protocol versions: add audio_type
-        //resp->add_U8(stream->GetAudioType());
-        DEBUGLOG("EAC3: %i (index: %i) (%s)", streamid, idx, stream->GetLanguage());
+        DEBUGLOG("EAC3: %i (index: %i)", streamid, idx);
         break;
 
       case stDTS:
         resp->add_String("DTS");
         resp->add_String(stream->GetLanguage());
-        // for future protocol versions: add audio_type
-        //resp->add_U8(stream->GetAudioType());
-        DEBUGLOG("DTS: %i (index: %i) (%s)", streamid, idx, stream->GetLanguage());
+        DEBUGLOG("DTS: %i (index: %i)", streamid, idx);
         break;
 
       default:
@@ -887,28 +875,21 @@ void cLiveStreamer::reorderStreams(int lang, eStreamType type)
       continue;
     }
 
-    int w = idx;
-
     // only for audio streams
     if(stream->Content() != scAUDIO)
     {
-      weight[w] = stream;
+      weight[1000 + idx] = stream;
       continue;
     }
+    // weight of streamtype
+    int wt = (stream->Type() == type) ? 0 : 200;
 
-    // weight of language (10000)
+    // weight of language;
     int streamLangIndex = I18nLanguageIndex(stream->GetLanguage());
-    w += (streamLangIndex == lang) ? 10000 : 0;
-
-    // weight of streamtype (1000)
-    w += (stream->Type() == type) ? 100 : 0;
-
-    // weight of languagedescriptor (100)
-    int ldw = stream->GetAudioType() * 100;
-    w += 400 - ldw;
+    int wl = (streamLangIndex == lang) ? 0 : 300;
 
     // summed weight
-    weight[w] = stream;
+    weight[wt + wl + idx] = stream;
   }
 
   // lock processing
@@ -916,7 +897,7 @@ void cLiveStreamer::reorderStreams(int lang, eStreamType type)
 
   // reorder streams on weight
   int idx = 0;
-  for(std::map<int, cTSDemuxer*>::reverse_iterator i = weight.rbegin(); i != weight.rend(); i++, idx++)
+  for(std::map<int, cTSDemuxer*>::iterator i = weight.begin(); i != weight.end(); i++, idx++)
   {
     cTSDemuxer* stream = i->second;
     DEBUGLOG("Stream %i: Type %i / %s Weight: %i", idx, stream->Type(), stream->GetLanguage(), i->first);
