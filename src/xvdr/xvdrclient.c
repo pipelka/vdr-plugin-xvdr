@@ -1572,7 +1572,11 @@ bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
       }
       else
       {
+#if APIVERSNUM >= 10727
+        recordingStart = recording->Start();
+#else
         recordingStart = recording->start;
+#endif
       }
     }
     DEBUGLOG("GRI: RC: recordingStart=%lu recordingDuration=%i", recordingStart, recordingDuration);
@@ -1584,10 +1588,22 @@ bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
     m_resp->add_U32(recordingDuration);
 
     // priority
-    m_resp->add_U32(recording->priority);
+    m_resp->add_U32(
+#if APIVERSNUM >= 10727
+    recording->Priority()
+#else
+    recording->priority
+#endif
+    );
 
     // lifetime
-    m_resp->add_U32(recording->lifetime);
+    m_resp->add_U32(
+#if APIVERSNUM >= 10727
+    recording->Lifetime()
+#else
+    recording->lifetime
+#endif
+    );
 
     // channel_name
     m_resp->add_String(recording->Info()->ChannelName() ? m_toUTF8.Convert(recording->Info()->ChannelName()) : "");
