@@ -31,6 +31,7 @@
 #include <libsi/descriptor.h>
 
 #include "demuxer/demuxer.h"
+#include "channelcache.h"
 
 class cLiveStreamer;
 
@@ -42,8 +43,9 @@ private:
   int             m_pmtVersion;
   const cChannel *m_Channel;
   cLiveStreamer  *m_Streamer;
+  cChannelCache   m_ChannelCache;
 
-  int GetPid(SI::PMT::Stream& stream, eStreamType *type, char *langs, int& atype, int *subtitlingType, int *compositionPageId, int *ancillaryPageId);
+  bool GetStreamInfo(SI::PMT::Stream& stream, struct StreamInfo& info);
   void GetLanguage(SI::PMT::Stream& stream, char *langs, int& type);
   virtual void Process(u_short Pid, u_char Tid, const u_char *Data, int Length);
 

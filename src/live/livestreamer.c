@@ -43,6 +43,7 @@
 #include "net/cxsocket.h"
 #include "net/responsepacket.h"
 #include "xvdr/xvdrcommand.h"
+#include "tools/hash.h"
 
 #include "livestreamer.h"
 #include "livepatfilter.h"
@@ -62,7 +63,6 @@ cLiveStreamer::cLiveStreamer(uint32_t timeout)
   m_Queue           = NULL;
   m_PatFilter       = NULL;
   m_Frontend        = -1;
-  m_NumStreams      = 0;
   m_streamReady     = false;
   m_IsAudioOnly     = false;
   m_IsMPEGPS        = false;
@@ -76,10 +76,6 @@ cLiveStreamer::cLiveStreamer(uint32_t timeout)
 
 
   memset(&m_FrontendInfo, 0, sizeof(m_FrontendInfo));
-  for (int idx = 0; idx < MAXRECEIVEPIDS; ++idx)
-  {
-    m_Streams[idx] = NULL;
-  }
 
   if(m_scanTimeout == 0)
     m_scanTimeout = XVDRServerConfig.stream_timeout;
@@ -123,15 +119,6 @@ cLiveStreamer::~cLiveStreamer()
       DEBUGLOG("No live filter present");
     }
 
-    for (int idx = 0; idx < MAXRECEIVEPIDS; ++idx)
-    {
-      if (m_Streams[idx])
-      {
-        DEBUGLOG("Deleting stream demuxer for pid=%i and type=%i", m_Streams[idx]->GetPID(), m_Streams[idx]->Type());
-        DELETENULL(m_Streams[idx]);
-      }
-    }
-
     if (m_Receiver)
     {
       DEBUGLOG("Deleting Live Receiver");
@@ -143,6 +130,17 @@ cLiveStreamer::~cLiveStreamer()
       DEBUGLOG("Deleting Live Filter");
       DELETENULL(m_PatFilter);
     }
+
+    for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++)
+    {
+      if ((*i) != NULL)
+      {
+        DEBUGLOG("Deleting stream demuxer for pid=%i and type=%i", (*i)->GetPID(), (*i)->Type());
+        delete (*i);
+      }
+    }
+    m_Demuxers.clear();
+
   }
   if (m_Frontend >= 0)
   {
@@ -246,7 +244,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
   m_Channel    = channel;
   m_Priority   = priority;
   m_Socket     = Socket;
-  m_NumStreams = 0;
+  uint32_t uid = CreateChannelUID(m_Channel);
 
   // check if any device is able to decrypt the channel - code taken from VDR
   int NumUsableSlots = 0;
@@ -318,9 +316,20 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
     m_Queue->Start();
   }
 
-  DEBUGLOG("Starting PAT scanner");
   m_PatFilter = new cLivePatFilter(this, m_Channel);
   m_Receiver = new cLiveReceiver(this, m_Channel, m_Priority);
+
+  // get cached demuxer data
+  DEBUGLOG("Creating demuxers");
+  cChannelCache cache = cChannelCache::GetFromCache(uid);
+  if(cache.size() != 0) {
+    cache.CreateDemuxers(this);
+    m_streamReady = false;
+    m_IFrameSeen  = false;
+    RequestStreamChange();
+  }
+
+  DEBUGLOG("Starting PAT scanner");
   m_Device->AttachFilter(m_PatFilter);
   m_Device->AttachReceiver(m_Receiver);
 
@@ -330,18 +339,11 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
 
 cTSDemuxer *cLiveStreamer::FindStreamDemuxer(int Pid)
 {
-  for (int idx = 0; idx < m_NumStreams; ++idx)
-    if (m_Streams[idx] && m_Streams[idx]->GetPID() == Pid)
-      return m_Streams[idx];
-  return NULL;
-}
+  for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++)
+    if ((*i) != NULL && (*i)->GetPID() == Pid)
+      return (*i);
 
-int cLiveStreamer::HaveStreamDemuxer(int Pid, eStreamType streamType)
-{
-  for (int idx = 0; idx < m_NumStreams; ++idx)
-    if (m_Streams[idx] && (Pid == 0 || m_Streams[idx]->GetPID() == Pid) && m_Streams[idx]->Type() == streamType)
-      return idx;
-  return -1;
+  return NULL;
 }
 
 void cLiveStreamer::Activate(bool On)
@@ -450,9 +452,9 @@ void cLiveStreamer::sendStreamChange()
   // reorder streams as preferred
   reorderStreams(m_LanguageIndex, m_LangStreamType);
 
-  for (int idx = 0; idx < m_NumStreams; ++idx)
+  for (std::list<cTSDemuxer*>::iterator idx = m_Demuxers.begin(); idx != m_Demuxers.end(); idx++)
   {
-    cTSDemuxer* stream = m_Streams[idx];
+    cTSDemuxer* stream = (*idx);
 
     if (stream == NULL)
       continue;
@@ -467,7 +469,7 @@ void cLiveStreamer::sendStreamChange()
         resp->add_String(stream->GetLanguage());
         // for future protocol versions: add audio_type
         //resp->add_U8(stream->GetAudioType());
-        DEBUGLOG("MPEG2AUDIO: %i (index: %i) (%s)", streamid, idx, stream->GetLanguage());
+        DEBUGLOG("MPEG2AUDIO: %i (%s)", streamid, stream->GetLanguage());
         break;
 
       case stMPEG2VIDEO:
@@ -477,7 +479,7 @@ void cLiveStreamer::sendStreamChange()
         resp->add_U32(stream->GetHeight());
         resp->add_U32(stream->GetWidth());
         resp->add_double(stream->GetAspect());
-        DEBUGLOG("MPEG2VIDEO: %i (index: %i)", streamid, idx);
+        DEBUGLOG("MPEG2VIDEO: %i", streamid);
         break;
 
       case stAC3:
@@ -485,7 +487,7 @@ void cLiveStreamer::sendStreamChange()
         resp->add_String(stream->GetLanguage());
         // for future protocol versions: add audio_type
         //resp->add_U8(stream->GetAudioType());
-        DEBUGLOG("AC3: %i (index: %i) (%s)", streamid, idx, stream->GetLanguage());
+        DEBUGLOG("AC3: %i (%s)", streamid, stream->GetLanguage());
         break;
 
       case stH264:
@@ -495,7 +497,7 @@ void cLiveStreamer::sendStreamChange()
         resp->add_U32(stream->GetHeight());
         resp->add_U32(stream->GetWidth());
         resp->add_double(stream->GetAspect());
-        DEBUGLOG("H264: %i (index: %i)", streamid, idx);
+        DEBUGLOG("H264: %i", streamid);
         break;
 
       case stDVBSUB:
@@ -503,12 +505,12 @@ void cLiveStreamer::sendStreamChange()
         resp->add_String(stream->GetLanguage());
         resp->add_U32(stream->CompositionPageId());
         resp->add_U32(stream->AncillaryPageId());
-        DEBUGLOG("DVBSUB: %i (index: %i)", streamid, idx);
+        DEBUGLOG("DVBSUB: %i", streamid);
         break;
 
       case stTELETEXT:
         resp->add_String("TELETEXT");
-        DEBUGLOG("TELETEXT: %i (index: %i)", streamid, idx);
+        DEBUGLOG("TELETEXT: %i", streamid);
         break;
 
       case stAAC:
@@ -516,7 +518,7 @@ void cLiveStreamer::sendStreamChange()
         resp->add_String(stream->GetLanguage());
         // for future protocol versions: add audio_type
         //resp->add_U8(stream->GetAudioType());
-        DEBUGLOG("AAC: %i (index: %i) (%s)", streamid, idx, stream->GetLanguage());
+        DEBUGLOG("AAC: %i (%s)", streamid, stream->GetLanguage());
         break;
 
       case stLATM:
@@ -524,7 +526,7 @@ void cLiveStreamer::sendStreamChange()
         resp->add_String(stream->GetLanguage());
         // for future protocol versions: add audio_type
         //resp->add_U8(stream->GetAudioType());
-        DEBUGLOG("LATM: %i (index: %i) (%s)", streamid, idx, stream->GetLanguage());
+        DEBUGLOG("LATM: %i (%s)", streamid, stream->GetLanguage());
         break;
 
       case stEAC3:
@@ -532,7 +534,7 @@ void cLiveStreamer::sendStreamChange()
         resp->add_String(stream->GetLanguage());
         // for future protocol versions: add audio_type
         //resp->add_U8(stream->GetAudioType());
-        DEBUGLOG("EAC3: %i (index: %i) (%s)", streamid, idx, stream->GetLanguage());
+        DEBUGLOG("EAC3: %i (%s)", streamid, stream->GetLanguage());
         break;
 
       case stDTS:
@@ -540,7 +542,7 @@ void cLiveStreamer::sendStreamChange()
         resp->add_String(stream->GetLanguage());
         // for future protocol versions: add audio_type
         //resp->add_U8(stream->GetAudioType());
-        DEBUGLOG("DTS: %i (index: %i) (%s)", streamid, idx, stream->GetLanguage());
+        DEBUGLOG("DTS: %i (%s)", streamid, stream->GetLanguage());
         break;
 
       default:
@@ -719,10 +721,8 @@ void cLiveStreamer::sendSignalInfo()
 
 void cLiveStreamer::sendStreamInfo()
 {
-  if(m_NumStreams == 0)
-  {
+  if(m_Demuxers.size() == 0)
     return;
-  }
 
   cResponsePacket *resp = new cResponsePacket();
   if (!resp->initStream(XVDR_STREAM_CONTENTINFO, 0, 0, 0, 0))
@@ -735,9 +735,9 @@ void cLiveStreamer::sendStreamInfo()
   // reorder streams as preferred
   reorderStreams(m_LanguageIndex, m_LangStreamType);
 
-  for (int idx = 0; idx < m_NumStreams; ++idx)
+  for (std::list<cTSDemuxer*>::iterator idx = m_Demuxers.begin(); idx != m_Demuxers.end(); idx++)
   {
-    cTSDemuxer* stream = m_Streams[idx];
+    cTSDemuxer* stream = (*idx);
 
     if (stream == NULL)
       continue;
@@ -791,15 +791,14 @@ void cLiveStreamer::reorderStreams(int lang, eStreamType type)
   std::map<int, cTSDemuxer*> weight;
 
   // compute weights
-  for (int idx = 0; idx < m_NumStreams; ++idx)
+  int i = 0;
+  for (std::list<cTSDemuxer*>::iterator idx = m_Demuxers.begin(); idx != m_Demuxers.end(); idx++, i++)
   {
-    cTSDemuxer* stream = m_Streams[idx];
+    cTSDemuxer* stream = (*idx);
     if (stream == NULL)
-    {
       continue;
-    }
 
-    int w = idx;
+    int w = i;
 
     // only for audio streams
     if(stream->Content() != scAUDIO)
@@ -828,11 +827,12 @@ void cLiveStreamer::reorderStreams(int lang, eStreamType type)
 
   // reorder streams on weight
   int idx = 0;
+  m_Demuxers.clear();
   for(std::map<int, cTSDemuxer*>::reverse_iterator i = weight.rbegin(); i != weight.rend(); i++, idx++)
   {
     cTSDemuxer* stream = i->second;
-    DEBUGLOG("Stream %i: Type %i / %s Weight: %i", idx, stream->Type(), stream->GetLanguage(), i->first);
-    m_Streams[idx] = stream;
+    DEBUGLOG("Stream : Type %i / %s Weight: %i", stream->Type(), stream->GetLanguage(), i->first);
+    m_Demuxers.push_back(stream);
   }
 
   // unlock processing

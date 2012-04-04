@@ -35,6 +35,7 @@
 #include <vdr/ringbuffer.h>
 
 #include "demuxer/demuxer.h"
+#include <list>
 
 class cxSocket;
 class cChannel;
@@ -50,6 +51,7 @@ class cLiveStreamer : public cThread
 private:
   friend class cTSDemuxer;
   friend class cLivePatFilter;
+  friend class cChannelCache;
 
   void Detach(void);
   void Attach(void);
@@ -68,8 +70,7 @@ private:
   cLiveReceiver    *m_Receiver;                     /*!> Our stream transceiver */
   cLivePatFilter   *m_PatFilter;                    /*!> Filter processor to get changed pid's */
   int               m_Priority;                     /*!> The priority over other streamers */
-  cTSDemuxer       *m_Streams[MAXRECEIVEPIDS + 1];  /*!> Stream information data (partly filled, rest is done by cLiveReceiver */
-  int               m_NumStreams;                   /*!> Number of streams selected */
+  std::list<cTSDemuxer*> m_Demuxers;
   cxSocket         *m_Socket;                       /*!> The socket class to communicate with client */
   int               m_Frontend;                     /*!> File descriptor to access used receiving device  */
   dvb_frontend_info m_FrontendInfo;                 /*!> DVB Information about the receiving device (DVB only) */
@@ -101,13 +102,11 @@ public:
 
   bool StreamChannel(const cChannel *channel, int priority, cxSocket *Socket, cResponsePacket* resp);
   void SetReady() { m_streamReady = true; }
-  bool IsReady() { return m_streamReady && (m_NumStreams > 0); }
+  bool IsReady() { return m_streamReady && (m_Demuxers.size() > 0); }
   bool IsStarting() { return m_startup; }
   bool IsAudioOnly() { return m_IsAudioOnly; }
   bool IsMPEGPS() { return m_IsMPEGPS; }
   void SetLanguage(int lang, eStreamType streamtype = stAC3);
-
-  int HaveStreamDemuxer(int Pid, eStreamType streamType);
 
 };
 
