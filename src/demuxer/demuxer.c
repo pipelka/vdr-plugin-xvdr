@@ -133,6 +133,7 @@ cTSDemuxer::cTSDemuxer(cLiveStreamer *streamer, eStreamType type, int pid)
   : m_Streamer(streamer)
   , m_streamType(type)
   , m_PID(pid)
+  , m_parsed(false)
   , m_audiotype(0)
 {
   m_pesError        = false;
@@ -193,6 +194,7 @@ cTSDemuxer::cTSDemuxer(cLiveStreamer *streamer, eStreamType type, int pid)
 
     case stTELETEXT:
       m_pesParser = new cParserTeletext(this);
+      m_parsed = true;
       m_streamContent = scTELETEXT;
       break;
 
@@ -359,23 +361,19 @@ void cTSDemuxer::SetVideoInformation(int FpsScale, int FpsRate, int Height, int 
 
   INFOLOG("--------------------------------------");
 
-  m_FpsScale        = FpsScale;
-  m_FpsRate         = FpsRate;
-  m_Height          = Height;
-  m_Width           = Width;
-  m_Aspect          = Aspect;
+  m_FpsScale = FpsScale;
+  m_FpsRate  = FpsRate;
+  m_Height   = Height;
+  m_Width    = Width;
+  m_Aspect   = Aspect;
+  m_parsed   = true;
 
   if(m_Streamer->IsReady())
     m_Streamer->RequestStreamChange();
-  else
-    m_Streamer->SetReady();
 }
 
 void cTSDemuxer::SetAudioInformation(int Channels, int SampleRate, int BitRate, int BitsPerSample, int BlockAlign)
 {
-  if(m_Streamer->IsAudioOnly() && !m_Streamer->IsReady())
-    m_Streamer->SetReady();
-
   // only register changed audio information
   if(Channels == m_Channels && SampleRate == m_SampleRate && BitRate == m_BitRate)
     return;
@@ -388,11 +386,12 @@ void cTSDemuxer::SetAudioInformation(int Channels, int SampleRate, int BitRate, 
     INFOLOG("Bitrate: %i bps", BitRate);
   INFOLOG("--------------------------------------");
 
-  m_Channels        = Channels;
-  m_SampleRate      = SampleRate;
-  m_BlockAlign      = BlockAlign;
-  m_BitRate         = BitRate;
-  m_BitsPerSample   = BitsPerSample;
+  m_Channels      = Channels;
+  m_SampleRate    = SampleRate;
+  m_BlockAlign    = BlockAlign;
+  m_BitRate       = BitRate;
+  m_BitsPerSample = BitsPerSample;
+  m_parsed        = true;
 }
 
 void cTSDemuxer::SetSubtitlingDescriptor(unsigned char SubtitlingType, uint16_t CompositionPageId, uint16_t AncillaryPageId)
@@ -400,4 +399,5 @@ void cTSDemuxer::SetSubtitlingDescriptor(unsigned char SubtitlingType, uint16_t 
   m_subtitlingType    = SubtitlingType;
   m_compositionPageId = CompositionPageId;
   m_ancillaryPageId   = AncillaryPageId;
+  m_parsed            = true;
 }

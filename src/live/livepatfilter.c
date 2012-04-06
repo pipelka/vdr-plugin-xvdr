@@ -341,9 +341,6 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
 
     m_Streamer->m_FilterMutex.Lock();
 
-    m_Streamer->m_streamReady = false;
-    m_Streamer->m_IFrameSeen  = false;
-
     // create new stream demuxers
     cache.CreateDemuxers(m_Streamer);
 

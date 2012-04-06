@@ -243,6 +243,7 @@ private:
   eStreamContent        m_streamContent;
   eStreamType           m_streamType;
   int                   m_PID;
+  bool                  m_parsed;
 
   bool                  m_pesError;
   cParser              *m_pesParser;
@@ -282,6 +283,7 @@ public:
   const eStreamType Type() const { return m_streamType; }
   const int GetPID() const { return m_PID; }
   bool IsMPEGPS();
+  bool IsParsed() const { return m_parsed; }
 
   /* Video Stream Information */
   void SetVideoInformation(int FpsScale, int FpsRate, int Height, int Width, float Aspect, int num, int den);

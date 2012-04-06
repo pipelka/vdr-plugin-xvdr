@@ -76,15 +76,12 @@ private:
   dvb_frontend_info m_FrontendInfo;                 /*!> DVB Information about the receiving device (DVB only) */
   v4l2_capability   m_vcap;                         /*!> PVR Information about the receiving device (pvrinput only) */
   cString           m_DeviceString;                 /*!> The name of the receiving device */
-  bool              m_streamReady;                  /*!> Set by the video demuxer after we got video information */
   bool              m_startup;
-  bool              m_IsAudioOnly;                  /*!> Set to true if streams contains only audio */
   bool              m_IsMPEGPS;                     /*!> TS Stream contains MPEG PS data like from pvrinput */
   bool              m_requestStreamChange;
   uint32_t          m_scanTimeout;                  /*!> Channel scanning timeout (in seconds) */
   cTimeMs           m_last_tick;
   bool              m_SignalLost;
-  bool              m_IFrameSeen;
   cMutex            m_FilterMutex;
   int               m_LanguageIndex;
   eStreamType       m_LangStreamType;
@@ -101,10 +98,8 @@ public:
   void Activate(bool On);
 
   bool StreamChannel(const cChannel *channel, int priority, cxSocket *Socket, cResponsePacket* resp);
-  void SetReady() { m_streamReady = true; }
-  bool IsReady() { return m_streamReady && (m_Demuxers.size() > 0); }
+  bool IsReady();
   bool IsStarting() { return m_startup; }
-  bool IsAudioOnly() { return m_IsAudioOnly; }
   bool IsMPEGPS() { return m_IsMPEGPS; }
   void SetLanguage(int lang, eStreamType streamtype = stAC3);
 

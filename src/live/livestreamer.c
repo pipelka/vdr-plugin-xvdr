@@ -63,12 +63,9 @@ cLiveStreamer::cLiveStreamer(uint32_t timeout)
   m_Queue           = NULL;
   m_PatFilter       = NULL;
   m_Frontend        = -1;
-  m_streamReady     = false;
-  m_IsAudioOnly     = false;
   m_IsMPEGPS        = false;
   m_startup         = true;
   m_SignalLost      = false;
-  m_IFrameSeen      = false;
   m_LangStreamType  = stMPEG2AUDIO;
   m_LanguageIndex   = -1;
 
@@ -299,9 +296,6 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
     return false;
   }
 
-  if (m_Channel->Vpid() == 0)
-    m_IsAudioOnly = true;
-
   // Send the OK response here, that it is before the Stream end message
   resp->add_U32(XVDR_RET_OK);
   resp->finalise();
@@ -324,8 +318,6 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
   cChannelCache cache = cChannelCache::GetFromCache(uid);
   if(cache.size() != 0) {
     cache.CreateDemuxers(this);
-    m_streamReady = false;
-    m_IFrameSeen  = false;
     RequestStreamChange();
   }
 
@@ -388,9 +380,6 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
   if(!IsReady() || pkt == NULL || pkt->size == 0)
     return;
 
-  if(!m_IsAudioOnly && !m_IFrameSeen && (pkt->frametype != PKT_I_FRAME))
-    return;
-
   // Send stream information as the first packet on startup
   if (IsStarting() && IsReady())
   {
@@ -404,16 +393,12 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
   if(m_requestStreamChange)
     sendStreamChange();
 
-  m_IFrameSeen = true;
-
   // if a audio or video packet was sent, the signal is restored
   if(pkt->type > stNONE && pkt->type < stDVBSUB) {
     if(m_SignalLost) {
       INFOLOG("signal restored");
       sendStatus(XVDR_STREAM_STATUS_SIGNALRESTORED);
       m_SignalLost = false;
-      m_IFrameSeen = false;
-      m_streamReady = false;
       m_requestStreamChange = true;
       m_last_tick.Set(0);
       return;
@@ -846,4 +831,13 @@ void cLiveStreamer::SetLanguage(int lang, eStreamType streamtype)
 
   m_LanguageIndex = lang;
   m_LangStreamType = streamtype;
+}
+
+bool cLiveStreamer::IsReady()
+{
+  for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++)
+    if (!(*i)->IsParsed())
+      return false;
+
+  return true;
 }
