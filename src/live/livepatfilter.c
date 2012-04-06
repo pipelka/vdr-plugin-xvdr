@@ -310,10 +310,13 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
     if (!pmt.CheckCRCAndParse() || pmt.getServiceId() != m_pmtSid)
       return;
 
-    if (m_pmtVersion != -1 && m_pmtVersion != pmt.getVersionNumber())
+    if (m_pmtVersion != -1)
     {
-      cFilter::Del(m_pmtPid, 0x02);
-      m_pmtPid = 0; // this triggers PAT scan
+      if (m_pmtVersion != pmt.getVersionNumber())
+      {
+        cFilter::Del(m_pmtPid, 0x02);
+        m_pmtPid = 0; // this triggers PAT scan
+      }
       return;
     }
     m_pmtVersion = pmt.getVersionNumber();
