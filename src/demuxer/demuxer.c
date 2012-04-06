@@ -255,10 +255,6 @@ int64_t cTSDemuxer::Rescale(int64_t a)
   }
 }
 
-bool cTSDemuxer::IsMPEGPS() {
-	return m_Streamer->IsMPEGPS();
-}
-
 void cTSDemuxer::SendPacket(sStreamPacket *pkt)
 {
   if(pkt->dts == DVD_NOPTS_VALUE) return;

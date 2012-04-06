@@ -282,7 +282,6 @@ public:
   const eStreamContent Content() const { return m_streamContent; }
   const eStreamType Type() const { return m_streamType; }
   const int GetPID() const { return m_PID; }
-  bool IsMPEGPS();
   bool IsParsed() const { return m_parsed; }
 
   /* Video Stream Information */

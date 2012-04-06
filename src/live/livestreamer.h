@@ -77,7 +77,6 @@ private:
   v4l2_capability   m_vcap;                         /*!> PVR Information about the receiving device (pvrinput only) */
   cString           m_DeviceString;                 /*!> The name of the receiving device */
   bool              m_startup;
-  bool              m_IsMPEGPS;                     /*!> TS Stream contains MPEG PS data like from pvrinput */
   bool              m_requestStreamChange;
   uint32_t          m_scanTimeout;                  /*!> Channel scanning timeout (in seconds) */
   cTimeMs           m_last_tick;
@@ -100,7 +99,6 @@ public:
   bool StreamChannel(const cChannel *channel, int priority, cxSocket *Socket, cResponsePacket* resp);
   bool IsReady();
   bool IsStarting() { return m_startup; }
-  bool IsMPEGPS() { return m_IsMPEGPS; }
   void SetLanguage(int lang, eStreamType streamtype = stAC3);
 
 };

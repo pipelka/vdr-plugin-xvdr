@@ -82,19 +82,6 @@ void cParserMPEG2Video::Parse(unsigned char *data, int size, bool pusi)
 {
   uint32_t startcode = m_StartCond;
 
-  /* Parse PES header here for MPEG PS streams like from pvrinput */
-  if (pusi && m_demuxer->IsMPEGPS())
-  {
-    int hlen;
-
-    hlen = ParsePESHeader(data, size);
-    data += hlen;
-    size  -= hlen;
-
-    if(size < 1)
-      return;
-  }
-
   if (m_pictureBuffer == NULL)
   {
     m_pictureBufferSize   = 4000;

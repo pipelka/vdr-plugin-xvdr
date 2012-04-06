@@ -63,7 +63,6 @@ cLiveStreamer::cLiveStreamer(uint32_t timeout)
   m_Queue           = NULL;
   m_PatFilter       = NULL;
   m_Frontend        = -1;
-  m_IsMPEGPS        = false;
   m_startup         = true;
   m_SignalLost      = false;
   m_LangStreamType  = stMPEG2AUDIO;
@@ -300,8 +299,6 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
   resp->add_U32(XVDR_RET_OK);
   resp->finalise();
   m_Socket->write(resp->getPtr(), resp->getLen());
-
-  if ((m_Channel->Source() >> 24) == 'V') m_IsMPEGPS = true;
 
   // create send queue
   if (m_Queue == NULL)
