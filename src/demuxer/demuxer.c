@@ -200,6 +200,7 @@ cTSDemuxer::cTSDemuxer(cLiveStreamer *streamer, eStreamType type, int pid)
 
     case stDVBSUB:
       m_pesParser = new cParserSubtitle(this);
+      m_parsed = true;
       m_streamContent = scSUBTITLE;
       break;
 
