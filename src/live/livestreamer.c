@@ -91,10 +91,6 @@ cLiveStreamer::~cLiveStreamer()
 
   if (m_Device)
   {
-    cCamSlot* cam = m_Device->CamSlot();
-    if(cam != NULL)
-      cam->StopDecrypting();
-
     if (m_Receiver)
     {
       DEBUGLOG("Detaching Live Receiver");
