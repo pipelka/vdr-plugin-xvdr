@@ -828,9 +828,22 @@ void cLiveStreamer::SetLanguage(int lang, eStreamType streamtype)
 
 bool cLiveStreamer::IsReady()
 {
-  for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++)
-    if (!(*i)->IsParsed())
-      return false;
+  bool bHaveAudio = false;
+  bool bHaveVideo = false;
+  bool bAllParsed = true;
 
-  return true;
+  for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++)
+  {
+    if ((*i)->IsParsed())
+    {
+      if ((*i)->Content() == scAUDIO)
+        bHaveAudio = true;
+      else if ((*i)->Content() == scVIDEO)
+        bHaveVideo = true;
+    }
+    else
+      bAllParsed = false;
+  }
+
+  return (bHaveAudio && bHaveVideo) || bAllParsed;
 }
