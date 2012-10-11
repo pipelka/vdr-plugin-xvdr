@@ -36,13 +36,11 @@
 #include <vdr/status.h>
 
 #include "demuxer/demuxer.h"
-#include "net/cxsocket.h"
 
 class cChannel;
 class cDevice;
 class cLiveStreamer;
-class cRequestPacket;
-class cResponsePacket;
+class MsgPacket;
 class cRecPlayer;
 class cCmdControl;
 
@@ -52,15 +50,15 @@ class cXVDRClient : public cThread
 private:
 
   unsigned int     m_Id;
-  cxSocket         m_socket;
+  int              m_socket;
   bool             m_loggedIn;
   bool             m_StatusInterfaceEnabled;
   cLiveStreamer   *m_Streamer;
   bool             m_isStreaming;
   cString          m_ClientAddress;
   cRecPlayer      *m_RecPlayer;
-  cRequestPacket  *m_req;
-  cResponsePacket *m_resp;
+  MsgPacket       *m_req;
+  MsgPacket       *m_resp;
   cCharSetConv     m_toUTF8;
   uint32_t         m_protocolVersion;
   cMutex           m_msgLock;
@@ -76,7 +74,7 @@ private:
 
 protected:
 
-  bool processRequest(cRequestPacket* req);
+  bool processRequest();
 
   virtual void Action(void);
 
@@ -175,8 +173,8 @@ private:
   static void processSCAN_NewChannel(const char *Name, bool isRadio, bool isEncrypted, bool isHD);
   static void processSCAN_IsFinished();
   static void processSCAN_SetStatus(int status);
-  static cResponsePacket *m_processSCAN_Response;
-  static cxSocket *m_processSCAN_Socket;
+  static MsgPacket* m_processSCAN_Response;
+  static int m_processSCAN_Socket;
 
 };
 

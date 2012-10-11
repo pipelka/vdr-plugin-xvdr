@@ -40,8 +40,7 @@
 #endif
 
 #include "config/config.h"
-#include "net/cxsocket.h"
-#include "net/responsepacket.h"
+#include "net/msgpacket.h"
 #include "xvdr/xvdrcommand.h"
 #include "tools/hash.h"
 
@@ -57,7 +56,7 @@ cLiveStreamer::cLiveStreamer(uint32_t timeout)
 {
   m_Channel         = NULL;
   m_Priority        = 0;
-  m_Socket          = NULL;
+  m_socket          = -1;
   m_Device          = NULL;
   m_Receiver        = NULL;
   m_Queue           = NULL;
@@ -225,18 +224,18 @@ void cLiveStreamer::Action(void)
   }
 }
 
-bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocket *Socket, cResponsePacket *resp)
+bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, int sock, MsgPacket *resp)
 {
   if (channel == NULL)
   {
     ERRORLOG("Starting streaming of channel without valid channel");
-    resp->add_U32(XVDR_RET_ERROR);
+    resp->put_U32(XVDR_RET_ERROR);
     return false;
   }
 
   m_Channel    = channel;
   m_Priority   = priority;
-  m_Socket     = Socket;
+  m_socket     = sock;
   uint32_t uid = CreateChannelUID(m_Channel);
 
   // check if any device is able to decrypt the channel - code taken from VDR
@@ -254,7 +253,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
     }
     if (!NumUsableSlots) {
       ERRORLOG("Unable to decrypt channel %i - %s", m_Channel->Number(), m_Channel->Name());
-      resp->add_U32(XVDR_RET_ENCRYPTED);
+      resp->put_U32(XVDR_RET_ENCRYPTED);
       return false;
     }
   }
@@ -276,9 +275,9 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
     // return status "recording running" if there is an active timer
     time_t now = time(NULL);
     if(Timers.GetMatch(now) != NULL)
-      resp->add_U32(XVDR_RET_RECRUNNING);
+      resp->put_U32(XVDR_RET_RECRUNNING);
     else
-      resp->add_U32(XVDR_RET_DATALOCKED);
+      resp->put_U32(XVDR_RET_DATALOCKED);
 
     return false;
   }
@@ -288,19 +287,18 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
   if (!m_Device->SwitchChannel(m_Channel, false))
   {
     ERRORLOG("Can't switch to channel %i - %s", m_Channel->Number(), m_Channel->Name());
-    resp->add_U32(XVDR_RET_ERROR);
+    resp->put_U32(XVDR_RET_ERROR);
     return false;
   }
 
   // Send the OK response here, that it is before the Stream end message
-  resp->add_U32(XVDR_RET_OK);
-  resp->finalise();
-  m_Socket->write(resp->getPtr(), resp->getLen());
+  resp->put_U32(XVDR_RET_OK);
+  resp->write(sock, 3000);
 
   // create send queue
   if (m_Queue == NULL)
   {
-    m_Queue = new cLiveQueue(Socket);
+    m_Queue = new cLiveQueue(m_socket);
     m_Queue->Start();
   }
 
@@ -403,12 +401,17 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
     return;
 
   // initialise stream packet
-  cResponsePacket* packet = new cResponsePacket;
-  packet->initStream(XVDR_STREAM_MUXPKT, pkt->pid, pkt->duration, pkt->dts, pkt->pts);
+  MsgPacket* packet = new MsgPacket(XVDR_STREAM_MUXPKT, XVDR_CHANNEL_STREAM);
+  packet->disablePayloadCheckSum();
+
+  // write stream data
+  packet->put_U16(pkt->pid);
+  packet->put_S64(pkt->pts);
+  packet->put_S64(pkt->dts);
 
   // write payload into stream packet
-  packet->copyin(pkt->data, pkt->size);
-  packet->finaliseStream();
+  packet->put_U32(pkt->size);
+  packet->put_Blob(pkt->data, pkt->size);
 
   m_Queue->Add(packet);
   m_last_tick.Set(0);
@@ -416,13 +419,7 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
 
 void cLiveStreamer::sendStreamChange()
 {
-  cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initStream(XVDR_STREAM_CHANGE, 0, 0, 0, 0))
-  {
-    ERRORLOG("stream response packet init fail");
-    delete resp;
-    return;
-  }
+  MsgPacket* resp = new MsgPacket(XVDR_STREAM_CHANGE, XVDR_CHANNEL_STREAM);
 
   DEBUGLOG("sendStreamChange");
 
@@ -437,88 +434,88 @@ void cLiveStreamer::sendStreamChange()
       continue;
 
     int streamid = stream->GetPID();
-    resp->add_U32(streamid);
+    resp->put_U32(streamid);
 
     switch(stream->Type())
     {
       case stMPEG2AUDIO:
-        resp->add_String("MPEG2AUDIO");
-        resp->add_String(stream->GetLanguage());
+        resp->put_String("MPEG2AUDIO");
+        resp->put_String(stream->GetLanguage());
         // for future protocol versions: add audio_type
-        //resp->add_U8(stream->GetAudioType());
+        //resp->put_U8(stream->GetAudioType());
         DEBUGLOG("MPEG2AUDIO: %i (%s)", streamid, stream->GetLanguage());
         break;
 
       case stMPEG2VIDEO:
-        resp->add_String("MPEG2VIDEO");
-        resp->add_U32(stream->GetFpsScale());
-        resp->add_U32(stream->GetFpsRate());
-        resp->add_U32(stream->GetHeight());
-        resp->add_U32(stream->GetWidth());
-        resp->add_double(stream->GetAspect());
+        resp->put_String("MPEG2VIDEO");
+        resp->put_U32(stream->GetFpsScale());
+        resp->put_U32(stream->GetFpsRate());
+        resp->put_U32(stream->GetHeight());
+        resp->put_U32(stream->GetWidth());
+        resp->put_S64(stream->GetAspect() * 10000.0);
         DEBUGLOG("MPEG2VIDEO: %i", streamid);
         break;
 
       case stAC3:
-        resp->add_String("AC3");
-        resp->add_String(stream->GetLanguage());
+        resp->put_String("AC3");
+        resp->put_String(stream->GetLanguage());
         // for future protocol versions: add audio_type
-        //resp->add_U8(stream->GetAudioType());
+        //resp->put_U8(stream->GetAudioType());
         DEBUGLOG("AC3: %i (%s)", streamid, stream->GetLanguage());
         break;
 
       case stH264:
-        resp->add_String("H264");
-        resp->add_U32(stream->GetFpsScale());
-        resp->add_U32(stream->GetFpsRate());
-        resp->add_U32(stream->GetHeight());
-        resp->add_U32(stream->GetWidth());
-        resp->add_double(stream->GetAspect());
+        resp->put_String("H264");
+        resp->put_U32(stream->GetFpsScale());
+        resp->put_U32(stream->GetFpsRate());
+        resp->put_U32(stream->GetHeight());
+        resp->put_U32(stream->GetWidth());
+        resp->put_S64(stream->GetAspect() * 10000.0);
         DEBUGLOG("H264: %i", streamid);
         break;
 
       case stDVBSUB:
-        resp->add_String("DVBSUB");
-        resp->add_String(stream->GetLanguage());
-        resp->add_U32(stream->CompositionPageId());
-        resp->add_U32(stream->AncillaryPageId());
+        resp->put_String("DVBSUB");
+        resp->put_String(stream->GetLanguage());
+        resp->put_U32(stream->CompositionPageId());
+        resp->put_U32(stream->AncillaryPageId());
         DEBUGLOG("DVBSUB: %i", streamid);
         break;
 
       case stTELETEXT:
-        resp->add_String("TELETEXT");
+        resp->put_String("TELETEXT");
         DEBUGLOG("TELETEXT: %i", streamid);
         break;
 
       case stAAC:
-        resp->add_String("AAC");
-        resp->add_String(stream->GetLanguage());
+        resp->put_String("AAC");
+        resp->put_String(stream->GetLanguage());
         // for future protocol versions: add audio_type
-        //resp->add_U8(stream->GetAudioType());
+        //resp->put_U8(stream->GetAudioType());
         DEBUGLOG("AAC: %i (%s)", streamid, stream->GetLanguage());
         break;
 
       case stLATM:
-        resp->add_String("LATM");
-        resp->add_String(stream->GetLanguage());
+        resp->put_String("LATM");
+        resp->put_String(stream->GetLanguage());
         // for future protocol versions: add audio_type
-        //resp->add_U8(stream->GetAudioType());
+        //resp->put_U8(stream->GetAudioType());
         DEBUGLOG("LATM: %i (%s)", streamid, stream->GetLanguage());
         break;
 
       case stEAC3:
-        resp->add_String("EAC3");
-        resp->add_String(stream->GetLanguage());
+        resp->put_String("EAC3");
+        resp->put_String(stream->GetLanguage());
         // for future protocol versions: add audio_type
-        //resp->add_U8(stream->GetAudioType());
+        //resp->put_U8(stream->GetAudioType());
         DEBUGLOG("EAC3: %i (%s)", streamid, stream->GetLanguage());
         break;
 
       case stDTS:
-        resp->add_String("DTS");
-        resp->add_String(stream->GetLanguage());
+        resp->put_String("DTS");
+        resp->put_String(stream->GetLanguage());
         // for future protocol versions: add audio_type
-        //resp->add_U8(stream->GetAudioType());
+        //resp->put_U8(stream->GetAudioType());
         DEBUGLOG("DTS: %i (%s)", streamid, stream->GetLanguage());
         break;
 
@@ -526,8 +523,6 @@ void cLiveStreamer::sendStreamChange()
         break;
     }
   }
-
-  resp->finaliseStream();
 
   m_Queue->Add(resp);
   m_requestStreamChange = false;
@@ -537,18 +532,9 @@ void cLiveStreamer::sendStreamChange()
 
 void cLiveStreamer::sendStatus(int status)
 {
-  cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initStream(XVDR_STREAM_STATUS, 0, 0, 0, 0))
-  {
-    ERRORLOG("stream status packet init fail");
-    delete resp;
-    return;
-  }
-
-  resp->add_U32(status);
-  resp->finaliseStream();
-
-  m_Queue->Add(resp);
+  MsgPacket* packet = new MsgPacket(XVDR_STREAM_STATUS, XVDR_CHANNEL_STREAM);
+  packet->put_U32(status);
+  m_Queue->Add(packet);
 }
 
 void cLiveStreamer::sendSignalInfo()
@@ -557,22 +543,15 @@ void cLiveStreamer::sendSignalInfo()
      return a empty signalinfo package */
   if (m_Frontend == -2)
   {
-    cResponsePacket *resp = new cResponsePacket();
-    if (!resp->initStream(XVDR_STREAM_SIGNALINFO, 0, 0, 0, 0))
-    {
-      ERRORLOG("stream response packet init fail");
-      delete resp;
-      return;
-    }
+    MsgPacket* resp = new MsgPacket(XVDR_STREAM_SIGNALINFO, XVDR_CHANNEL_STREAM);
 
-    resp->add_String(*cString::sprintf("Unknown"));
-    resp->add_String(*cString::sprintf("Unknown"));
-    resp->add_U32(0);
-    resp->add_U32(0);
-    resp->add_U32(0);
-    resp->add_U32(0);
+    resp->put_String(*cString::sprintf("Unknown"));
+    resp->put_String(*cString::sprintf("Unknown"));
+    resp->put_U32(0);
+    resp->put_U32(0);
+    resp->put_U32(0);
+    resp->put_U32(0);
 
-    resp->finaliseStream();
     m_Queue->Add(resp);
     return;
   }
@@ -604,21 +583,15 @@ void cLiveStreamer::sendSignalInfo()
 
     if (m_Frontend >= 0)
     {
-      cResponsePacket *resp = new cResponsePacket();
-      if (!resp->initStream(XVDR_STREAM_SIGNALINFO, 0, 0, 0, 0))
-      {
-        ERRORLOG("stream response packet init fail");
-        delete resp;
-        return;
-      }
-      resp->add_String(*cString::sprintf("Analog #%s - %s (%s)", *m_DeviceString, (char *) m_vcap.card, m_vcap.driver));
-      resp->add_String("");
-      resp->add_U32(0);
-      resp->add_U32(0);
-      resp->add_U32(0);
-      resp->add_U32(0);
+      MsgPacket* resp = new MsgPacket(XVDR_STREAM_SIGNALINFO, XVDR_CHANNEL_STREAM);
 
-      resp->finaliseStream();
+      resp->put_String(*cString::sprintf("Analog #%s - %s (%s)", *m_DeviceString, (char *) m_vcap.card, m_vcap.driver));
+      resp->put_String("");
+      resp->put_U32(0);
+      resp->put_U32(0);
+      resp->put_U32(0);
+      resp->put_U32(0);
+
       m_Queue->Add(resp);
     }
   }
@@ -643,13 +616,7 @@ void cLiveStreamer::sendSignalInfo()
 
     if (m_Frontend >= 0)
     {
-      cResponsePacket *resp = new cResponsePacket();
-      if (!resp->initStream(XVDR_STREAM_SIGNALINFO, 0, 0, 0, 0))
-      {
-        ERRORLOG("stream response packet init fail");
-        delete resp;
-        return;
-      }
+      MsgPacket* resp = new MsgPacket(XVDR_STREAM_SIGNALINFO, XVDR_CHANNEL_STREAM);
 
       fe_status_t status;
       uint16_t fe_snr;
@@ -672,22 +639,20 @@ void cLiveStreamer::sendSignalInfo()
       switch (m_Channel->Source() & cSource::st_Mask)
       {
         case cSource::stSat:
-          resp->add_String(*cString::sprintf("DVB-S%s #%d - %s", (m_FrontendInfo.caps & 0x10000000) ? "2" : "",  cDevice::ActualDevice()->CardIndex(), m_FrontendInfo.name));
+          resp->put_String(*cString::sprintf("DVB-S%s #%d - %s", (m_FrontendInfo.caps & 0x10000000) ? "2" : "",  cDevice::ActualDevice()->CardIndex(), m_FrontendInfo.name));
           break;
         case cSource::stCable:
-          resp->add_String(*cString::sprintf("DVB-C #%d - %s", cDevice::ActualDevice()->CardIndex(), m_FrontendInfo.name));
+          resp->put_String(*cString::sprintf("DVB-C #%d - %s", cDevice::ActualDevice()->CardIndex(), m_FrontendInfo.name));
           break;
         case cSource::stTerr:
-          resp->add_String(*cString::sprintf("DVB-T #%d - %s", cDevice::ActualDevice()->CardIndex(), m_FrontendInfo.name));
+          resp->put_String(*cString::sprintf("DVB-T #%d - %s", cDevice::ActualDevice()->CardIndex(), m_FrontendInfo.name));
           break;
       }
-      resp->add_String(*cString::sprintf("%s:%s:%s:%s:%s", (status & FE_HAS_LOCK) ? "LOCKED" : "-", (status & FE_HAS_SIGNAL) ? "SIGNAL" : "-", (status & FE_HAS_CARRIER) ? "CARRIER" : "-", (status & FE_HAS_VITERBI) ? "VITERBI" : "-", (status & FE_HAS_SYNC) ? "SYNC" : "-"));
-      resp->add_U32(fe_snr);
-      resp->add_U32(fe_signal);
-      resp->add_U32(fe_ber);
-      resp->add_U32(fe_unc);
-
-      resp->finaliseStream();
+      resp->put_String(*cString::sprintf("%s:%s:%s:%s:%s", (status & FE_HAS_LOCK) ? "LOCKED" : "-", (status & FE_HAS_SIGNAL) ? "SIGNAL" : "-", (status & FE_HAS_CARRIER) ? "CARRIER" : "-", (status & FE_HAS_VITERBI) ? "VITERBI" : "-", (status & FE_HAS_SYNC) ? "SYNC" : "-"));
+      resp->put_U32(fe_snr);
+      resp->put_U32(fe_signal);
+      resp->put_U32(fe_ber);
+      resp->put_U32(fe_unc);
 
       DEBUGLOG("sendSignalInfo");
 
@@ -701,13 +666,7 @@ void cLiveStreamer::sendStreamInfo()
   if(m_Demuxers.size() == 0)
     return;
 
-  cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initStream(XVDR_STREAM_CONTENTINFO, 0, 0, 0, 0))
-  {
-    ERRORLOG("stream response packet init fail");
-    delete resp;
-    return;
-  }
+  MsgPacket* resp = new MsgPacket(XVDR_STREAM_CONTENTINFO, XVDR_CHANNEL_STREAM);
 
   // reorder streams as preferred
   reorderStreams(m_LanguageIndex, m_LangStreamType);
@@ -722,29 +681,29 @@ void cLiveStreamer::sendStreamInfo()
     switch (stream->Content())
     {
       case scAUDIO:
-        resp->add_U32(stream->GetPID());
-        resp->add_String(stream->GetLanguage());
-        resp->add_U32(stream->GetChannels());
-        resp->add_U32(stream->GetSampleRate());
-        resp->add_U32(stream->GetBlockAlign());
-        resp->add_U32(stream->GetBitRate());
-        resp->add_U32(stream->GetBitsPerSample());
+        resp->put_U32(stream->GetPID());
+        resp->put_String(stream->GetLanguage());
+        resp->put_U32(stream->GetChannels());
+        resp->put_U32(stream->GetSampleRate());
+        resp->put_U32(stream->GetBlockAlign());
+        resp->put_U32(stream->GetBitRate());
+        resp->put_U32(stream->GetBitsPerSample());
         break;
 
       case scVIDEO:
-        resp->add_U32(stream->GetPID());
-        resp->add_U32(stream->GetFpsScale());
-        resp->add_U32(stream->GetFpsRate());
-        resp->add_U32(stream->GetHeight());
-        resp->add_U32(stream->GetWidth());
-        resp->add_double(stream->GetAspect());
+        resp->put_U32(stream->GetPID());
+        resp->put_U32(stream->GetFpsScale());
+        resp->put_U32(stream->GetFpsRate());
+        resp->put_U32(stream->GetHeight());
+        resp->put_U32(stream->GetWidth());
+        resp->put_S64(stream->GetAspect() * 10000.0);
         break;
 
       case scSUBTITLE:
-        resp->add_U32(stream->GetPID());
-        resp->add_String(stream->GetLanguage());
-        resp->add_U32(stream->CompositionPageId());
-        resp->add_U32(stream->AncillaryPageId());
+        resp->put_U32(stream->GetPID());
+        resp->put_String(stream->GetLanguage());
+        resp->put_U32(stream->CompositionPageId());
+        resp->put_U32(stream->AncillaryPageId());
         break;
 
       default:
@@ -752,10 +711,7 @@ void cLiveStreamer::sendStreamInfo()
     }
   }
 
-  resp->finaliseStream();
-
   DEBUGLOG("sendStreamInfo");
-
   m_Queue->Add(resp);
 }
 

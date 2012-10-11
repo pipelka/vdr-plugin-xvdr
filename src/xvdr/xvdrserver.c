@@ -172,8 +172,8 @@ void cXVDRServer::NewClientConnected(int fd)
   val = 1;
   setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val));
 
-  INFOLOG("Client with ID %d connected: %s", m_IdCnt, cxSocket::ip2txt(sin.sin_addr.s_addr, sin.sin_port, buf));
-  cXVDRClient *connection = new cXVDRClient(fd, m_IdCnt, cxSocket::ip2txt(sin.sin_addr.s_addr, sin.sin_port, buf));
+  INFOLOG("Client with ID %d connected: ", m_IdCnt /*, cxSocket::ip2txt(sin.sin_addr.s_addr, sin.sin_port, buf)*/);
+  cXVDRClient *connection = new cXVDRClient(fd, m_IdCnt, ""/*cxSocket::ip2txt(sin.sin_addr.s_addr, sin.sin_port, buf)*/);
   m_clients.push_back(connection);
   m_IdCnt++;
 }

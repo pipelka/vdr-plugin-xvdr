@@ -23,12 +23,10 @@
  */
 
 #include "config/config.h"
+#include "net/msgpacket.h"
 #include "livequeue.h"
 
-#include "net/cxsocket.h"
-#include "net/responsepacket.h"
-
-cLiveQueue::cLiveQueue(cxSocket* socket) : m_socket(socket)
+cLiveQueue::cLiveQueue(int sock) : m_socket(sock)
 {
 }
 
@@ -50,7 +48,7 @@ void cLiveQueue::Cleanup()
   }
 }
 
-bool cLiveQueue::Add(cResponsePacket* p)
+bool cLiveQueue::Add(MsgPacket* p)
 {
   cMutexLock lock(&m_lock);
 
@@ -77,7 +75,7 @@ void cLiveQueue::Action()
   while(Running())
   {
     // check packet queue
-    cResponsePacket* p = NULL;
+    MsgPacket* p = NULL;
     m_lock.Lock();
 
     if(size() > 0)
@@ -107,59 +105,9 @@ void cLiveQueue::Action()
   INFOLOG("LiveQueue stopped");
 }
 
-bool cLiveQueue::write(cResponsePacket* packet)
+bool cLiveQueue::write(MsgPacket* packet)
 {
-  int fd = m_socket->fd();
-  ssize_t size = (ssize_t)packet->getLen();
-  const unsigned char *ptr = (const unsigned char *)packet->getPtr();
-
-  fd_set set;
-  struct timeval to;
-
-  m_socket->LockWrite();
-
-  while (size > 0)
-  {
-    FD_ZERO(&set);
-    FD_SET(fd, &set);
-
-    to.tv_sec = 0;
-    to.tv_usec = 50 * 1000;
-
-    int rc = select(fd + 1, NULL, &set, NULL, &to);
-    if(rc == 0 && Running())
-      continue;
-
-    if(rc < 0 || !Running())
-    {
-      m_socket->UnlockWrite();
-      return false;
-    }
-
-    ssize_t p = ::send(fd, ptr, size, MSG_NOSIGNAL | MSG_DONTWAIT);
-
-    if (!Running())
-    {
-      m_socket->UnlockWrite();
-      return false;
-    }
-
-    if (p <= 0)
-    {
-      if (errno == EWOULDBLOCK || errno == EAGAIN)
-      {
-        DEBUGLOG("cxSocket::write: blocked, retrying");
-        continue;
-      }
-      ERRORLOG("cxSocket::write: write() error");
-      m_socket->UnlockWrite();
-      return false;
-    }
-
-    ptr  += p;
-    size -= p;
-  }
-
-  m_socket->UnlockWrite();
+  while(!packet->write(m_socket, 50) && Running())
+    ;
   return true;
 }

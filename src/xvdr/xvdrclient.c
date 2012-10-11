@@ -25,6 +25,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/socket.h>
 
 #include <vdr/recording.h>
 #include <vdr/channels.h>
@@ -37,8 +38,7 @@
 
 #include "config/config.h"
 #include "live/livestreamer.h"
-#include "net/requestpacket.h"
-#include "net/responsepacket.h"
+#include "net/msgpacket.h"
 #include "recordings/recordingscache.h"
 #include "recordings/recplayer.h"
 #include "scanner/wirbelscanservice.h" /// copied from modified wirbelscan plugin
@@ -86,13 +86,13 @@ cXVDRClient::cXVDRClient(int fd, unsigned int id, const char *ClientAdr)
   m_req                     = NULL;
   m_resp                    = NULL;
   m_processSCAN_Response    = NULL;
-  m_processSCAN_Socket      = NULL;
+  m_processSCAN_Socket      = -1;
   m_compressionLevel        = 0;
   m_LanguageIndex           = -1;
   m_LangStreamType          = stMPEG2AUDIO;
   m_channelCount            = 0;
 
-  m_socket.set_handle(fd);
+  m_socket = fd;
   m_wantfta = true;
   m_filterlanguage = false;
 
@@ -105,81 +105,33 @@ cXVDRClient::~cXVDRClient()
   StopChannelStreaming();
 
   // shutdown connection
-  m_socket.abort(); 
+  shutdown(m_socket, SHUT_RDWR); 
   Cancel(10);
 
   // close connection
-  m_socket.close(); 
+  close(m_socket);
   DEBUGLOG("done");
 }
 
 void cXVDRClient::Action(void)
 {
-  uint32_t channelID;
-  uint32_t requestID;
-  uint32_t opcode;
-  uint32_t dataLength;
-  uint8_t* data;
+  bool bClosed(false);
 
   while (Running())
   {
-    if (!m_socket.read((uint8_t*)&channelID, sizeof(uint32_t))) break;
-    channelID = ntohl(channelID);
+    m_req = MsgPacket::read(m_socket, bClosed, 2000);
 
-    if (channelID == 1)
+    if(bClosed)
     {
-      if (!m_socket.read((uint8_t*)&requestID, sizeof(uint32_t), 10000)) break;
-      requestID = ntohl(requestID);
-
-      if (!m_socket.read((uint8_t*)&opcode, sizeof(uint32_t), 10000)) break;
-      opcode = ntohl(opcode);
-
-      if (!m_socket.read((uint8_t*)&dataLength, sizeof(uint32_t), 10000)) break;
-      dataLength = ntohl(dataLength);
-      if (dataLength > 200000) // a random sanity limit
-      {
-        ERRORLOG("dataLength > 200000!");
-        break;
-      }
-
-      if (dataLength)
-      {
-        data = (uint8_t*)malloc(dataLength);
-        if (!data)
-        {
-          ERRORLOG("Extra data buffer malloc error");
-          break;
-        }
-
-        if (!m_socket.read(data, dataLength, 10000))
-        {
-          ERRORLOG("Could not read data");
-          free(data);
-          break;
-        }
-      }
-      else
-      {
-        data = NULL;
-      }
-
-      DEBUGLOG("Received chan=%u, ser=%u, op=%u, edl=%u", channelID, requestID, opcode, dataLength);
-
-      if (!m_loggedIn && (opcode != XVDR_LOGIN))
-      {
-        ERRORLOG("Clients must be logged in before sending commands! Aborting.");
-        if (data) free(data);
-        break;
-      }
-
-      cRequestPacket* req = new cRequestPacket(requestID, opcode, data, dataLength);
-
-      processRequest(req);
-    }
-    else
-    {
-      ERRORLOG("Incoming channel number unknown");
+      delete m_req;
+      m_req = NULL;
       break;
+    }
+
+    if(m_req != NULL)
+    {
+      processRequest();
+      delete m_req;
     }
   }
 
@@ -194,8 +146,7 @@ bool cXVDRClient::StartChannelStreaming(const cChannel *channel, uint32_t timeou
   m_Streamer = new cLiveStreamer(timeout);
   m_Streamer->SetLanguage(m_LanguageIndex, m_LangStreamType);
 
-  m_isStreaming = m_Streamer->StreamChannel(channel, priority, &m_socket, m_resp);
-  return m_isStreaming;
+  return m_Streamer->StreamChannel(channel, priority, m_socket, m_resp);
 }
 
 void cXVDRClient::StopChannelStreaming()
@@ -217,15 +168,8 @@ void cXVDRClient::TimerChange()
 
   if (m_StatusInterfaceEnabled)
   {
-    cResponsePacket *resp = new cResponsePacket();
-    if (!resp->initStatus(XVDR_STATUS_TIMERCHANGE))
-    {
-      delete resp;
-      return;
-    }
-
-    resp->finalise();
-    m_socket.write(resp->getPtr(), resp->getLen());
+    MsgPacket* resp = new MsgPacket(XVDR_STATUS_TIMERCHANGE, XVDR_CHANNEL_STATUS);
+    resp->write(m_socket, 3000);
     delete resp;
   }
 }
@@ -249,15 +193,8 @@ void cXVDRClient::ChannelChange()
   else
     INFOLOG("Client %i : %i channels, %i available - sending request", m_Id, m_channelCount, count);
 
-  cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initStatus(XVDR_STATUS_CHANNELCHANGE))
-  {
-    delete resp;
-    return;
-  }
-
-  resp->finalise();
-  m_socket.write(resp->getPtr(), resp->getLen());
+  MsgPacket* resp = new MsgPacket(XVDR_STATUS_CHANNELCHANGE, XVDR_CHANNEL_STATUS);
+  resp->write(m_socket, 3000);
   delete resp;
 }
 
@@ -268,15 +205,8 @@ void cXVDRClient::RecordingsChange()
   if (!m_StatusInterfaceEnabled)
     return;
 
-  cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initStatus(XVDR_STATUS_RECORDINGSCHANGE))
-  {
-    delete resp;
-    return;
-  }
-
-  resp->finalise();
-  m_socket.write(resp->getPtr(), resp->getLen());
+  MsgPacket* resp = new MsgPacket(XVDR_STATUS_RECORDINGSCHANGE, XVDR_CHANNEL_STATUS);
+  resp->write(m_socket, 3000);
   delete resp;
 }
 
@@ -286,27 +216,21 @@ void cXVDRClient::Recording(const cDevice *Device, const char *Name, const char 
 
   if (m_StatusInterfaceEnabled)
   {
-    cResponsePacket *resp = new cResponsePacket();
-    if (!resp->initStatus(XVDR_STATUS_RECORDING))
-    {
-      delete resp;
-      return;
-    }
+    MsgPacket* resp = new MsgPacket(XVDR_STATUS_RECORDING, XVDR_CHANNEL_STATUS);
 
-    resp->add_U32(Device->CardIndex());
-    resp->add_U32(On);
+    resp->put_U32(Device->CardIndex());
+    resp->put_U32(On);
     if (Name)
-      resp->add_String(Name);
+      resp->put_String(Name);
     else
-      resp->add_String("");
+      resp->put_String("");
 
     if (FileName)
-      resp->add_String(FileName);
+      resp->put_String(FileName);
     else
-      resp->add_String("");
+      resp->put_String("");
 
-    resp->finalise();
-    m_socket.write(resp->getPtr(), resp->getLen());
+    resp->write(m_socket, 3000);
     delete resp;
   }
 }
@@ -339,17 +263,12 @@ void cXVDRClient::OsdStatusMessage(const char *Message)
     else if (strcasecmp(Message, trVDR("Cutter already running - Add to cutting queue?")) == 0) return;
     else if (strcasecmp(Message, trVDR("No index-file found. Creating may take minutes. Create one?")) == 0) return;
 
-    cResponsePacket *resp = new cResponsePacket();
-    if (!resp->initStatus(XVDR_STATUS_MESSAGE))
-    {
-      delete resp;
-      return;
-    }
+    MsgPacket* resp = new MsgPacket(XVDR_STATUS_MESSAGE, XVDR_CHANNEL_STATUS);
 
-    resp->add_U32(0);
-    resp->add_String(Message);
-    resp->finalise();
-    m_socket.write(resp->getPtr(), resp->getLen());
+    resp->put_U32(0);
+    resp->put_String(Message);
+
+    resp->write(m_socket, 3000);
     delete resp;
   }
 }
@@ -433,24 +352,14 @@ bool cXVDRClient::IsChannelWanted(cChannel* channel, bool radio)
   return false;
 }
 
-bool cXVDRClient::processRequest(cRequestPacket* req)
+bool cXVDRClient::processRequest()
 {
   cMutexLock lock(&m_msgLock);
 
-  m_req = req;
-  m_resp = new cResponsePacket();
-  if (!m_resp->init(m_req->getRequestID()))
-  {
-    ERRORLOG("Response packet init fail");
-    delete m_resp;
-    delete m_req;
-    m_resp = NULL;
-    m_req = NULL;
-    return false;
-  }
+  m_resp = new MsgPacket(m_req->getMsgID(), XVDR_CHANNEL_REQUEST_RESPONSE, m_req->getUID());
 
   bool result = false;
-  switch(m_req->getOpCode())
+  switch(m_req->getMsgID())
   {
     /** OPCODE 1 - 19: XVDR network functions for general purpose */
     case XVDR_LOGIN:
@@ -614,11 +523,11 @@ bool cXVDRClient::processRequest(cRequestPacket* req)
       break;
   }
 
+  if(result)
+    m_resp->write(m_socket, 3000);
+
   delete m_resp;
   m_resp = NULL;
-
-  delete m_req;
-  m_req = NULL;
 
   return result;
 }
@@ -628,25 +537,22 @@ bool cXVDRClient::processRequest(cRequestPacket* req)
 
 bool cXVDRClient::process_Login() /* OPCODE 1 */
 {
-  if (m_req->getDataLength() <= 6) return false;
-
-  m_protocolVersion      = m_req->extract_U32();
-  m_compressionLevel     = m_req->extract_U8();
-  const char *clientName = m_req->extract_String();
+  m_protocolVersion      = m_req->get_U32();
+  m_compressionLevel     = m_req->get_U8();
+  const char *clientName = m_req->get_String();
   const char *language   = NULL;
 
   // get preferred language
-  if(!m_req->end())
+  if(!m_req->eop())
   {
-    language = m_req->extract_String();
+    language = m_req->get_String();
     m_LanguageIndex = I18nLanguageIndex(language);
-    m_LangStreamType = (eStreamType)m_req->extract_U8();
+    m_LangStreamType = (eStreamType)m_req->get_U8();
   }
 
   if (m_protocolVersion > XVDR_PROTOCOLVERSION)
   {
     ERRORLOG("Client '%s' have a not allowed protocol version '%u', terminating client", clientName, m_protocolVersion);
-    delete[] clientName;
     return false;
   }
 
@@ -661,17 +567,13 @@ bool cXVDRClient::process_Login() /* OPCODE 1 */
   struct tm* timeStruct = localtime(&timeNow);
   int timeOffset        = timeStruct->tm_gmtoff;
 
-  m_resp->add_U32(XVDR_PROTOCOLVERSION);
-  m_resp->add_U32(timeNow);
-  m_resp->add_S32(timeOffset);
-  m_resp->add_String("VDR-XVDR Server");
-  m_resp->add_String(XVDR_VERSION);
-  m_resp->finalise();
+  m_resp->put_U32(XVDR_PROTOCOLVERSION);
+  m_resp->put_U32(timeNow);
+  m_resp->put_S32(timeOffset);
+  m_resp->put_String("VDR-XVDR Server");
+  m_resp->put_String(XVDR_VERSION);
+
   SetLoggedIn(true);
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
-
-  delete[] clientName;
-
   return true;
 }
 
@@ -681,48 +583,43 @@ bool cXVDRClient::process_GetTime() /* OPCODE 2 */
   struct tm* timeStruct = localtime(&timeNow);
   int timeOffset        = timeStruct->tm_gmtoff;
 
-  m_resp->add_U32(timeNow);
-  m_resp->add_S32(timeOffset);
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
+  m_resp->put_U32(timeNow);
+  m_resp->put_S32(timeOffset);
+
   return true;
 }
 
 bool cXVDRClient::process_EnableStatusInterface()
 {
-  bool enabled = m_req->extract_U8();
+  bool enabled = m_req->get_U8();
 
   SetStatusInterface(enabled);
 
-  m_resp->add_U32(XVDR_RET_OK);
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
+  m_resp->put_U32(XVDR_RET_OK);
+
   return true;
 }
 
 bool cXVDRClient::process_Ping() /* OPCODE 7 */
 {
-  m_resp->add_U32(1);
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
+  m_resp->put_U32(1);
+
   return true;
 }
 
 bool cXVDRClient::process_UpdateChannels()
 {
-  uint8_t updatechannels = m_req->extract_U8();
+  uint8_t updatechannels = m_req->get_U8();
 
   if(updatechannels <= 5)
   {
     Setup.UpdateChannels = updatechannels;
     INFOLOG("Setting channel update method: %i", updatechannels);
-    m_resp->add_U32(XVDR_RET_OK);
+    m_resp->put_U32(XVDR_RET_OK);
   }
   else
-    m_resp->add_U32(XVDR_RET_DATAINVALID);
+    m_resp->put_U32(XVDR_RET_DATAINVALID);
 
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
@@ -731,32 +628,30 @@ bool cXVDRClient::process_ChannelFilter()
   INFOLOG("Channellist filter:");
 
   // do we want fta channels ?
-  m_wantfta = m_req->extract_U32();
+  m_wantfta = m_req->get_U32();
   INFOLOG("Free To Air channels: %s", m_wantfta ? "Yes" : "No");
 
   // display only channels with native language audio ?
-  m_filterlanguage = m_req->extract_U32();
+  m_filterlanguage = m_req->get_U32();
   INFOLOG("Only native language: %s", m_filterlanguage ? "Yes" : "No");
 
   // read caids
   m_caids.clear();
-  uint32_t count = m_req->extract_U32();
+  uint32_t count = m_req->get_U32();
 
   INFOLOG("Enabled CaIDs: ");
 
   // sanity check (maximum of 20 caids)
   if(count < 20) {
     for(uint32_t i = 0; i < count; i++) {
-      int caid = m_req->extract_U32();
+      int caid = m_req->get_U32();
       m_caids.push_back(caid);
       INFOLOG("%04X", caid);
     }
   }
 
 
-  m_resp->add_U32(XVDR_RET_OK);
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
+  m_resp->put_U32(XVDR_RET_OK);
 
   return true;
 }
@@ -769,11 +664,11 @@ bool cXVDRClient::processChannelStream_Open() /* OPCODE 20 */
 {
   cMutexLock lock(&m_timerLock);
 
-  uint32_t uid = m_req->extract_U32();
+  uint32_t uid = m_req->get_U32();
   int32_t priority = 50;
 
-  if(!m_req->end()) {
-    priority = m_req->extract_S32();
+  if(!m_req->eop()) {
+    priority = m_req->get_S32();
   }
 
   uint32_t timeout = XVDRServerConfig.stream_timeout;
@@ -794,7 +689,7 @@ bool cXVDRClient::processChannelStream_Open() /* OPCODE 20 */
 
   if (channel == NULL) {
     ERRORLOG("Can't find channel %08x", uid);
-    m_resp->add_U32(XVDR_RET_DATAINVALID);
+    m_resp->put_U32(XVDR_RET_DATAINVALID);
   }
   else
   {
@@ -803,16 +698,13 @@ bool cXVDRClient::processChannelStream_Open() /* OPCODE 20 */
       INFOLOG("Started streaming of channel %s (timeout %i seconds, priority %i)", channel->Name(), timeout, priority);
       // return here without sending the response
       // (was already done in cLiveStreamer::StreamChannel)
-      return true;
+      return false;
     }
 
     DEBUGLOG("Can't stream channel %s", channel->Name());
   }
 
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
-
-  return false;
+  return true;
 }
 
 bool cXVDRClient::processChannelStream_Close() /* OPCODE 21 */
@@ -829,44 +721,39 @@ bool cXVDRClient::processRecStream_Open() /* OPCODE 40 */
   cRecording *recording = NULL;
 
   if(m_protocolVersion >= 3) {
-    char* recid = m_req->extract_String();
+    const char* recid = m_req->get_String();
     unsigned int uid = recid2uid(recid);
     DEBUGLOG("lookup recid: %s (uid: %u)", recid, uid);
     recording = cRecordingsCache::GetInstance().Lookup(uid);
-    delete[] recid;
   }
   else if(m_protocolVersion = 2) {
-    uint32_t uid = m_req->extract_U32();
+    uint32_t uid = m_req->get_U32();
     recording = cRecordingsCache::GetInstance().Lookup(uid);
   }
   else {
-    const char *fileName = m_req->extract_String();
+    const char *fileName = m_req->get_String();
     recording = Recordings.GetByName(fileName);
-    delete[] fileName;
   }
 
   if (recording && m_RecPlayer == NULL)
   {
     m_RecPlayer = new cRecPlayer(recording);
 
-    m_resp->add_U32(XVDR_RET_OK);
-    m_resp->add_U32(m_RecPlayer->getLengthFrames());
-    m_resp->add_U64(m_RecPlayer->getLengthBytes());
+    m_resp->put_U32(XVDR_RET_OK);
+    m_resp->put_U32(m_RecPlayer->getLengthFrames());
+    m_resp->put_U64(m_RecPlayer->getLengthBytes());
 
 #if VDRVERSNUM < 10703
-    m_resp->add_U8(true);//added for TS
+    m_resp->put_U8(true);//added for TS
 #else
-    m_resp->add_U8(recording->IsPesRecording());//added for TS
+    m_resp->put_U8(recording->IsPesRecording());//added for TS
 #endif
   }
   else
   {
-    m_resp->add_U32(XVDR_RET_DATAUNKNOWN);
+    m_resp->put_U32(XVDR_RET_DATAUNKNOWN);
     ERRORLOG("%s - unable to start recording !", __FUNCTION__);
   }
-
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
 
   return true;
 }
@@ -879,9 +766,8 @@ bool cXVDRClient::processRecStream_Close() /* OPCODE 41 */
     m_RecPlayer = NULL;
   }
 
-  m_resp->add_U32(XVDR_RET_OK);
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
+  m_resp->put_U32(XVDR_RET_OK);
+
   return true;
 }
 
@@ -891,10 +777,8 @@ bool cXVDRClient::processRecStream_Update() /* OPCODE 46 */
     return false;
 
   m_RecPlayer->update();
-  m_resp->add_U32(m_RecPlayer->getLengthFrames());
-  m_resp->add_U64(m_RecPlayer->getLengthBytes());
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
+  m_resp->put_U32(m_RecPlayer->getLengthFrames());
+  m_resp->put_U64(m_RecPlayer->getLengthBytes());
 
   return true;
 }
@@ -913,62 +797,52 @@ bool cXVDRClient::processRecStream_GetBlock() /* OPCODE 42 */
     return false;
   }
 
-  uint64_t position  = m_req->extract_U64();
-  uint32_t amount    = m_req->extract_U32();
+  uint64_t position  = m_req->get_U64();
+  uint32_t amount    = m_req->get_U32();
 
   uint8_t* p = m_resp->reserve(amount);
   uint32_t amountReceived = m_RecPlayer->getBlock(p, position, amount);
 
-  if(amount > amountReceived) m_resp->unreserve(amount - amountReceived);
-
   if (!amountReceived)
   {
-    m_resp->add_U32(0);
+    m_resp->put_U32(0);
     DEBUGLOG("written 4(0) as getblock got 0");
   }
 
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
 bool cXVDRClient::processRecStream_PositionFromFrameNumber() /* OPCODE 43 */
 {
   uint64_t retval       = 0;
-  uint32_t frameNumber  = m_req->extract_U32();
+  uint32_t frameNumber  = m_req->get_U32();
 
   if (m_RecPlayer)
     retval = m_RecPlayer->positionFromFrameNumber(frameNumber);
 
-  m_resp->add_U64(retval);
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
+  m_resp->put_U64(retval);
 
-  DEBUGLOG("Wrote posFromFrameNum reply to client");
   return true;
 }
 
 bool cXVDRClient::processRecStream_FrameNumberFromPosition() /* OPCODE 44 */
 {
   uint32_t retval   = 0;
-  uint64_t position = m_req->extract_U64();
+  uint64_t position = m_req->get_U64();
 
   if (m_RecPlayer)
     retval = m_RecPlayer->frameNumberFromPosition(position);
 
-  m_resp->add_U32(retval);
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
+  m_resp->put_U32(retval);
 
-  DEBUGLOG("Wrote frameNumFromPos reply to client");
   return true;
 }
 
 bool cXVDRClient::processRecStream_GetIFrame() /* OPCODE 45 */
 {
   bool success            = false;
-  uint32_t frameNumber    = m_req->extract_U32();
-  uint32_t direction      = m_req->extract_U32();
+  uint32_t frameNumber    = m_req->get_U32();
+  uint32_t direction      = m_req->get_U32();
   uint64_t rfilePosition  = 0;
   uint32_t rframeNumber   = 0;
   uint32_t rframeLength   = 0;
@@ -979,19 +853,15 @@ bool cXVDRClient::processRecStream_GetIFrame() /* OPCODE 45 */
   // returns file position, frame number, length
   if (success)
   {
-    m_resp->add_U64(rfilePosition);
-    m_resp->add_U32(rframeNumber);
-    m_resp->add_U32(rframeLength);
+    m_resp->put_U64(rfilePosition);
+    m_resp->put_U32(rframeNumber);
+    m_resp->put_U32(rframeLength);
   }
   else
   {
-    m_resp->add_U32(0);
+    m_resp->put_U32(0);
   }
 
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
-
-  DEBUGLOG("Wrote GNIF reply to client %llu %u %u", rfilePosition, rframeNumber, rframeLength);
   return true;
 }
 
@@ -1015,18 +885,14 @@ int cXVDRClient::ChannelsCount()
 bool cXVDRClient::processCHANNELS_ChannelsCount() /* OPCODE 61 */
 {
   m_channelCount = ChannelsCount();
-  m_resp->add_U32(m_channelCount);
+  m_resp->put_U32(m_channelCount);
 
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
 bool cXVDRClient::processCHANNELS_GetChannels() /* OPCODE 63 */
 {
-  if (m_req->getDataLength() != 4) return false;
-
-  bool radio = m_req->extract_U32();
+  bool radio = m_req->get_U32();
 
   m_channelCount = ChannelsCount();
   Channels.Lock(false);
@@ -1036,36 +902,33 @@ bool cXVDRClient::processCHANNELS_GetChannels() /* OPCODE 63 */
     if(!IsChannelWanted(channel, radio))
       continue;
 
-    m_resp->add_U32(channel->Number());
-    m_resp->add_String(m_toUTF8.Convert(channel->Name()));
+    m_resp->put_U32(channel->Number());
+    m_resp->put_String(m_toUTF8.Convert(channel->Name()));
     if(m_protocolVersion >= 2) {
-      m_resp->add_U32(CreateChannelUID(channel));
+      m_resp->put_U32(CreateChannelUID(channel));
     }
     else {
-      m_resp->add_U32(channel->Sid());
+      m_resp->put_U32(channel->Sid());
     }
-    m_resp->add_U32(0); // groupindex unused
-    m_resp->add_U32(channel->Ca());
+    m_resp->put_U32(0); // groupindex unused
+    m_resp->put_U32(channel->Ca());
 #if APIVERSNUM >= 10701
-    m_resp->add_U32(channel->Vtype());
+    m_resp->put_U32(channel->Vtype());
 #else
-    m_resp->add_U32(2);
+    m_resp->put_U32(2);
 #endif
   }
 
   Channels.Unlock();
 
-  m_resp->finalise();
   m_resp->compress(m_compressionLevel);
-
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
 
   return true;
 }
 
 bool cXVDRClient::processCHANNELS_GroupsCount()
 {
-  uint32_t type = m_req->extract_U32();
+  uint32_t type = m_req->get_U32();
 
   Channels.Lock(false);
 
@@ -1089,40 +952,34 @@ bool cXVDRClient::processCHANNELS_GroupsCount()
 
   uint32_t count = m_channelgroups[0].size() + m_channelgroups[1].size();
 
-  m_resp->add_U32(count);
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
+  m_resp->put_U32(count);
+
   return true;
 }
 
 bool cXVDRClient::processCHANNELS_GroupList()
 {
-  uint32_t radio = m_req->extract_U8();
+  uint32_t radio = m_req->get_U8();
   std::map<std::string, ChannelGroup>::iterator i;
 
   for(i = m_channelgroups[radio].begin(); i != m_channelgroups[radio].end(); i++)
   {
-    m_resp->add_String(i->second.name.c_str());
-    m_resp->add_U8(i->second.radio);
+    m_resp->put_String(i->second.name.c_str());
+    m_resp->put_U8(i->second.radio);
   }
 
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
 bool cXVDRClient::processCHANNELS_GetGroupMembers()
 {
-  char* groupname = m_req->extract_String();
-  uint32_t radio = m_req->extract_U8();
+  const char* groupname = m_req->get_String();
+  uint32_t radio = m_req->get_U8();
   int index = 0;
 
   // unknown group
   if(m_channelgroups[radio].find(groupname) == m_channelgroups[radio].end())
   {
-    delete[] groupname;
-    m_resp->finalise();
-    m_socket.write(m_resp->getPtr(), m_resp->getLen());
     return true;
   }
 
@@ -1155,16 +1012,13 @@ bool cXVDRClient::processCHANNELS_GetGroupMembers()
 
     if(name == groupname)
     {
-      m_resp->add_U32(CreateChannelUID(channel));
-      m_resp->add_U32(++index);
+      m_resp->put_U32(CreateChannelUID(channel));
+      m_resp->put_U32(++index);
     }
   }
 
   Channels.Unlock();
 
-  delete[] groupname;
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
@@ -1206,10 +1060,8 @@ bool cXVDRClient::processTIMER_GetCount() /* OPCODE 80 */
 
   int count = Timers.Count();
 
-  m_resp->add_U32(count);
+  m_resp->put_U32(count);
 
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
@@ -1217,7 +1069,7 @@ bool cXVDRClient::processTIMER_Get() /* OPCODE 81 */
 {
   cMutexLock lock(&m_timerLock);
 
-  uint32_t number = m_req->extract_U32();
+  uint32_t number = m_req->get_U32();
 
   int numTimers = Timers.Count();
   if (numTimers > 0)
@@ -1225,32 +1077,30 @@ bool cXVDRClient::processTIMER_Get() /* OPCODE 81 */
     cTimer *timer = Timers.Get(number-1);
     if (timer)
     {
-      m_resp->add_U32(XVDR_RET_OK);
+      m_resp->put_U32(XVDR_RET_OK);
 
-      m_resp->add_U32(timer->Index()+1);
-      m_resp->add_U32(timer->HasFlags(tfActive));
-      m_resp->add_U32(timer->Recording());
-      m_resp->add_U32(timer->Pending());
-      m_resp->add_U32(timer->Priority());
-      m_resp->add_U32(timer->Lifetime());
-      m_resp->add_U32(timer->Channel()->Number());
+      m_resp->put_U32(timer->Index()+1);
+      m_resp->put_U32(timer->HasFlags(tfActive));
+      m_resp->put_U32(timer->Recording());
+      m_resp->put_U32(timer->Pending());
+      m_resp->put_U32(timer->Priority());
+      m_resp->put_U32(timer->Lifetime());
+      m_resp->put_U32(timer->Channel()->Number());
       if(m_protocolVersion >= 2) {
-        m_resp->add_U32(CreateChannelUID(timer->Channel()));
+        m_resp->put_U32(CreateChannelUID(timer->Channel()));
       }
-      m_resp->add_U32(timer->StartTime());
-      m_resp->add_U32(timer->StopTime());
-      m_resp->add_U32(timer->Day());
-      m_resp->add_U32(timer->WeekDays());
-      m_resp->add_String(m_toUTF8.Convert(timer->File()));
+      m_resp->put_U32(timer->StartTime());
+      m_resp->put_U32(timer->StopTime());
+      m_resp->put_U32(timer->Day());
+      m_resp->put_U32(timer->WeekDays());
+      m_resp->put_String(m_toUTF8.Convert(timer->File()));
     }
     else
-      m_resp->add_U32(XVDR_RET_DATAUNKNOWN);
+      m_resp->put_U32(XVDR_RET_DATAUNKNOWN);
   }
   else
-    m_resp->add_U32(XVDR_RET_DATAUNKNOWN);
+    m_resp->put_U32(XVDR_RET_DATAUNKNOWN);
 
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
@@ -1261,7 +1111,7 @@ bool cXVDRClient::processTIMER_GetList() /* OPCODE 82 */
   cTimer *timer;
   int numTimers = Timers.Count();
 
-  m_resp->add_U32(numTimers);
+  m_resp->put_U32(numTimers);
 
   for (int i = 0; i < numTimers; i++)
   {
@@ -1269,25 +1119,23 @@ bool cXVDRClient::processTIMER_GetList() /* OPCODE 82 */
     if (!timer)
       continue;
 
-    m_resp->add_U32(timer->Index()+1);
-    m_resp->add_U32(timer->HasFlags(tfActive));
-    m_resp->add_U32(timer->Recording());
-    m_resp->add_U32(timer->Pending());
-    m_resp->add_U32(timer->Priority());
-    m_resp->add_U32(timer->Lifetime());
-    m_resp->add_U32(timer->Channel()->Number());
+    m_resp->put_U32(timer->Index()+1);
+    m_resp->put_U32(timer->HasFlags(tfActive));
+    m_resp->put_U32(timer->Recording());
+    m_resp->put_U32(timer->Pending());
+    m_resp->put_U32(timer->Priority());
+    m_resp->put_U32(timer->Lifetime());
+    m_resp->put_U32(timer->Channel()->Number());
     if(m_protocolVersion >= 2) {
-      m_resp->add_U32(CreateChannelUID(timer->Channel()));
+      m_resp->put_U32(CreateChannelUID(timer->Channel()));
     }
-    m_resp->add_U32(timer->StartTime());
-    m_resp->add_U32(timer->StopTime());
-    m_resp->add_U32(timer->Day());
-    m_resp->add_U32(timer->WeekDays());
-    m_resp->add_String(m_toUTF8.Convert(timer->File()));
+    m_resp->put_U32(timer->StartTime());
+    m_resp->put_U32(timer->StopTime());
+    m_resp->put_U32(timer->Day());
+    m_resp->put_U32(timer->WeekDays());
+    m_resp->put_String(m_toUTF8.Convert(timer->File()));
   }
 
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
@@ -1295,16 +1143,16 @@ bool cXVDRClient::processTIMER_Add() /* OPCODE 83 */
 {
   cMutexLock lock(&m_timerLock);
 
-  uint32_t flags      = m_req->extract_U32() > 0 ? tfActive : tfNone;
-  uint32_t priority   = m_req->extract_U32();
-  uint32_t lifetime   = m_req->extract_U32();
-  uint32_t channelid  = m_req->extract_U32();
-  time_t startTime    = m_req->extract_U32();
-  time_t stopTime     = m_req->extract_U32();
-  time_t day          = m_req->extract_U32();
-  uint32_t weekdays   = m_req->extract_U32();
-  const char *file    = m_req->extract_String();
-  const char *aux     = m_req->extract_String();
+  uint32_t flags      = m_req->get_U32() > 0 ? tfActive : tfNone;
+  uint32_t priority   = m_req->get_U32();
+  uint32_t lifetime   = m_req->get_U32();
+  uint32_t channelid  = m_req->get_U32();
+  time_t startTime    = m_req->get_U32();
+  time_t stopTime     = m_req->get_U32();
+  time_t day          = m_req->get_U32();
+  uint32_t weekdays   = m_req->get_U32();
+  const char *file    = m_req->get_String();
+  const char *aux     = m_req->get_String();
 
   // handle instant timers
   if(startTime == -1 || startTime == 0)
@@ -1331,9 +1179,6 @@ bool cXVDRClient::processTIMER_Add() /* OPCODE 83 */
     }
   } 
 
-  delete[] file;
-  delete[] aux;
-
   cTimer *timer = new cTimer;
   if (timer->Parse(buffer))
   {
@@ -1343,27 +1188,23 @@ bool cXVDRClient::processTIMER_Add() /* OPCODE 83 */
       Timers.Add(timer);
       Timers.SetModified();
       INFOLOG("Timer %s added", *timer->ToDescr());
-      m_resp->add_U32(XVDR_RET_OK);
-      m_resp->finalise();
-      m_socket.write(m_resp->getPtr(), m_resp->getLen());
+      m_resp->put_U32(XVDR_RET_OK);
       return true;
     }
     else
     {
       ERRORLOG("Timer already defined: %d %s", t->Index() + 1, *t->ToText());
-      m_resp->add_U32(XVDR_RET_DATALOCKED);
+      m_resp->put_U32(XVDR_RET_DATALOCKED);
     }
   }
   else
   {
     ERRORLOG("Error in timer settings");
-    m_resp->add_U32(XVDR_RET_DATAINVALID);
+    m_resp->put_U32(XVDR_RET_DATAINVALID);
   }
 
   delete timer;
 
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
@@ -1371,13 +1212,13 @@ bool cXVDRClient::processTIMER_Delete() /* OPCODE 84 */
 {
   cMutexLock lock(&m_timerLock);
 
-  uint32_t number = m_req->extract_U32();
-  bool     force  = m_req->extract_U32();
+  uint32_t number = m_req->get_U32();
+  bool     force  = m_req->get_U32();
 
   if (number <= 0 || number > (uint32_t)Timers.Count())
   {
     ERRORLOG("Unable to delete timer - invalid timer identifier");
-    m_resp->add_U32(XVDR_RET_DATAINVALID);
+    m_resp->put_U32(XVDR_RET_DATAINVALID);
   }
   else
   {
@@ -1396,31 +1237,28 @@ bool cXVDRClient::processTIMER_Delete() /* OPCODE 84 */
           else
           {
             ERRORLOG("Timer \"%i\" is recording and can be deleted (use force=1 to stop it)", number);
-            m_resp->add_U32(XVDR_RET_RECRUNNING);
-            m_resp->finalise();
-            m_socket.write(m_resp->getPtr(), m_resp->getLen());
+            m_resp->put_U32(XVDR_RET_RECRUNNING);
             return true;
           }
         }
         INFOLOG("Deleting timer %s", *timer->ToDescr());
         Timers.Del(timer);
         Timers.SetModified();
-        m_resp->add_U32(XVDR_RET_OK);
+        m_resp->put_U32(XVDR_RET_OK);
       }
       else
       {
         ERRORLOG("Unable to delete timer - timers being edited at VDR");
-        m_resp->add_U32(XVDR_RET_DATALOCKED);
+        m_resp->put_U32(XVDR_RET_DATALOCKED);
       }
     }
     else
     {
       ERRORLOG("Unable to delete timer - invalid timer identifier");
-      m_resp->add_U32(XVDR_RET_DATAINVALID);
+      m_resp->put_U32(XVDR_RET_DATAINVALID);
     }
   }
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
+
   return true;
 }
 
@@ -1428,17 +1266,15 @@ bool cXVDRClient::processTIMER_Update() /* OPCODE 85 */
 {
   cMutexLock lock(&m_timerLock);
 
-  int length      = m_req->getDataLength();
-  uint32_t index  = m_req->extract_U32();
-  bool active     = m_req->extract_U32();
+  int length      = m_req->getPayloadLength();
+  uint32_t index  = m_req->get_U32();
+  bool active     = m_req->get_U32();
 
   cTimer *timer = Timers.Get(index - 1);
   if (!timer)
   {
     ERRORLOG("Timer \"%u\" not defined", index);
-    m_resp->add_U32(XVDR_RET_DATAUNKNOWN);
-    m_resp->finalise();
-    m_socket.write(m_resp->getPtr(), m_resp->getLen());
+    m_resp->put_U32(XVDR_RET_DATAUNKNOWN);
     return true;
   }
 
@@ -1454,15 +1290,15 @@ bool cXVDRClient::processTIMER_Update() /* OPCODE 85 */
   else
   {
     uint32_t flags      = active ? tfActive : tfNone;
-    uint32_t priority   = m_req->extract_U32();
-    uint32_t lifetime   = m_req->extract_U32();
-    uint32_t channelid  = m_req->extract_U32();
-    time_t startTime    = m_req->extract_U32();
-    time_t stopTime     = m_req->extract_U32();
-    time_t day          = m_req->extract_U32();
-    uint32_t weekdays   = m_req->extract_U32();
-    const char *file    = m_req->extract_String();
-    const char *aux     = m_req->extract_String();
+    uint32_t priority   = m_req->get_U32();
+    uint32_t lifetime   = m_req->get_U32();
+    uint32_t channelid  = m_req->get_U32();
+    time_t startTime    = m_req->get_U32();
+    time_t stopTime     = m_req->get_U32();
+    time_t day          = m_req->get_U32();
+    uint32_t weekdays   = m_req->get_U32();
+    const char *file    = m_req->get_String();
+    const char *aux     = m_req->get_String();
 
     struct tm tm_r;
     struct tm *time = localtime_r(&startTime, &tm_r);
@@ -1483,15 +1319,10 @@ bool cXVDRClient::processTIMER_Update() /* OPCODE 85 */
       }
     }
 
-    delete[] file;
-    delete[] aux;
-
     if (!t.Parse(buffer))
     {
       ERRORLOG("Error in timer settings");
-      m_resp->add_U32(XVDR_RET_DATAINVALID);
-      m_resp->finalise();
-      m_socket.write(m_resp->getPtr(), m_resp->getLen());
+      m_resp->put_U32(XVDR_RET_DATAINVALID);
       return true;
     }
   }
@@ -1499,9 +1330,8 @@ bool cXVDRClient::processTIMER_Update() /* OPCODE 85 */
   *timer = t;
   Timers.SetModified();
 
-  m_resp->add_U32(XVDR_RET_OK);
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
+  m_resp->put_U32(XVDR_RET_OK);
+
   return true;
 }
 
@@ -1514,22 +1344,18 @@ bool cXVDRClient::processRECORDINGS_GetDiskSpace() /* OPCODE 100 */
   int Percent = VideoDiskSpace(&FreeMB);
   int Total   = (FreeMB / (100 - Percent)) * 100;
 
-  m_resp->add_U32(Total);
-  m_resp->add_U32(FreeMB);
-  m_resp->add_U32(Percent);
+  m_resp->put_U32(Total);
+  m_resp->put_U32(FreeMB);
+  m_resp->put_U32(Percent);
 
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
 bool cXVDRClient::processRECORDINGS_GetCount() /* OPCODE 101 */
 {
   Recordings.Load();
-  m_resp->add_U32(Recordings.Count());
+  m_resp->put_U32(Recordings.Count());
 
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
@@ -1538,7 +1364,7 @@ bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
   cMutexLock lock(&m_timerLock);
 
   if(m_protocolVersion == 1) {
-    m_resp->add_String(VideoDirectory);
+    m_resp->put_String(VideoDirectory);
   }
 
   for (cRecording *recording = Recordings.First(); recording; recording = Recordings.Next(recording))
@@ -1576,13 +1402,13 @@ bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
     DEBUGLOG("GRI: RC: recordingStart=%lu recordingDuration=%i", recordingStart, recordingDuration);
 
     // recording_time
-    m_resp->add_U32(recordingStart);
+    m_resp->put_U32(recordingStart);
 
     // duration
-    m_resp->add_U32(recordingDuration);
+    m_resp->put_U32(recordingDuration);
 
     // priority
-    m_resp->add_U32(
+    m_resp->put_U32(
 #if APIVERSNUM >= 10727
     recording->Priority()
 #else
@@ -1591,7 +1417,7 @@ bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
     );
 
     // lifetime
-    m_resp->add_U32(
+    m_resp->put_U32(
 #if APIVERSNUM >= 10727
     recording->Lifetime()
 #else
@@ -1600,7 +1426,7 @@ bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
     );
 
     // channel_name
-    m_resp->add_String(recording->Info()->ChannelName() ? m_toUTF8.Convert(recording->Info()->ChannelName()) : "");
+    m_resp->put_String(recording->Info()->ChannelName() ? m_toUTF8.Convert(recording->Info()->ChannelName()) : "");
 
     char* fullname = strdup(recording->Name());
     char* recname = strrchr(fullname, FOLDERDELIMCHAR);
@@ -1616,19 +1442,19 @@ bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
     }
 
     // title
-    m_resp->add_String(m_toUTF8.Convert(recname));
+    m_resp->put_String(m_toUTF8.Convert(recname));
 
     // subtitle
     if (!isempty(recording->Info()->ShortText()))
-      m_resp->add_String(m_toUTF8.Convert(recording->Info()->ShortText()));
+      m_resp->put_String(m_toUTF8.Convert(recording->Info()->ShortText()));
     else
-      m_resp->add_String("");
+      m_resp->put_String("");
 
     // description
     if (!isempty(recording->Info()->Description()))
-      m_resp->add_String(m_toUTF8.Convert(recording->Info()->Description()));
+      m_resp->put_String(m_toUTF8.Convert(recording->Info()->Description()));
     else
-      m_resp->add_String("");
+      m_resp->put_String("");
 
     // directory
     if(m_protocolVersion >= 2) {
@@ -1642,7 +1468,7 @@ bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
         while(*directory == '/') directory++;
       }
 
-      m_resp->add_String((isempty(directory)) ? "" : m_toUTF8.Convert(directory));
+      m_resp->put_String((isempty(directory)) ? "" : m_toUTF8.Convert(directory));
     }
 
     // filename / uid of recording
@@ -1650,23 +1476,21 @@ bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
     if(m_protocolVersion >= 3) {
       char recid[9];
       snprintf(recid, sizeof(recid), "%08x", uid);
-      m_resp->add_String(recid);
+      m_resp->put_String(recid);
     }
     else if(m_protocolVersion = 2) {
-      m_resp->add_U32(uid);
+      m_resp->put_U32(uid);
     }
     else {
       cString filename = recording->FileName();
-      m_resp->add_String(filename);
+      m_resp->put_String(filename);
     }
 
     free(fullname);
   }
 
-  m_resp->finalise();
   m_resp->compress(m_compressionLevel);
 
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
@@ -1674,15 +1498,14 @@ bool cXVDRClient::processRECORDINGS_Rename() /* OPCODE 103 */
 {
   uint32_t uid = 0;
   if(m_protocolVersion >= 3) {
-    char* recid = m_req->extract_String();
+    const char* recid = m_req->get_String();
     uid = recid2uid(recid);
-    delete[] recid;
   }
   else {
-    uid = m_req->extract_U32();
+    uid = m_req->get_U32();
   }
 
-  char*       newtitle     = m_req->extract_String();
+  const char* newtitle     = m_req->get_String();
   cRecording* recording    = cRecordingsCache::GetInstance().Lookup(uid);
   int         r            = XVDR_RET_DATAINVALID;
 
@@ -1695,7 +1518,7 @@ bool cXVDRClient::processRECORDINGS_Rename() /* OPCODE 103 */
     }
 
     // replace spaces in newtitle
-    strreplace(newtitle, ' ', '_');
+    strreplace((char*)newtitle, ' ', '_');
     char* filename_new = new char[512];
     strncpy(filename_new, filename_old, 512);
     sep = strrchr(filename_new, '/');
@@ -1710,12 +1533,9 @@ bool cXVDRClient::processRECORDINGS_Rename() /* OPCODE 103 */
     Recordings.Update();
 
     free(filename_old);
-    delete[] filename_new;
   }
 
-  m_resp->add_U32(r);
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
+  m_resp->put_U32(r);
 
   return true;
 }
@@ -1726,20 +1546,18 @@ bool cXVDRClient::processRECORDINGS_Delete() /* OPCODE 104 */
   cRecording* recording = NULL;
 
   if(m_protocolVersion >= 3) {
-    char* recid = m_req->extract_String();
+    const char* recid = m_req->get_String();
     uint32_t uid = recid2uid(recid);
     recording = cRecordingsCache::GetInstance().Lookup(uid);
-    delete[] recid;
   }
   else if(m_protocolVersion == 2) {
-    uint32_t uid = m_req->extract_U32();
+    uint32_t uid = m_req->get_U32();
     recording = cRecordingsCache::GetInstance().Lookup(uid);
   }
   else {
-    const char* temp = m_req->extract_String();
+    const char* temp = m_req->get_String();
     recName = temp;
     recording = Recordings.GetByName(recName);
-    delete[] temp;
   }
 
 
@@ -1755,28 +1573,25 @@ bool cXVDRClient::processRECORDINGS_Delete() /* OPCODE 104 */
         // Copy svdrdeveldevelp's way of doing this, see if it works
         Recordings.DelByName(recording->FileName());
         INFOLOG("Recording \"%s\" deleted", recording->FileName());
-        m_resp->add_U32(XVDR_RET_OK);
+        m_resp->put_U32(XVDR_RET_OK);
       }
       else
       {
         ERRORLOG("Error while deleting recording!");
-        m_resp->add_U32(XVDR_RET_ERROR);
+        m_resp->put_U32(XVDR_RET_ERROR);
       }
     }
     else
     {
       ERRORLOG("Recording \"%s\" is in use by timer %d", recording->Name(), rc->Timer()->Index() + 1);
-      m_resp->add_U32(XVDR_RET_DATALOCKED);
+      m_resp->put_U32(XVDR_RET_DATALOCKED);
     }
   }
   else
   {
     ERRORLOG("Error in recording name \"%s\"", (const char*)recName);
-    m_resp->add_U32(XVDR_RET_DATAUNKNOWN);
+    m_resp->put_U32(XVDR_RET_DATAUNKNOWN);
   }
-
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
 
   return true;
 }
@@ -1790,14 +1605,14 @@ bool cXVDRClient::processEPG_GetForChannel() /* OPCODE 120 */
   uint32_t channelUID  = 0;
 
   if(m_protocolVersion == 1) {
-    channelNumber = m_req->extract_U32();
+    channelNumber = m_req->get_U32();
   }
   else {
-    channelUID = m_req->extract_U32();
+    channelUID = m_req->get_U32();
   }
 
-  uint32_t startTime      = m_req->extract_U32();
-  uint32_t duration       = m_req->extract_U32();
+  uint32_t startTime      = m_req->get_U32();
+  uint32_t duration       = m_req->get_U32();
 
   Channels.Lock(false);
 
@@ -1816,9 +1631,7 @@ bool cXVDRClient::processEPG_GetForChannel() /* OPCODE 120 */
 
   if (!channel)
   {
-    m_resp->add_U32(0);
-    m_resp->finalise();
-    m_socket.write(m_resp->getPtr(), m_resp->getLen());
+    m_resp->put_U32(0);
     Channels.Unlock();
 
     ERRORLOG("written 0 because channel = NULL");
@@ -1829,9 +1642,7 @@ bool cXVDRClient::processEPG_GetForChannel() /* OPCODE 120 */
   const cSchedules *Schedules = cSchedules::Schedules(MutexLock);
   if (!Schedules)
   {
-    m_resp->add_U32(0);
-    m_resp->finalise();
-    m_socket.write(m_resp->getPtr(), m_resp->getLen());
+    m_resp->put_U32(0);
     Channels.Unlock();
 
     DEBUGLOG("written 0 because Schedule!s! = NULL");
@@ -1841,9 +1652,7 @@ bool cXVDRClient::processEPG_GetForChannel() /* OPCODE 120 */
   const cSchedule *Schedule = Schedules->GetSchedule(channel->GetChannelID());
   if (!Schedule)
   {
-    m_resp->add_U32(0);
-    m_resp->finalise();
-    m_socket.write(m_resp->getPtr(), m_resp->getLen());
+    m_resp->put_U32(0);
     Channels.Unlock();
 
     DEBUGLOG("written 0 because Schedule = NULL");
@@ -1893,15 +1702,15 @@ bool cXVDRClient::processEPG_GetForChannel() /* OPCODE 120 */
     if (!thisEventSubTitle)     thisEventSubTitle     = "";
     if (!thisEventDescription)  thisEventDescription  = "";
 
-    m_resp->add_U32(thisEventID);
-    m_resp->add_U32(thisEventTime);
-    m_resp->add_U32(thisEventDuration);
-    m_resp->add_U32(thisEventContent);
-    m_resp->add_U32(thisEventRating);
+    m_resp->put_U32(thisEventID);
+    m_resp->put_U32(thisEventTime);
+    m_resp->put_U32(thisEventDuration);
+    m_resp->put_U32(thisEventContent);
+    m_resp->put_U32(thisEventRating);
 
-    m_resp->add_String(m_toUTF8.Convert(thisEventTitle));
-    m_resp->add_String(m_toUTF8.Convert(thisEventSubTitle));
-    m_resp->add_String(m_toUTF8.Convert(thisEventDescription));
+    m_resp->put_String(m_toUTF8.Convert(thisEventTitle));
+    m_resp->put_String(m_toUTF8.Convert(thisEventSubTitle));
+    m_resp->put_String(m_toUTF8.Convert(thisEventDescription));
 
     atLeastOneEvent = true;
   }
@@ -1911,16 +1720,11 @@ bool cXVDRClient::processEPG_GetForChannel() /* OPCODE 120 */
 
   if (!atLeastOneEvent)
   {
-    m_resp->add_U32(0);
+    m_resp->put_U32(0);
     DEBUGLOG("Written 0 because no data");
   }
 
-  m_resp->finalise();
   m_resp->compress(m_compressionLevel);
-
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
-
-  DEBUGLOG("written schedules packet");
 
   return true;
 }
@@ -1935,12 +1739,10 @@ bool cXVDRClient::processSCAN_ScanSupported() /* OPCODE 140 */
             it returns true if supported */
   cPlugin *p = cPluginManager::GetPlugin("wirbelscan");
   if (p && p->Service("WirbelScanService-StopScan-v1.0", NULL))
-    m_resp->add_U32(XVDR_RET_OK);
+    m_resp->put_U32(XVDR_RET_OK);
   else
-    m_resp->add_U32(XVDR_RET_NOTSUPPORTED);
+    m_resp->put_U32(XVDR_RET_NOTSUPPORTED);
 
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
@@ -1952,22 +1754,20 @@ bool cXVDRClient::processSCAN_GetCountries() /* OPCODE 141 */
     cPlugin *p = cPluginManager::GetPlugin("wirbelscan");
     if (p)
     {
-      m_resp->add_U32(XVDR_RET_OK);
+      m_resp->put_U32(XVDR_RET_OK);
       p->Service("WirbelScanService-GetCountries-v1.0", (void*) processSCAN_AddCountry);
     }
     else
     {
-      m_resp->add_U32(XVDR_RET_NOTSUPPORTED);
+      m_resp->put_U32(XVDR_RET_NOTSUPPORTED);
     }
     m_processSCAN_Response = NULL;
   }
   else
   {
-    m_resp->add_U32(XVDR_RET_DATALOCKED);
+    m_resp->put_U32(XVDR_RET_DATALOCKED);
   }
 
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
@@ -1979,41 +1779,39 @@ bool cXVDRClient::processSCAN_GetSatellites() /* OPCODE 142 */
     cPlugin *p = cPluginManager::GetPlugin("wirbelscan");
     if (p)
     {
-      m_resp->add_U32(XVDR_RET_OK);
+      m_resp->put_U32(XVDR_RET_OK);
       p->Service("WirbelScanService-GetSatellites-v1.0", (void*) processSCAN_AddSatellite);
     }
     else
     {
-      m_resp->add_U32(XVDR_RET_NOTSUPPORTED);
+      m_resp->put_U32(XVDR_RET_NOTSUPPORTED);
     }
     m_processSCAN_Response = NULL;
   }
   else
   {
-    m_resp->add_U32(XVDR_RET_DATALOCKED);
+    m_resp->put_U32(XVDR_RET_DATALOCKED);
   }
 
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
 bool cXVDRClient::processSCAN_Start() /* OPCODE 143 */
 {
   WirbelScanService_DoScan_v1_0 svc;
-  svc.type              = (scantype_t)m_req->extract_U32();
-  svc.scan_tv           = (bool)m_req->extract_U8();
-  svc.scan_radio        = (bool)m_req->extract_U8();
-  svc.scan_fta          = (bool)m_req->extract_U8();
-  svc.scan_scrambled    = (bool)m_req->extract_U8();
-  svc.scan_hd           = (bool)m_req->extract_U8();
-  svc.CountryIndex      = (int)m_req->extract_U32();
-  svc.DVBC_Inversion    = (int)m_req->extract_U32();
-  svc.DVBC_Symbolrate   = (int)m_req->extract_U32();
-  svc.DVBC_QAM          = (int)m_req->extract_U32();
-  svc.DVBT_Inversion    = (int)m_req->extract_U32();
-  svc.SatIndex          = (int)m_req->extract_U32();
-  svc.ATSC_Type         = (int)m_req->extract_U32();
+  svc.type              = (scantype_t)m_req->get_U32();
+  svc.scan_tv           = (bool)m_req->get_U8();
+  svc.scan_radio        = (bool)m_req->get_U8();
+  svc.scan_fta          = (bool)m_req->get_U8();
+  svc.scan_scrambled    = (bool)m_req->get_U8();
+  svc.scan_hd           = (bool)m_req->get_U8();
+  svc.CountryIndex      = (int)m_req->get_U32();
+  svc.DVBC_Inversion    = (int)m_req->get_U32();
+  svc.DVBC_Symbolrate   = (int)m_req->get_U32();
+  svc.DVBC_QAM          = (int)m_req->get_U32();
+  svc.DVBT_Inversion    = (int)m_req->get_U32();
+  svc.SatIndex          = (int)m_req->get_U32();
+  svc.ATSC_Type         = (int)m_req->get_U32();
   svc.SetPercentage     = processSCAN_SetPercentage;
   svc.SetSignalStrength = processSCAN_SetSignalStrength;
   svc.SetDeviceInfo     = processSCAN_SetDeviceInfo;
@@ -2021,23 +1819,21 @@ bool cXVDRClient::processSCAN_Start() /* OPCODE 143 */
   svc.NewChannel        = processSCAN_NewChannel;
   svc.IsFinished        = processSCAN_IsFinished;
   svc.SetStatus         = processSCAN_SetStatus;
-  m_processSCAN_Socket  = &m_socket;
+  m_processSCAN_Socket  = m_socket;
 
   cPlugin *p = cPluginManager::GetPlugin("wirbelscan");
   if (p)
   {
     if (p->Service("WirbelScanService-DoScan-v1.0", (void*) &svc))
-      m_resp->add_U32(XVDR_RET_OK);
+      m_resp->put_U32(XVDR_RET_OK);
     else
-      m_resp->add_U32(XVDR_RET_ERROR);
+      m_resp->put_U32(XVDR_RET_ERROR);
   }
   else
   {
-    m_resp->add_U32(XVDR_RET_NOTSUPPORTED);
+    m_resp->put_U32(XVDR_RET_NOTSUPPORTED);
   }
 
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
@@ -2047,134 +1843,103 @@ bool cXVDRClient::processSCAN_Stop() /* OPCODE 144 */
   if (p)
   {
     p->Service("WirbelScanService-StopScan-v1.0", NULL);
-    m_resp->add_U32(XVDR_RET_OK);
+    m_resp->put_U32(XVDR_RET_OK);
   }
   else
   {
-    m_resp->add_U32(XVDR_RET_NOTSUPPORTED);
+    m_resp->put_U32(XVDR_RET_NOTSUPPORTED);
   }
-  m_resp->finalise();
-  m_socket.write(m_resp->getPtr(), m_resp->getLen());
   return true;
 }
 
-cResponsePacket *cXVDRClient::m_processSCAN_Response = NULL;
-cxSocket *cXVDRClient::m_processSCAN_Socket = NULL;
+MsgPacket* cXVDRClient::m_processSCAN_Response = NULL;
+int cXVDRClient::m_processSCAN_Socket = -1;
 
 void cXVDRClient::processSCAN_AddCountry(int index, const char *isoName, const char *longName)
 {
-  m_processSCAN_Response->add_U32(index);
-  m_processSCAN_Response->add_String(isoName);
-  m_processSCAN_Response->add_String(longName);
+  m_processSCAN_Response->put_U32(index);
+  m_processSCAN_Response->put_String(isoName);
+  m_processSCAN_Response->put_String(longName);
 }
 
 void cXVDRClient::processSCAN_AddSatellite(int index, const char *shortName, const char *longName)
 {
-  m_processSCAN_Response->add_U32(index);
-  m_processSCAN_Response->add_String(shortName);
-  m_processSCAN_Response->add_String(longName);
+  m_processSCAN_Response->put_U32(index);
+  m_processSCAN_Response->put_String(shortName);
+  m_processSCAN_Response->put_String(longName);
 }
 
 void cXVDRClient::processSCAN_SetPercentage(int percent)
 {
-  cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(XVDR_SCANNER_PERCENTAGE))
-  {
-    delete resp;
-    return;
-  }
-  resp->add_U32(percent);
-  resp->finalise();
-  m_processSCAN_Socket->write(resp->getPtr(), resp->getLen());
+  MsgPacket* resp = new MsgPacket(XVDR_SCANNER_PERCENTAGE, XVDR_CHANNEL_SCAN);
+  resp->put_U32(percent);
+
+  resp->write(m_processSCAN_Socket, 3000);
   delete resp;
 }
 
 void cXVDRClient::processSCAN_SetSignalStrength(int strength, bool locked)
 {
-  cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(XVDR_SCANNER_SIGNAL))
-  {
-    delete resp;
-    return;
-  }
+  MsgPacket*resp = new MsgPacket(XVDR_SCANNER_SIGNAL, XVDR_CHANNEL_SCAN);
+
   strength *= 100;
   strength /= 0xFFFF;
-  resp->add_U32(strength);
-  resp->add_U32(locked);
-  resp->finalise();
-  m_processSCAN_Socket->write(resp->getPtr(), resp->getLen());
+
+  resp->put_U32(strength);
+  resp->put_U32(locked);
+
+  resp->write(m_processSCAN_Socket, 3000);;
   delete resp;
 }
 
 void cXVDRClient::processSCAN_SetDeviceInfo(const char *Info)
 {
-  cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(XVDR_SCANNER_DEVICE))
-  {
-    delete resp;
-    return;
-  }
-  resp->add_String(Info);
-  resp->finalise();
-  m_processSCAN_Socket->write(resp->getPtr(), resp->getLen());
+  MsgPacket* resp = new MsgPacket(XVDR_SCANNER_DEVICE, XVDR_CHANNEL_SCAN);
+
+  resp->put_String(Info);
+
+  resp->write(m_processSCAN_Socket, 3000);;
   delete resp;
 }
 
 void cXVDRClient::processSCAN_SetTransponder(const char *Info)
 {
-  cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(XVDR_SCANNER_TRANSPONDER))
-  {
-    delete resp;
-    return;
-  }
-  resp->add_String(Info);
-  resp->finalise();
-  m_processSCAN_Socket->write(resp->getPtr(), resp->getLen());
+  MsgPacket* resp = new MsgPacket(XVDR_SCANNER_TRANSPONDER, XVDR_CHANNEL_SCAN);
+
+  resp->put_String(Info);
+
+  resp->write(m_processSCAN_Socket, 3000);;
   delete resp;
 }
 
 void cXVDRClient::processSCAN_NewChannel(const char *Name, bool isRadio, bool isEncrypted, bool isHD)
 {
-  cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(XVDR_SCANNER_NEWCHANNEL))
-  {
-    delete resp;
-    return;
-  }
-  resp->add_U32(isRadio);
-  resp->add_U32(isEncrypted);
-  resp->add_U32(isHD);
-  resp->add_String(Name);
-  resp->finalise();
-  m_processSCAN_Socket->write(resp->getPtr(), resp->getLen());
+  MsgPacket* resp = new MsgPacket(XVDR_SCANNER_NEWCHANNEL, XVDR_CHANNEL_SCAN);
+
+  resp->put_U32(isRadio);
+  resp->put_U32(isEncrypted);
+  resp->put_U32(isHD);
+  resp->put_String(Name);
+
+  resp->write(m_processSCAN_Socket, 3000);;
   delete resp;
 }
 
 void cXVDRClient::processSCAN_IsFinished()
 {
-  cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(XVDR_SCANNER_FINISHED))
-  {
-    delete resp;
-    return;
-  }
-  resp->finalise();
-  m_processSCAN_Socket->write(resp->getPtr(), resp->getLen());
-  m_processSCAN_Socket = NULL;
+  MsgPacket* resp = new MsgPacket(XVDR_SCANNER_FINISHED, XVDR_CHANNEL_SCAN);
+
+  resp->write(m_processSCAN_Socket, 3000);;
   delete resp;
+  m_processSCAN_Socket = -1;
 }
 
 void cXVDRClient::processSCAN_SetStatus(int status)
 {
-  cResponsePacket *resp = new cResponsePacket();
-  if (!resp->initScan(XVDR_SCANNER_STATUS))
-  {
-    delete resp;
-    return;
-  }
-  resp->add_U32(status);
-  resp->finalise();
-  m_processSCAN_Socket->write(resp->getPtr(), resp->getLen());
+  MsgPacket* resp = new MsgPacket(XVDR_SCANNER_STATUS, XVDR_CHANNEL_SCAN);
+
+  resp->put_U32(status);
+
+  resp->write(m_processSCAN_Socket, 3000);;
   delete resp;
 }

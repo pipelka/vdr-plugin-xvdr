@@ -37,11 +37,10 @@
 #include "demuxer/demuxer.h"
 #include <list>
 
-class cxSocket;
 class cChannel;
 class cLiveReceiver;
 class cTSDemuxer;
-class cResponsePacket;
+class MsgPacket;
 class cLivePatFilter;
 class cLiveQueue;
 
@@ -71,7 +70,7 @@ private:
   cLivePatFilter   *m_PatFilter;                    /*!> Filter processor to get changed pid's */
   int               m_Priority;                     /*!> The priority over other streamers */
   std::list<cTSDemuxer*> m_Demuxers;
-  cxSocket         *m_Socket;                       /*!> The socket class to communicate with client */
+  int               m_socket;                       /*!> The socket class to communicate with client */
   int               m_Frontend;                     /*!> File descriptor to access used receiving device  */
   dvb_frontend_info m_FrontendInfo;                 /*!> DVB Information about the receiving device (DVB only) */
   v4l2_capability   m_vcap;                         /*!> PVR Information about the receiving device (pvrinput only) */
@@ -96,7 +95,7 @@ public:
 
   void Activate(bool On);
 
-  bool StreamChannel(const cChannel *channel, int priority, cxSocket *Socket, cResponsePacket* resp);
+  bool StreamChannel(const cChannel *channel, int priority, int sock, MsgPacket* resp);
   bool IsReady();
   bool IsStarting() { return m_startup; }
   void SetLanguage(int lang, eStreamType streamtype = stAC3);

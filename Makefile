@@ -70,9 +70,8 @@ OBJS = \
 	src/live/livequeue.o \
 	src/live/livereceiver.o \
 	src/live/livestreamer.o \
-	src/net/cxsocket.o \
-	src/net/requestpacket.o \
-	src/net/responsepacket.o \
+	src/net/msgpacket.o \
+	src/net/os-config.o \
 	src/recordings/recordingscache.o \
 	src/recordings/recplayer.o \
 	src/tools/hash.o \

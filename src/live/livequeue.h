@@ -28,18 +28,17 @@
 #include <queue>
 #include <vdr/thread.h>
 
-class cxSocket;
-class cResponsePacket;
+class MsgPacket;
 
-class cLiveQueue : public cThread, protected std::queue<cResponsePacket*>
+class cLiveQueue : public cThread, protected std::queue<MsgPacket*>
 {
 public:
 
-  cLiveQueue(cxSocket* s);
+  cLiveQueue(int s);
 
   virtual ~cLiveQueue();
 
-  bool Add(cResponsePacket* p);
+  bool Add(MsgPacket* p);
 
 protected:
 
@@ -47,9 +46,9 @@ protected:
 
   void Cleanup();
 
-  bool write(cResponsePacket* packet);
+  bool write(MsgPacket* packet);
 
-  cxSocket* m_socket;
+  int m_socket;
 
   cMutex m_lock;
 
