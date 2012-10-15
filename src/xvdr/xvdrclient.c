@@ -71,6 +71,22 @@ static uint32_t recid2uid(const char* recid)
   return uid;
 }
 
+void cXVDRClient::PutTimer(cTimer* timer, MsgPacket* p)
+{
+  p->put_U32(timer->Index()+1);
+  p->put_U32(timer->HasFlags(tfActive));
+  p->put_U32(timer->Recording());
+  p->put_U32(timer->Pending());
+  p->put_U32(timer->Priority());
+  p->put_U32(timer->Lifetime());
+  p->put_U32(CreateChannelUID(timer->Channel()));
+  p->put_U32(timer->StartTime());
+  p->put_U32(timer->StopTime());
+  p->put_U32(timer->Day());
+  p->put_U32(timer->WeekDays());
+  p->put_String(m_toUTF8.Convert(timer->File()));
+}
+
 cMutex cXVDRClient::m_timerLock;
 cMutex cXVDRClient::m_switchLock;
 
@@ -1082,33 +1098,21 @@ bool cXVDRClient::processTIMER_Get() /* OPCODE 81 */
 
   uint32_t number = m_req->get_U32();
 
-  int numTimers = Timers.Count();
-  if (numTimers > 0)
+  if (Timers.Count() == 0)
   {
-    cTimer *timer = Timers.Get(number-1);
-    if (timer)
-    {
-      m_resp->put_U32(XVDR_RET_OK);
-
-      m_resp->put_U32(timer->Index()+1);
-      m_resp->put_U32(timer->HasFlags(tfActive));
-      m_resp->put_U32(timer->Recording());
-      m_resp->put_U32(timer->Pending());
-      m_resp->put_U32(timer->Priority());
-      m_resp->put_U32(timer->Lifetime());
-      m_resp->put_U32(timer->Channel()->Number());
-      m_resp->put_U32(CreateChannelUID(timer->Channel()));
-      m_resp->put_U32(timer->StartTime());
-      m_resp->put_U32(timer->StopTime());
-      m_resp->put_U32(timer->Day());
-      m_resp->put_U32(timer->WeekDays());
-      m_resp->put_String(m_toUTF8.Convert(timer->File()));
-    }
-    else
-      m_resp->put_U32(XVDR_RET_DATAUNKNOWN);
-  }
-  else
     m_resp->put_U32(XVDR_RET_DATAUNKNOWN);
+    return true;
+  }
+
+  cTimer *timer = Timers.Get(number-1);
+  if (timer == NULL)
+  {
+    m_resp->put_U32(XVDR_RET_DATAUNKNOWN);
+    return true;
+  }
+
+  m_resp->put_U32(XVDR_RET_OK);
+  PutTimer(timer, m_resp);
 
   return true;
 }
@@ -1128,19 +1132,7 @@ bool cXVDRClient::processTIMER_GetList() /* OPCODE 82 */
     if (!timer)
       continue;
 
-    m_resp->put_U32(timer->Index()+1);
-    m_resp->put_U32(timer->HasFlags(tfActive));
-    m_resp->put_U32(timer->Recording());
-    m_resp->put_U32(timer->Pending());
-    m_resp->put_U32(timer->Priority());
-    m_resp->put_U32(timer->Lifetime());
-    m_resp->put_U32(timer->Channel()->Number());
-    m_resp->put_U32(CreateChannelUID(timer->Channel()));
-    m_resp->put_U32(timer->StartTime());
-    m_resp->put_U32(timer->StopTime());
-    m_resp->put_U32(timer->Day());
-    m_resp->put_U32(timer->WeekDays());
-    m_resp->put_String(m_toUTF8.Convert(timer->File()));
+    PutTimer(timer, m_resp);
   }
 
   return true;
@@ -1523,10 +1515,10 @@ bool cXVDRClient::processRECORDINGS_Delete() /* OPCODE 104 */
     return true;
   }
 
-    DEBUGLOG("deleting recording: %s", recording->Name());
+  DEBUGLOG("deleting recording: %s", recording->Name());
 
   cRecordControl *rc = cRecordControls::GetRecordControl(recording->FileName());
-  if (rc == NULL)
+  if (rc != NULL)
   {
     ERRORLOG("Recording \"%s\" is in use by timer %d", recording->Name(), rc->Timer()->Index() + 1);
     m_resp->put_U32(XVDR_RET_DATALOCKED);

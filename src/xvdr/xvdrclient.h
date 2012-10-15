@@ -110,6 +110,7 @@ private:
 
   std::map<std::string, ChannelGroup> m_channelgroups[2];
 
+  void PutTimer(cTimer* timer, MsgPacket* p);
   bool IsChannelWanted(cChannel* channel, bool radio = false);
   int  ChannelsCount();
 
