@@ -357,6 +357,7 @@ bool cXVDRClient::processRequest()
   cMutexLock lock(&m_msgLock);
 
   m_resp = new MsgPacket(m_req->getMsgID(), XVDR_CHANNEL_REQUEST_RESPONSE, m_req->getUID());
+  m_resp->setProtocolVersion(XVDR_PROTOCOLVERSION);
 
   bool result = false;
   switch(m_req->getMsgID())
@@ -545,7 +546,7 @@ bool cXVDRClient::processRequest()
 
 bool cXVDRClient::process_Login() /* OPCODE 1 */
 {
-  m_protocolVersion      = m_req->get_U32();
+  m_protocolVersion      = m_req->getProtocolVersion();
   m_compressionLevel     = m_req->get_U8();
   const char *clientName = m_req->get_String();
   const char *language   = NULL;
@@ -558,9 +559,9 @@ bool cXVDRClient::process_Login() /* OPCODE 1 */
     m_LangStreamType = (eStreamType)m_req->get_U8();
   }
 
-  if (m_protocolVersion > XVDR_PROTOCOLVERSION)
+  if (m_protocolVersion > XVDR_PROTOCOLVERSION || m_protocolVersion < 4)
   {
-    ERRORLOG("Client '%s' have a not allowed protocol version '%u', terminating client", clientName, m_protocolVersion);
+    ERRORLOG("Client '%s' has unsupported protocol version '%u', terminating client", clientName, m_protocolVersion);
     return false;
   }
 
@@ -575,7 +576,6 @@ bool cXVDRClient::process_Login() /* OPCODE 1 */
   struct tm* timeStruct = localtime(&timeNow);
   int timeOffset        = timeStruct->tm_gmtoff;
 
-  m_resp->put_U32(XVDR_PROTOCOLVERSION);
   m_resp->put_U32(timeNow);
   m_resp->put_S32(timeOffset);
   m_resp->put_String("VDR-XVDR Server");
@@ -746,20 +746,10 @@ bool cXVDRClient::processRecStream_Open() /* OPCODE 40 */
 {
   cRecording *recording = NULL;
 
-  if(m_protocolVersion >= 3) {
-    const char* recid = m_req->get_String();
-    unsigned int uid = recid2uid(recid);
-    DEBUGLOG("lookup recid: %s (uid: %u)", recid, uid);
-    recording = cRecordingsCache::GetInstance().Lookup(uid);
-  }
-  else if(m_protocolVersion = 2) {
-    uint32_t uid = m_req->get_U32();
-    recording = cRecordingsCache::GetInstance().Lookup(uid);
-  }
-  else {
-    const char *fileName = m_req->get_String();
-    recording = Recordings.GetByName(fileName);
-  }
+  const char* recid = m_req->get_String();
+  unsigned int uid = recid2uid(recid);
+  DEBUGLOG("lookup recid: %s (uid: %u)", recid, uid);
+  recording = cRecordingsCache::GetInstance().Lookup(uid);
 
   if (recording && m_RecPlayer == NULL)
   {
@@ -930,12 +920,7 @@ bool cXVDRClient::processCHANNELS_GetChannels() /* OPCODE 63 */
 
     m_resp->put_U32(channel->Number());
     m_resp->put_String(m_toUTF8.Convert(channel->Name()));
-    if(m_protocolVersion >= 2) {
-      m_resp->put_U32(CreateChannelUID(channel));
-    }
-    else {
-      m_resp->put_U32(channel->Sid());
-    }
+    m_resp->put_U32(CreateChannelUID(channel));
     m_resp->put_U32(0); // groupindex unused
     m_resp->put_U32(channel->Ca());
 #if APIVERSNUM >= 10701
@@ -1112,9 +1097,7 @@ bool cXVDRClient::processTIMER_Get() /* OPCODE 81 */
       m_resp->put_U32(timer->Priority());
       m_resp->put_U32(timer->Lifetime());
       m_resp->put_U32(timer->Channel()->Number());
-      if(m_protocolVersion >= 2) {
-        m_resp->put_U32(CreateChannelUID(timer->Channel()));
-      }
+      m_resp->put_U32(CreateChannelUID(timer->Channel()));
       m_resp->put_U32(timer->StartTime());
       m_resp->put_U32(timer->StopTime());
       m_resp->put_U32(timer->Day());
@@ -1152,9 +1135,7 @@ bool cXVDRClient::processTIMER_GetList() /* OPCODE 82 */
     m_resp->put_U32(timer->Priority());
     m_resp->put_U32(timer->Lifetime());
     m_resp->put_U32(timer->Channel()->Number());
-    if(m_protocolVersion >= 2) {
-      m_resp->put_U32(CreateChannelUID(timer->Channel()));
-    }
+    m_resp->put_U32(CreateChannelUID(timer->Channel()));
     m_resp->put_U32(timer->StartTime());
     m_resp->put_U32(timer->StopTime());
     m_resp->put_U32(timer->Day());
@@ -1195,15 +1176,10 @@ bool cXVDRClient::processTIMER_Add() /* OPCODE 83 */
   int stop = time->tm_hour * 100 + time->tm_min;
 
   cString buffer;
-  if(m_protocolVersion == 1) {
-    buffer = cString::sprintf("%u:%i:%s:%04d:%04d:%d:%d:%s:%s\n", flags, channelid, *cTimer::PrintDay(day, weekdays, true), start, stop, priority, lifetime, file, aux);
+  const cChannel* channel = FindChannelByUID(channelid);
+  if(channel != NULL) {
+    buffer = cString::sprintf("%u:%s:%s:%04d:%04d:%d:%d:%s:%s\n", flags, (const char*)channel->GetChannelID().ToString(), *cTimer::PrintDay(day, weekdays, true), start, stop, priority, lifetime, file, aux);
   }
-  else {
-    const cChannel* channel = FindChannelByUID(channelid);
-    if(channel != NULL) {
-      buffer = cString::sprintf("%u:%s:%s:%04d:%04d:%d:%d:%s:%s\n", flags, (const char*)channel->GetChannelID().ToString(), *cTimer::PrintDay(day, weekdays, true), start, stop, priority, lifetime, file, aux);
-    }
-  } 
 
   cTimer *timer = new cTimer;
   if (timer->Parse(buffer))
@@ -1245,45 +1221,38 @@ bool cXVDRClient::processTIMER_Delete() /* OPCODE 84 */
   {
     ERRORLOG("Unable to delete timer - invalid timer identifier");
     m_resp->put_U32(XVDR_RET_DATAINVALID);
+    return true;
   }
-  else
+
+  cTimer *timer = Timers.Get(number-1);
+  if (timer == NULL)
   {
-    cTimer *timer = Timers.Get(number-1);
-    if (timer)
-    {
-      if (!Timers.BeingEdited())
-      {
-        if (timer->Recording())
-        {
-          if (force)
-          {
-            timer->Skip();
-            cRecordControls::Process(time(NULL));
-          }
-          else
-          {
-            ERRORLOG("Timer \"%i\" is recording and can be deleted (use force=1 to stop it)", number);
-            m_resp->put_U32(XVDR_RET_RECRUNNING);
-            return true;
-          }
-        }
-        INFOLOG("Deleting timer %s", *timer->ToDescr());
-        Timers.Del(timer);
-        Timers.SetModified();
-        m_resp->put_U32(XVDR_RET_OK);
-      }
-      else
-      {
-        ERRORLOG("Unable to delete timer - timers being edited at VDR");
-        m_resp->put_U32(XVDR_RET_DATALOCKED);
-      }
-    }
-    else
-    {
-      ERRORLOG("Unable to delete timer - invalid timer identifier");
-      m_resp->put_U32(XVDR_RET_DATAINVALID);
-    }
+    ERRORLOG("Unable to delete timer - invalid timer identifier");
+    m_resp->put_U32(XVDR_RET_DATAINVALID);
+    return true;
   }
+
+  if (Timers.BeingEdited())
+  {
+    ERRORLOG("Unable to delete timer - timers being edited at VDR");
+    m_resp->put_U32(XVDR_RET_DATALOCKED);
+    return true;
+  }
+
+  if (timer->Recording() && !force)
+  {
+    ERRORLOG("Timer \"%i\" is recording and can be deleted (use force=1 to stop it)", number);
+    m_resp->put_U32(XVDR_RET_RECRUNNING);
+    return true;
+  }
+
+  timer->Skip();
+  cRecordControls::Process(time(NULL));
+
+  INFOLOG("Deleting timer %s", *timer->ToDescr());
+  Timers.Del(timer);
+  Timers.SetModified();
+  m_resp->put_U32(XVDR_RET_OK);
 
   return true;
 }
@@ -1335,14 +1304,9 @@ bool cXVDRClient::processTIMER_Update() /* OPCODE 85 */
     int stop = time->tm_hour * 100 + time->tm_min;
 
     cString buffer;
-    if(m_protocolVersion == 1) {
-      buffer = cString::sprintf("%u:%i:%s:%04d:%04d:%d:%d:%s:%s\n", flags, channelid, *cTimer::PrintDay(day, weekdays, true), start, stop, priority, lifetime, file, aux);
-    }
-    else {
-      const cChannel* channel = FindChannelByUID(channelid);
-      if(channel != NULL) {
-        buffer = cString::sprintf("%u:%s:%s:%04d:%04d:%d:%d:%s:%s\n", flags, (const char*)channel->GetChannelID().ToString(), *cTimer::PrintDay(day, weekdays, true), start, stop, priority, lifetime, file, aux);
-      }
+    const cChannel* channel = FindChannelByUID(channelid);
+    if(channel != NULL) {
+      buffer = cString::sprintf("%u:%s:%s:%04d:%04d:%d:%d:%s:%s\n", flags, (const char*)channel->GetChannelID().ToString(), *cTimer::PrintDay(day, weekdays, true), start, stop, priority, lifetime, file, aux);
     }
 
     if (!t.Parse(buffer))
@@ -1388,10 +1352,6 @@ bool cXVDRClient::processRECORDINGS_GetCount() /* OPCODE 101 */
 bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
 {
   cMutexLock lock(&m_timerLock);
-
-  if(m_protocolVersion == 1) {
-    m_resp->put_String(VideoDirectory);
-  }
 
   for (cRecording *recording = Recordings.First(); recording; recording = Recordings.Next(recording))
   {
@@ -1483,34 +1443,23 @@ bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
       m_resp->put_String("");
 
     // directory
-    if(m_protocolVersion >= 2) {
-      if(directory != NULL) {
-        char* p = directory;
-        while(*p != 0) {
-          if(*p == FOLDERDELIMCHAR) *p = '/';
-          if(*p == '_') *p = ' ';
-          p++;
-        }
-        while(*directory == '/') directory++;
+    if(directory != NULL) {
+      char* p = directory;
+      while(*p != 0) {
+        if(*p == FOLDERDELIMCHAR) *p = '/';
+        if(*p == '_') *p = ' ';
+        p++;
       }
-
-      m_resp->put_String((isempty(directory)) ? "" : m_toUTF8.Convert(directory));
+      while(*directory == '/') directory++;
     }
+
+    m_resp->put_String((isempty(directory)) ? "" : m_toUTF8.Convert(directory));
 
     // filename / uid of recording
     uint32_t uid = cRecordingsCache::GetInstance().Register(recording);
-    if(m_protocolVersion >= 3) {
-      char recid[9];
-      snprintf(recid, sizeof(recid), "%08x", uid);
-      m_resp->put_String(recid);
-    }
-    else if(m_protocolVersion = 2) {
-      m_resp->put_U32(uid);
-    }
-    else {
-      cString filename = recording->FileName();
-      m_resp->put_String(filename);
-    }
+    char recid[9];
+    snprintf(recid, sizeof(recid), "%08x", uid);
+    m_resp->put_String(recid);
 
     free(fullname);
   }
@@ -1523,13 +1472,8 @@ bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
 bool cXVDRClient::processRECORDINGS_Rename() /* OPCODE 103 */
 {
   uint32_t uid = 0;
-  if(m_protocolVersion >= 3) {
-    const char* recid = m_req->get_String();
-    uid = recid2uid(recid);
-  }
-  else {
-    uid = m_req->get_U32();
-  }
+  const char* recid = m_req->get_String();
+  uid = recid2uid(recid);
 
   const char* newtitle     = m_req->get_String();
   cRecording* recording    = cRecordingsCache::GetInstance().Lookup(uid);
@@ -1568,56 +1512,37 @@ bool cXVDRClient::processRECORDINGS_Rename() /* OPCODE 103 */
 
 bool cXVDRClient::processRECORDINGS_Delete() /* OPCODE 104 */
 {
-  cString recName;
-  cRecording* recording = NULL;
+  const char* recid = m_req->get_String();
+  uint32_t uid = recid2uid(recid);
+  cRecording* recording = cRecordingsCache::GetInstance().Lookup(uid);
 
-  if(m_protocolVersion >= 3) {
-    const char* recid = m_req->get_String();
-    uint32_t uid = recid2uid(recid);
-    recording = cRecordingsCache::GetInstance().Lookup(uid);
-  }
-  else if(m_protocolVersion == 2) {
-    uint32_t uid = m_req->get_U32();
-    recording = cRecordingsCache::GetInstance().Lookup(uid);
-  }
-  else {
-    const char* temp = m_req->get_String();
-    recName = temp;
-    recording = Recordings.GetByName(recName);
-  }
-
-
-  if (recording)
+  if (recording == NULL)
   {
+    ERRORLOG("Recording not found !");
+    m_resp->put_U32(XVDR_RET_DATAUNKNOWN);
+    return true;
+  }
+
     DEBUGLOG("deleting recording: %s", recording->Name());
 
-    cRecordControl *rc = cRecordControls::GetRecordControl(recording->FileName());
-    if (!rc)
-    {
-      if (recording->Delete())
-      {
-        // Copy svdrdeveldevelp's way of doing this, see if it works
-        Recordings.DelByName(recording->FileName());
-        INFOLOG("Recording \"%s\" deleted", recording->FileName());
-        m_resp->put_U32(XVDR_RET_OK);
-      }
-      else
-      {
-        ERRORLOG("Error while deleting recording!");
-        m_resp->put_U32(XVDR_RET_ERROR);
-      }
-    }
-    else
-    {
-      ERRORLOG("Recording \"%s\" is in use by timer %d", recording->Name(), rc->Timer()->Index() + 1);
-      m_resp->put_U32(XVDR_RET_DATALOCKED);
-    }
-  }
-  else
+  cRecordControl *rc = cRecordControls::GetRecordControl(recording->FileName());
+  if (rc == NULL)
   {
-    ERRORLOG("Error in recording name \"%s\"", (const char*)recName);
-    m_resp->put_U32(XVDR_RET_DATAUNKNOWN);
+    ERRORLOG("Recording \"%s\" is in use by timer %d", recording->Name(), rc->Timer()->Index() + 1);
+    m_resp->put_U32(XVDR_RET_DATALOCKED);
+    return true;
   }
+
+  if (!recording->Delete())
+  {
+    ERRORLOG("Error while deleting recording!");
+    m_resp->put_U32(XVDR_RET_ERROR);
+    return true;
+  }
+
+  Recordings.DelByName(recording->FileName());
+  INFOLOG("Recording \"%s\" deleted", recording->FileName());
+  m_resp->put_U32(XVDR_RET_OK);
 
   return true;
 }
@@ -1627,32 +1552,17 @@ bool cXVDRClient::processRECORDINGS_Delete() /* OPCODE 104 */
 
 bool cXVDRClient::processEPG_GetForChannel() /* OPCODE 120 */
 {
-  uint32_t channelNumber  = 0;
-  uint32_t channelUID  = 0;
-
-  if(m_protocolVersion == 1) {
-    channelNumber = m_req->get_U32();
-  }
-  else {
-    channelUID = m_req->get_U32();
-  }
-
-  uint32_t startTime      = m_req->get_U32();
-  uint32_t duration       = m_req->get_U32();
+  uint32_t channelUID = m_req->get_U32();
+  uint32_t startTime  = m_req->get_U32();
+  uint32_t duration   = m_req->get_U32();
 
   Channels.Lock(false);
 
   const cChannel* channel = NULL;
 
-  if(m_protocolVersion == 1) {
-    channel = Channels.GetByNumber(channelNumber);
-    DEBUGLOG("get schedule called for channel %u", channelNumber);
-  }
-  else {
-    channel = FindChannelByUID(channelUID);
-    if(channel != NULL) {
-      DEBUGLOG("get schedule called for channel '%s'", (const char*)channel->GetChannelID().ToString());
-    }
+  channel = FindChannelByUID(channelUID);
+  if(channel != NULL) {
+    DEBUGLOG("get schedule called for channel '%s'", (const char*)channel->GetChannelID().ToString());
   }
 
   if (!channel)

@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
- *      Copyright (C) 2011 Alexander Pipelka
+ *      Copyright (C) 2012 Alexander Pipelka
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -24,7 +24,7 @@
 #define XVDR_COMMAND_H
 
 /** Current XVDR Protocol Version number */
-#define XVDR_PROTOCOLVERSION          3
+#define XVDR_PROTOCOLVERSION          4
 
 
 /** Packet types */
