@@ -40,6 +40,14 @@ public:
 
   bool Add(MsgPacket* p);
 
+  void Request();
+
+  bool Pause(bool on = true);
+
+  static void SetTimeShiftDir(const cString& dir);
+
+  static void SetBufferSize(uint64_t s);
+
 protected:
 
   void Action();
@@ -48,11 +56,25 @@ protected:
 
   bool write(MsgPacket* packet);
 
+  void CloseTimeShift();
+
   int m_socket;
+
+  int m_readfd;
+
+  int m_writefd;
+
+  bool m_pause;
 
   cMutex m_lock;
 
   cCondWait m_cond;
+
+  cString m_storage;
+
+  static cString TimeShiftDir;
+
+  static uint64_t BufferSize;
 };
 
 #endif // XVDR_LIVEQUEUE_H

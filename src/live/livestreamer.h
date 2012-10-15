@@ -99,6 +99,8 @@ public:
   bool IsReady();
   bool IsStarting() { return m_startup; }
   void SetLanguage(int lang, eStreamType streamtype = stAC3);
+  void Pause(bool on);
+  void RequestPacket();
 
 };
 

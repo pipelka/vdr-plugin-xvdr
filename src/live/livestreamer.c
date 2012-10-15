@@ -802,3 +802,18 @@ bool cLiveStreamer::IsReady()
 
   return (bHaveAudio && bHaveVideo) || bAllParsed;
 }
+
+void cLiveStreamer::Pause(bool on) {
+  if(m_Queue == NULL)
+    return;
+
+  m_Queue->Pause(on);
+}
+
+void cLiveStreamer::RequestPacket()
+{
+  if(m_Queue == NULL)
+    return;
+
+  m_Queue->Request();
+}

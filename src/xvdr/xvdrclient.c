@@ -395,6 +395,14 @@ bool cXVDRClient::processRequest()
       result = processChannelStream_Close();
       break;
 
+    case XVDR_CHANNELSTREAM_REQUEST:
+      result = processChannelStream_Request();
+      break;
+
+    case XVDR_CHANNELSTREAM_PAUSE:
+      result = processChannelStream_Pause();
+      break;
+
 
     /** OPCODE 40 - 59: XVDR network functions for recording streaming */
     case XVDR_RECSTREAM_OPEN:
@@ -713,6 +721,24 @@ bool cXVDRClient::processChannelStream_Close() /* OPCODE 21 */
   return true;
 }
 
+bool cXVDRClient::processChannelStream_Request() /* OPCODE 22 */
+{
+  if(m_Streamer != NULL)
+    m_Streamer->RequestPacket();
+
+  // no response needed for the request
+  return false;
+}
+
+bool cXVDRClient::processChannelStream_Pause() /* OPCODE 23 */
+{
+  bool on = m_req->get_U32();
+  INFOLOG("LIVESTREAM: %s", on ? "PAUSED" : "TIMESHIFT");
+
+  m_Streamer->Pause(on);
+
+  return true;
+}
 
 /** OPCODE 40 - 59: XVDR network functions for recording streaming */
 

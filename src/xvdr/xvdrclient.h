@@ -122,6 +122,8 @@ private:
 
   bool processChannelStream_Open();
   bool processChannelStream_Close();
+  bool processChannelStream_Pause();
+  bool processChannelStream_Request();
 
   bool processRecStream_Open();
   bool processRecStream_Close();

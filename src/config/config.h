@@ -53,6 +53,8 @@
 
 #define ALLOWED_HOSTS_FILE  "allowed_hosts.conf"
 #define FRONTEND_DEVICE     "/dev/dvb/adapter%d/frontend%d"
+#define GENERAL_CONFIG_FILE "xvdr.conf"
+#define RESUME_DATA_FILE    "resume.data"
 
 #define LISTEN_PORT       34891
 #define LISTEN_PORT_S    "34891"
@@ -64,10 +66,19 @@
 #define FOLDERDELIMCHAR '~'
 #endif
 
-class cXVDRServerConfig
+
+class cXVDRServerConfig : public cConfig<cSetupLine>
 {
 public:
   cXVDRServerConfig();
+
+  void Load();
+
+protected:
+
+  bool Parse(const char* Name, const char* Value);
+
+public:
 
   // Remote server settings
   cString ConfigDirectory;      // config directory path

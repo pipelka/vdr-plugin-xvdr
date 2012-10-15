@@ -28,14 +28,39 @@
 #include <stdlib.h>
 
 #include <vdr/plugin.h>
+#include <vdr/tools.h>
+#include <vdr/videodir.h>
 
 #include "config.h"
+#include "live/livequeue.h"
 
 cXVDRServerConfig::cXVDRServerConfig()
 {
   listen_port         = LISTEN_PORT;
   ConfigDirectory     = NULL;
   stream_timeout      = 3;
+}
+
+void cXVDRServerConfig::Load() {
+  cLiveQueue::SetTimeShiftDir(VideoDirectory);
+
+  if(!cConfig<cSetupLine>::Load(AddDirectory(ConfigDirectory, GENERAL_CONFIG_FILE), true, false))
+    return;
+
+  for (cSetupLine* l = First(); l; l = Next(l))
+  {
+    if(!Parse(l->Name(), l->Value()))
+      ERRORLOG("Unknown config parameter %s = %s in %s", l->Name(), l->Value(), GENERAL_CONFIG_FILE);
+  }
+}
+
+bool cXVDRServerConfig::Parse(const char* Name, const char* Value)
+{
+  if     (!strcasecmp(Name, "TimeShiftDir")) cLiveQueue::SetTimeShiftDir(Value);
+  else if(!strcasecmp(Name, "MaxTimeShiftSize")) cLiveQueue::SetBufferSize(strtoull(Value, NULL, 10));
+  else return false;
+
+  return true;
 }
 
 /* Global instance */

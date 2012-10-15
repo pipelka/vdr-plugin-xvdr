@@ -22,12 +22,19 @@
  *
  */
 
+#include <sys/types.h>
+#include <unistd.h>
+
 #include "config/config.h"
 #include "net/msgpacket.h"
 #include "livequeue.h"
 
-cLiveQueue::cLiveQueue(int sock) : m_socket(sock)
+cString cLiveQueue::TimeShiftDir = "/video";
+uint64_t cLiveQueue::BufferSize = 1024*1024*1024;
+
+cLiveQueue::cLiveQueue(int sock) : m_socket(sock), m_readfd(-1), m_writefd(-1)
 {
+  m_pause = false;
 }
 
 cLiveQueue::~cLiveQueue()
@@ -36,6 +43,7 @@ cLiveQueue::~cLiveQueue()
   m_cond.Signal();
   Cancel(3);
   Cleanup();
+  CloseTimeShift();
 }
 
 void cLiveQueue::Cleanup()
@@ -48,9 +56,58 @@ void cLiveQueue::Cleanup()
   }
 }
 
+void cLiveQueue::Request()
+{
+  cMutexLock lock(&m_lock);
+
+  // read packet from storage
+  MsgPacket* p = MsgPacket::read(m_readfd, 1000);
+
+  // check for buffer overrun
+  if(p == NULL)
+  {
+    // ring-buffer overrun ?
+    off_t pos = lseek(m_readfd, 0, SEEK_CUR);
+    if(pos < BufferSize)
+      return;
+
+    lseek(m_readfd, 0, SEEK_SET);
+    p = MsgPacket::read(m_readfd, 1000);
+  }
+
+  // no packet
+  if(p == NULL)
+    return;
+
+  // put packet into queue
+  push(p);
+
+  m_cond.Signal();
+}
+
 bool cLiveQueue::Add(MsgPacket* p)
 {
   cMutexLock lock(&m_lock);
+
+  // in timeshift mode ?
+  if(m_pause || (!m_pause && m_writefd != -1))
+  {
+    // write packet
+    if(!p->write(m_writefd, 1000))
+    {
+      DEBUGLOG("Unable to write packet into timeshift ringbuffer !");
+      return false;
+    }
+
+    // ring-buffer overrun ?
+    off_t length = lseek(m_writefd, 0, SEEK_CUR);
+    if(length >= BufferSize)
+    {
+      ftruncate(m_readfd, length);
+      lseek(m_writefd, 0, SEEK_SET);
+    }
+    return true;
+  }
 
   // queue too long ?
   if (size() > 100) {
@@ -74,12 +131,24 @@ void cLiveQueue::Action()
 
   while(Running())
   {
-    // check packet queue
     MsgPacket* p = NULL;
+
     m_lock.Lock();
 
+    // just wait if we are paused
+    if(m_pause)
+    {
+      m_lock.Unlock();
+      m_cond.Wait(0);
+      m_lock.Lock();
+    }
+
+    // check packet queue
     if(size() > 0)
+    {
       p = front();
+      pop();
+    }
 
     m_lock.Unlock();
 
@@ -91,15 +160,8 @@ void cLiveQueue::Action()
     }
 
     // send packet
-    if(!write(p))
-      continue;
-
-    // remove packet from queue
-    m_lock.Lock();
-    pop();
+    write(p);
     delete p;
-    m_lock.Unlock();
-
   }
 
   INFOLOG("LiveQueue stopped");
@@ -110,4 +172,75 @@ bool cLiveQueue::write(MsgPacket* packet)
   while(!packet->write(m_socket, 50) && Running())
     ;
   return true;
+}
+
+void cLiveQueue::CloseTimeShift()
+{
+  close(m_readfd);
+  m_readfd = -1;
+  close(m_writefd);
+  m_writefd = -1;
+
+  unlink(m_storage);
+}
+
+bool cLiveQueue::Pause(bool on)
+{
+  cMutexLock lock(&m_lock);
+
+  // deactivate timeshift
+  if(!on)
+  {
+    m_pause = false;
+    m_cond.Signal();
+    return true;
+  }
+
+  if(m_pause)
+    return false;
+
+  // create offline storage
+  if(m_readfd == -1)
+  {
+    m_storage = cString::sprintf("%s/xvdr-ringbuffer-%05i.data", (const char*)TimeShiftDir, m_socket);
+    DEBUGLOG("FILE: %s", (const char*)m_storage);
+
+    m_readfd = open(m_storage, O_CREAT | O_RDONLY, 0644);
+    m_writefd = open(m_storage, O_CREAT | O_WRONLY, 0644);
+    lseek(m_readfd, 0, SEEK_SET);
+    lseek(m_writefd, 0, SEEK_SET);
+
+    if(m_readfd == -1) {
+      ERRORLOG("Failed to create timeshift ringbuffer !");
+    }
+  }
+
+  m_pause = true;
+
+  // push all packets from the queue to the offline storage
+  DEBUGLOG("Writing %i packets into timeshift buffer", size());
+
+  while(!empty())
+  {
+    MsgPacket* p = front();
+
+    p->write(m_writefd, 1000);
+    delete p;
+
+    pop();
+  }
+
+  return true;
+}
+
+void cLiveQueue::SetTimeShiftDir(const cString& dir)
+{
+  TimeShiftDir = dir;
+  DEBUGLOG("TIMESHIFTDIR: %s", (const char*)TimeShiftDir);
+}
+
+void cLiveQueue::SetBufferSize(uint64_t s)
+{
+  BufferSize = s;
+  DEBUGLOG("BUFFSERIZE: %llu bytes", BufferSize);
 }

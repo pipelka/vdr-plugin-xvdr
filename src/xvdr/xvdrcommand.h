@@ -1,9 +1,6 @@
 /*
- *      vdr-plugin-xvdr - XBMC server plugin for VDR
- *
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
- *      Copyright (C) 2010, 2011 Alexander Pipelka
- *
+ *      Copyright (C) 2011 Alexander Pipelka
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -27,13 +24,12 @@
 #define XVDR_COMMAND_H
 
 /** Current XVDR Protocol Version number */
-#define XVDR_PROTOCOLVERSION 3
+#define XVDR_PROTOCOLVERSION          3
+
 
 /** Packet types */
 #define XVDR_CHANNEL_REQUEST_RESPONSE 1
 #define XVDR_CHANNEL_STREAM           2
-#define XVDR_CHANNEL_KEEPALIVE        3
-#define XVDR_CHANNEL_NETLOG           4
 #define XVDR_CHANNEL_STATUS           5
 #define XVDR_CHANNEL_SCAN             6
 
@@ -51,6 +47,8 @@
 /* OPCODE 20 - 39: XVDR network functions for live streaming */
 #define XVDR_CHANNELSTREAM_OPEN    20
 #define XVDR_CHANNELSTREAM_CLOSE   21
+#define XVDR_CHANNELSTREAM_REQUEST 22
+#define XVDR_CHANNELSTREAM_PAUSE   23
 
 /* OPCODE 40 - 59: XVDR network functions for recording streaming */
 #define XVDR_RECSTREAM_OPEN        40

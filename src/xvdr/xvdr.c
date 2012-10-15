@@ -66,6 +66,7 @@ bool cPluginXVDRServer::Initialize(void)
 {
   // Initialize any background activities the plugin shall perform.
   XVDRServerConfig.ConfigDirectory = ConfigDirectory(PLUGIN_NAME_I18N);
+  XVDRServerConfig.Load();
   return true;
 }
 
