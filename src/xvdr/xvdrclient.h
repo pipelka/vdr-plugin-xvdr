@@ -156,6 +156,9 @@ private:
   bool processRECORDINGS_Rename();
   bool processRECORDINGS_Delete();
   bool processRECORDINGS_Move();
+  bool processRECORDINGS_SetPlayCount();
+  bool processRECORDINGS_SetPosition();
+  bool processRECORDINGS_GetPosition();
 
   bool processEPG_GetForChannel();
 

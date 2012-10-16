@@ -519,6 +519,18 @@ bool cXVDRClient::processRequest()
       result = processRECORDINGS_Delete();
       break;
 
+    case XVDR_RECORDINGS_SETPLAYCOUNT:
+      result = processRECORDINGS_SetPlayCount();
+      break;
+
+    case XVDR_RECORDINGS_SETPOSITION:
+      result = processRECORDINGS_SetPosition();
+      break;
+
+    case XVDR_RECORDINGS_GETPOSITION:
+      result = processRECORDINGS_GetPosition();
+      break;
+
 
     /** OPCODE 120 - 139: XVDR network functions for epg access and manipulating */
     case XVDR_EPG_GETFORCHANNEL:
@@ -1344,6 +1356,7 @@ bool cXVDRClient::processRECORDINGS_GetCount() /* OPCODE 101 */
 bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
 {
   cMutexLock lock(&m_timerLock);
+  cRecordingsCache& reccache = cRecordingsCache::GetInstance();
 
   for (cRecording *recording = Recordings.First(); recording; recording = Recordings.Next(recording))
   {
@@ -1453,6 +1466,9 @@ bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
     snprintf(recid, sizeof(recid), "%08x", uid);
     m_resp->put_String(recid);
 
+    // playcount
+    m_resp->put_U32(reccache.GetPlayCount(uid));
+
     free(fullname);
   }
 
@@ -1536,6 +1552,41 @@ bool cXVDRClient::processRECORDINGS_Delete() /* OPCODE 104 */
   INFOLOG("Recording \"%s\" deleted", recording->FileName());
   m_resp->put_U32(XVDR_RET_OK);
 
+  return true;
+}
+
+bool cXVDRClient::processRECORDINGS_SetPlayCount()
+{
+  const char* recid = m_req->get_String();
+  uint32_t count = m_req->get_U32();
+
+  uint32_t uid = recid2uid(recid);
+  cRecordingsCache::GetInstance().SetPlayCount(uid, count);
+  cRecordingsCache::GetInstance().SaveResumeData();
+
+  return true;
+}
+
+bool cXVDRClient::processRECORDINGS_SetPosition()
+{
+  const char* recid = m_req->get_String();
+  uint64_t position = m_req->get_U64();
+
+  uint32_t uid = recid2uid(recid);
+  cRecordingsCache::GetInstance().SetLastPlayedPosition(uid, position);
+  cRecordingsCache::GetInstance().SaveResumeData();
+
+  return true;
+}
+
+bool cXVDRClient::processRECORDINGS_GetPosition()
+{
+  const char* recid = m_req->get_String();
+
+  uint32_t uid = recid2uid(recid);
+  uint64_t position = cRecordingsCache::GetInstance().GetLastPlayedPosition(uid);
+
+  m_resp->put_U64(position);
   return true;
 }
 

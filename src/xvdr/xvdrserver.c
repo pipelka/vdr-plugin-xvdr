@@ -42,6 +42,7 @@
 
 #include "xvdrserver.h"
 #include "xvdrclient.h"
+#include "recordings/recordingscache.h"
 
 //#define ENABLE_CHANNELTRIGGER 1
 
@@ -249,7 +250,7 @@ void cXVDRServer::Action(void)
       }
 
       // update recordings
-      if(Recordings.StateChanged(recState))
+      if(Recordings.StateChanged(recState) || cRecordingsCache::GetInstance().Changed())
       {
         INFOLOG("Recordings state changed (%i)", recState);
         INFOLOG("Requesting clients to reload recordings list");

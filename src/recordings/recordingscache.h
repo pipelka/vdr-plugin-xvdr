@@ -45,11 +45,38 @@ public:
 
   cRecording* Lookup(uint32_t uid);
 
+  void SetPlayCount(uint32_t uid, int count);
+
+  void SetLastPlayedPosition(uint32_t uid, uint64_t position);
+
+  int GetPlayCount(uint32_t uid);
+
+  uint64_t GetLastPlayedPosition(uint32_t uid);
+
+  void LoadResumeData();
+
+  void SaveResumeData();
+
+  bool Changed();
+
+protected:
+
+  void SetChanged();
+
 private:
 
-  std::map<uint32_t, cString> m_recordings;
+  struct RecEntry {
+    RecEntry() : playcount(0), lastplayedposition(0) {}
+    cString filename;
+    int playcount;
+    uint64_t lastplayedposition;
+  };
+
+  std::map<uint32_t, struct RecEntry> m_recordings;
 
   cMutex m_mutex;
+
+  bool m_changed;
 };
 
 
