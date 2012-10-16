@@ -27,8 +27,8 @@
 #include <vdr/plugin.h>
 #include "xvdrserver.h"
 
-static const char *VERSION        = "0.9.5";
-static const char *DESCRIPTION    = "VDR-Network-Streaming-Interface (XVDR) Server";
+static const char *VERSION        = "0.9.6";
+static const char *DESCRIPTION    = "XVDR Server";
 
 class cPluginXVDRServer : public cPlugin {
 private:
