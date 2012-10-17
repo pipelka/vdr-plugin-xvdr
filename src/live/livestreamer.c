@@ -387,15 +387,13 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
     sendStreamChange();
 
   // if a audio or video packet was sent, the signal is restored
-  if(pkt->type > stNONE && pkt->type < stDVBSUB) {
-    if(m_SignalLost) {
-      INFOLOG("signal restored");
-      sendStatus(XVDR_STREAM_STATUS_SIGNALRESTORED);
-      m_SignalLost = false;
-      m_requestStreamChange = true;
-      m_last_tick.Set(0);
-      return;
-    }
+  if(m_SignalLost && (pkt->content == scVIDEO || pkt->content == scAUDIO)) {
+    INFOLOG("signal restored");
+    sendStatus(XVDR_STREAM_STATUS_SIGNALRESTORED);
+    m_SignalLost = false;
+    m_requestStreamChange = true;
+    m_last_tick.Set(0);
+    return;
   }
 
   if(m_SignalLost)

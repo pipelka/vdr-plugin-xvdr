@@ -266,6 +266,7 @@ void cTSDemuxer::SendPacket(sStreamPacket *pkt)
 
   // Rescale for XBMC
   pkt->type     = m_streamType;
+  pkt->content  = m_streamContent;
   pkt->pid      = GetPID();
   pkt->dts      = Rescale(dts);
   pkt->pts      = Rescale(pts);

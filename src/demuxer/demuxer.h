@@ -193,9 +193,11 @@ struct sStreamPacket
   sStreamPacket() {
     frametype = 0;
     type = stNONE;
+    content = scNONE;
   }
 
   eStreamType type;
+  eStreamContent content;
 
   int64_t   pid;
   int64_t   dts;
