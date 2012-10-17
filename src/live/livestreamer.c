@@ -370,11 +370,13 @@ void cLiveStreamer::Detach(void)
 
 void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
 {
-  if(!IsReady() || pkt == NULL || pkt->size == 0)
+  bool bReady = IsReady();
+
+  if(!bReady || pkt == NULL || pkt->size == 0)
     return;
 
   // Send stream information as the first packet on startup
-  if (IsStarting() && IsReady())
+  if (IsStarting() && bReady)
   {
     INFOLOG("streaming of channel started");
     m_last_tick.Set(0);
