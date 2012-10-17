@@ -230,6 +230,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, cxSocke
   if (channel == NULL)
   {
     ERRORLOG("Starting streaming of channel without valid channel");
+    resp->add_U32(XVDR_RET_ERROR);
     return false;
   }
 
