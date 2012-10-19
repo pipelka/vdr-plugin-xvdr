@@ -292,6 +292,7 @@ bool cParserH264::Parse_SLH(uint8_t *buf, int len, int *pkttype)
 
 bool cParserH264::Parse_SPS(uint8_t *buf, int len)
 {
+  bool seq_scaling_matrix_present = false;
   cBitstream bs(buf, len*8);
   unsigned int tmp, frame_mbs_only;
   int cbpsize = -1;
@@ -330,6 +331,7 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len)
     bs.skipBits(1);             /* transform_bypass               */
     if (bs.readBits1())         /* seq_scaling_matrix_present     */
     {
+      seq_scaling_matrix_present = true;
       for (int i = 0; i < 8; i++)
       {
         if (bs.readBits1())     /* seq_scaling_list_present       */
@@ -361,7 +363,16 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len)
   }
   else if(pic_order_cnt_type != 2)
   {
-    /* Illegal poc */
+    // WORKAROUND
+    // We have a problem with H264 streams where the
+    // sequence scaling matrix is present (I'm currently unable
+    // to find the reason why parsing of these streams fails).
+    // Just asume 1920x1080 for these streams right now.
+    // PS: I know this isn't a solution
+    if(seq_scaling_matrix_present) {
+      m_demuxer->SetVideoInformation(0,0, 1920, 1080, 1920.0 / 1080.0, 1, 1);
+      return true;
+    }
     return false;
   }
 
