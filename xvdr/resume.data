@@ -1,0 +1,8 @@
+#
+# resume.conf  This file stores the resume data for
+#              recordings (lastplayedposition, playcount)
+#
+# Syntax:
+#
+# recordingid = lastplayedposition, playcount
+
