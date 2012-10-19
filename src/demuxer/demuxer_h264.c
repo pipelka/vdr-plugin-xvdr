@@ -370,7 +370,10 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len)
     // Just asume 1920x1080 for these streams right now.
     // PS: I know this isn't a solution
     if(seq_scaling_matrix_present) {
-      m_demuxer->SetVideoInformation(0,0, 1920, 1080, 1920.0 / 1080.0, 1, 1);
+      m_PixelAspect.num = 1;
+      m_PixelAspect.den = 1;
+      m_Width = 1920;
+      m_Height = 1080;
       return true;
     }
     return false;
