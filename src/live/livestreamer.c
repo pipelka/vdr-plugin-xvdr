@@ -410,9 +410,7 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
   packet->copyin(pkt->data, pkt->size);
   packet->finaliseStream();
 
-  if(!m_Queue->Add(packet))
-    return;
-
+  m_Queue->Add(packet);
   m_last_tick.Set(0);
 }
 
