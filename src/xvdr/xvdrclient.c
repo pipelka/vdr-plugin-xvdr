@@ -74,9 +74,7 @@ static uint32_t recid2uid(const char* recid)
 void cXVDRClient::PutTimer(cTimer* timer, MsgPacket* p)
 {
   p->put_U32(timer->Index()+1);
-  p->put_U32(timer->HasFlags(tfActive));
-  p->put_U32(timer->Recording());
-  p->put_U32(timer->Pending());
+  p->put_U32(timer->Flags());
   p->put_U32(timer->Priority());
   p->put_U32(timer->Lifetime());
   p->put_U32(CreateChannelUID(timer->Channel()));
