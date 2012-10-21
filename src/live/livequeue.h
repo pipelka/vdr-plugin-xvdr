@@ -48,6 +48,8 @@ public:
 
   static void SetBufferSize(uint64_t s);
 
+  static void RemoveTimeShiftFiles();
+
 protected:
 
   void Action();

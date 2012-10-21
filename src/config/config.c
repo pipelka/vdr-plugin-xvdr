@@ -54,6 +54,8 @@ void cXVDRServerConfig::Load() {
     if(!Parse(l->Name(), l->Value()))
       ERRORLOG("Unknown config parameter %s = %s in %s", l->Name(), l->Value(), GENERAL_CONFIG_FILE);
   }
+
+  cLiveQueue::RemoveTimeShiftFiles();
 }
 
 bool cXVDRServerConfig::Parse(const char* Name, const char* Value)

@@ -23,6 +23,7 @@
  */
 
 #include <sys/types.h>
+#include <dirent.h>
 #include <unistd.h>
 
 #include "config/config.h"
@@ -243,4 +244,25 @@ void cLiveQueue::SetBufferSize(uint64_t s)
 {
   BufferSize = s;
   DEBUGLOG("BUFFSERIZE: %llu bytes", BufferSize);
+}
+
+void cLiveQueue::RemoveTimeShiftFiles()
+{
+  DIR* dir = opendir((const char*)TimeShiftDir);
+
+  if(dir == NULL)
+    return;
+
+  struct dirent* entry = NULL;
+
+  while((entry = readdir(dir)) != NULL)
+  {
+    if(strncmp(entry->d_name, "xvdr-ringbuffer-", 16) == 0)
+    {
+      INFOLOG("Removing old time-shift storage: %s", entry->d_name);
+      unlink(AddDirectory(TimeShiftDir, entry->d_name));
+    }
+  }
+
+  closedir(dir);
 }
