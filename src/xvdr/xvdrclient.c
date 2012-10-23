@@ -28,6 +28,7 @@
 #include <sys/socket.h>
 #include <set>
 #include <map>
+#include <string>
 
 #include <vdr/recording.h>
 #include <vdr/channels.h>
@@ -37,6 +38,7 @@
 #include <vdr/timers.h>
 #include <vdr/menu.h>
 #include <vdr/device.h>
+#include <vdr/sources.h>
 
 #include "config/config.h"
 #include "live/livestreamer.h"
@@ -71,6 +73,33 @@ static uint32_t recid2uid(const char* recid)
   sscanf(recid, "%8x", &uid);
   DEBUGLOG("lookup recid: %s (uid: %u)", recid, uid);
   return uid;
+}
+
+cString cXVDRClient::CreateLogoURL(cChannel* channel)
+{
+  if((const char*)XVDRServerConfig.PiconsURL == NULL || strlen((const char*)XVDRServerConfig.PiconsURL) == 0)
+    return "";
+
+  int pos = channel->Source() & cSource::st_Pos;
+  if(pos > 0x00007FFF)
+    pos |= 0xFFFF0000;
+
+  if(pos < 0)
+    pos = -pos;
+  else
+    pos = 1800 + pos;
+
+  cString serviceref = cString::sprintf("1_0_%i_%X_%X_%X_%X0000_0_0_0.png",
+                                  (channel->Vpid() == 0) ? 2 : (channel->Vtype() == 27) ? 19 : 1,
+                                  channel->Sid(),
+                                  channel->Tid(),
+                                  channel->Nid(),
+                                  pos);
+
+  cString url;
+  url = AddDirectory(XVDRServerConfig.PiconsURL, serviceref);
+
+  return url;
 }
 
 void cXVDRClient::PutTimer(cTimer* timer, MsgPacket* p)
@@ -1039,7 +1068,7 @@ bool cXVDRClient::processCHANNELS_GetChannels() /* OPCODE 63 */
     m_resp->put_U32(channel->Ca());
 
     // logo url - for future use
-    m_resp->put_String("");
+    m_resp->put_String((const char*)CreateLogoURL(channel));
   }
 
   Channels.Unlock();

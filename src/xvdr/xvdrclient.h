@@ -113,6 +113,7 @@ private:
   void PutTimer(cTimer* timer, MsgPacket* p);
   bool IsChannelWanted(cChannel* channel, bool radio = false);
   int  ChannelsCount();
+  cString CreateLogoURL(cChannel* channel);
 
   bool process_Login();
   bool process_GetTime();
