@@ -72,6 +72,7 @@ OBJS = \
 	src/live/livestreamer.o \
 	src/net/msgpacket.o \
 	src/net/os-config.o \
+	src/net/socketlock.o \
 	src/recordings/recordingscache.o \
 	src/recordings/recplayer.o \
 	src/tools/hash.o \

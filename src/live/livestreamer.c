@@ -41,6 +41,7 @@
 
 #include "config/config.h"
 #include "net/msgpacket.h"
+#include "net/socketlock.h"
 #include "xvdr/xvdrcommand.h"
 #include "tools/hash.h"
 
@@ -295,7 +296,11 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, int soc
 
   // Send the OK response here, that it is before the Stream end message
   resp->put_U32(XVDR_RET_OK);
-  resp->write(sock, 3000);
+
+  {
+    cSocketLock locks(m_socket);
+    resp->write(sock, 3000);
+  }
 
   // create send queue
   if (m_Queue == NULL)

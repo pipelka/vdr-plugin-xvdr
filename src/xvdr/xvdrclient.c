@@ -43,6 +43,7 @@
 #include "config/config.h"
 #include "live/livestreamer.h"
 #include "net/msgpacket.h"
+#include "net/socketlock.h"
 #include "recordings/recordingscache.h"
 #include "recordings/recplayer.h"
 #include "scanner/wirbelscanservice.h" /// copied from modified wirbelscan plugin
@@ -223,6 +224,7 @@ cXVDRClient::cXVDRClient(int fd, unsigned int id, const char *ClientAdr)
   m_LanguageIndex           = -1;
   m_LangStreamType          = stMPEG2AUDIO;
   m_channelCount            = 0;
+  m_timeout                 = 3000;
 
   m_socket = fd;
   m_wantfta = true;
@@ -239,6 +241,9 @@ cXVDRClient::~cXVDRClient()
   // shutdown connection
   shutdown(m_socket, SHUT_RDWR); 
   Cancel(10);
+
+  // remove socket lock
+  cSocketLock::erase(m_socket);
 
   // close connection
   close(m_socket);
@@ -300,8 +305,9 @@ void cXVDRClient::TimerChange()
 
   if (m_StatusInterfaceEnabled)
   {
+    cSocketLock locks(m_socket);
     MsgPacket* resp = new MsgPacket(XVDR_STATUS_TIMERCHANGE, XVDR_CHANNEL_STATUS);
-    resp->write(m_socket, 3000);
+    resp->write(m_socket, m_timeout);
     delete resp;
   }
 }
@@ -325,8 +331,9 @@ void cXVDRClient::ChannelChange()
   else
     INFOLOG("Client %i : %i channels, %i available - sending request", m_Id, m_channelCount, count);
 
+  cSocketLock locks(m_socket);
   MsgPacket* resp = new MsgPacket(XVDR_STATUS_CHANNELCHANGE, XVDR_CHANNEL_STATUS);
-  resp->write(m_socket, 3000);
+  resp->write(m_socket, m_timeout);
   delete resp;
 }
 
@@ -337,8 +344,9 @@ void cXVDRClient::RecordingsChange()
   if (!m_StatusInterfaceEnabled)
     return;
 
+  cSocketLock locks(m_socket);
   MsgPacket* resp = new MsgPacket(XVDR_STATUS_RECORDINGSCHANGE, XVDR_CHANNEL_STATUS);
-  resp->write(m_socket, 3000);
+  resp->write(m_socket, m_timeout);
   delete resp;
 }
 
@@ -348,6 +356,7 @@ void cXVDRClient::Recording(const cDevice *Device, const char *Name, const char 
 
   if (m_StatusInterfaceEnabled)
   {
+    cSocketLock locks(m_socket);
     MsgPacket* resp = new MsgPacket(XVDR_STATUS_RECORDING, XVDR_CHANNEL_STATUS);
 
     resp->put_U32(Device->CardIndex());
@@ -362,7 +371,7 @@ void cXVDRClient::Recording(const cDevice *Device, const char *Name, const char 
     else
       resp->put_String("");
 
-    resp->write(m_socket, 3000);
+    resp->write(m_socket, m_timeout);
     delete resp;
   }
 }
@@ -395,12 +404,13 @@ void cXVDRClient::OsdStatusMessage(const char *Message)
     else if (strcasecmp(Message, trVDR("Cutter already running - Add to cutting queue?")) == 0) return;
     else if (strcasecmp(Message, trVDR("No index-file found. Creating may take minutes. Create one?")) == 0) return;
 
+    cSocketLock locks(m_socket);
     MsgPacket* resp = new MsgPacket(XVDR_STATUS_MESSAGE, XVDR_CHANNEL_STATUS);
 
     resp->put_U32(0);
     resp->put_String(Message);
 
-    resp->write(m_socket, 3000);
+    resp->write(m_socket, m_timeout);
     delete resp;
   }
 }
@@ -677,7 +687,10 @@ bool cXVDRClient::processRequest()
   }
 
   if(result)
-    m_resp->write(m_socket, 3000);
+  {
+    cSocketLock locks(m_socket);
+    m_resp->write(m_socket, m_timeout);
+  }
 
   delete m_resp;
   m_resp = NULL;
@@ -1967,6 +1980,7 @@ void cXVDRClient::processSCAN_AddSatellite(int index, const char *shortName, con
 
 void cXVDRClient::processSCAN_SetPercentage(int percent)
 {
+  cSocketLock locks(m_processSCAN_Socket);
   MsgPacket* resp = new MsgPacket(XVDR_SCANNER_PERCENTAGE, XVDR_CHANNEL_SCAN);
   resp->put_U32(percent);
 
@@ -1976,6 +1990,7 @@ void cXVDRClient::processSCAN_SetPercentage(int percent)
 
 void cXVDRClient::processSCAN_SetSignalStrength(int strength, bool locked)
 {
+  cSocketLock locks(m_processSCAN_Socket);
   MsgPacket*resp = new MsgPacket(XVDR_SCANNER_SIGNAL, XVDR_CHANNEL_SCAN);
 
   strength *= 100;
@@ -1984,32 +1999,35 @@ void cXVDRClient::processSCAN_SetSignalStrength(int strength, bool locked)
   resp->put_U32(strength);
   resp->put_U32(locked);
 
-  resp->write(m_processSCAN_Socket, 3000);;
+  resp->write(m_processSCAN_Socket, 3000);
   delete resp;
 }
 
 void cXVDRClient::processSCAN_SetDeviceInfo(const char *Info)
 {
+  cSocketLock locks(m_processSCAN_Socket);
   MsgPacket* resp = new MsgPacket(XVDR_SCANNER_DEVICE, XVDR_CHANNEL_SCAN);
 
   resp->put_String(Info);
 
-  resp->write(m_processSCAN_Socket, 3000);;
+  resp->write(m_processSCAN_Socket, 3000);
   delete resp;
 }
 
 void cXVDRClient::processSCAN_SetTransponder(const char *Info)
 {
+  cSocketLock locks(m_processSCAN_Socket);
   MsgPacket* resp = new MsgPacket(XVDR_SCANNER_TRANSPONDER, XVDR_CHANNEL_SCAN);
 
   resp->put_String(Info);
 
-  resp->write(m_processSCAN_Socket, 3000);;
+  resp->write(m_processSCAN_Socket, 3000);
   delete resp;
 }
 
 void cXVDRClient::processSCAN_NewChannel(const char *Name, bool isRadio, bool isEncrypted, bool isHD)
 {
+  cSocketLock locks(m_processSCAN_Socket);
   MsgPacket* resp = new MsgPacket(XVDR_SCANNER_NEWCHANNEL, XVDR_CHANNEL_SCAN);
 
   resp->put_U32(isRadio);
@@ -2017,25 +2035,27 @@ void cXVDRClient::processSCAN_NewChannel(const char *Name, bool isRadio, bool is
   resp->put_U32(isHD);
   resp->put_String(Name);
 
-  resp->write(m_processSCAN_Socket, 3000);;
+  resp->write(m_processSCAN_Socket, 3000);
   delete resp;
 }
 
 void cXVDRClient::processSCAN_IsFinished()
 {
+  cSocketLock locks(m_processSCAN_Socket);
   MsgPacket* resp = new MsgPacket(XVDR_SCANNER_FINISHED, XVDR_CHANNEL_SCAN);
 
-  resp->write(m_processSCAN_Socket, 3000);;
+  resp->write(m_processSCAN_Socket, 3000);
   delete resp;
   m_processSCAN_Socket = -1;
 }
 
 void cXVDRClient::processSCAN_SetStatus(int status)
 {
+  cSocketLock locks(m_processSCAN_Socket);
   MsgPacket* resp = new MsgPacket(XVDR_SCANNER_STATUS, XVDR_CHANNEL_SCAN);
 
   resp->put_U32(status);
 
-  resp->write(m_processSCAN_Socket, 3000);;
+  resp->write(m_processSCAN_Socket, 3000);
   delete resp;
 }

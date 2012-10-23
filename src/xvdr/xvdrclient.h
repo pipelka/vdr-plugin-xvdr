@@ -71,6 +71,7 @@ private:
   bool             m_wantfta;
   bool             m_filterlanguage;
   int              m_channelCount;
+  int              m_timeout;
 
 protected:
 
