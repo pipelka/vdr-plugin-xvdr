@@ -1551,6 +1551,12 @@ bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
     else
       m_resp->put_U32(0);
 
+    // thumbnail url - for future use
+    m_resp->put_String("");
+
+    // icon url - for future use
+    m_resp->put_String("");
+
     free(fullname);
   }
 
