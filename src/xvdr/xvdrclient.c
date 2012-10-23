@@ -1036,13 +1036,10 @@ bool cXVDRClient::processCHANNELS_GetChannels() /* OPCODE 63 */
     m_resp->put_U32(channel->Number());
     m_resp->put_String(m_toUTF8.Convert(channel->Name()));
     m_resp->put_U32(CreateChannelUID(channel));
-    m_resp->put_U32(0); // groupindex unused
     m_resp->put_U32(channel->Ca());
-#if APIVERSNUM >= 10701
-    m_resp->put_U32(channel->Vtype());
-#else
-    m_resp->put_U32(2);
-#endif
+
+    // logo url - for future use
+    m_resp->put_String("");
   }
 
   Channels.Unlock();
