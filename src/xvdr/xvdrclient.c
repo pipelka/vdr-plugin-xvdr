@@ -1350,7 +1350,6 @@ bool cXVDRClient::processTIMER_Update() /* OPCODE 85 */
 {
   cMutexLock lock(&m_timerLock);
 
-  int length      = m_req->getPayloadLength();
   uint32_t index  = m_req->get_U32();
   bool active     = m_req->get_U32();
 
