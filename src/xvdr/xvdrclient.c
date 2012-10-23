@@ -1241,6 +1241,7 @@ bool cXVDRClient::processTIMER_Add() /* OPCODE 83 */
 {
   cMutexLock lock(&m_timerLock);
 
+  m_req->get_U32(); // index unused
   uint32_t flags      = m_req->get_U32() > 0 ? tfActive : tfNone;
   uint32_t priority   = m_req->get_U32();
   uint32_t lifetime   = m_req->get_U32();
@@ -1366,46 +1367,38 @@ bool cXVDRClient::processTIMER_Update() /* OPCODE 85 */
 
   cTimer t = *timer;
 
-  if (length == 8)
+  uint32_t flags      = active ? tfActive : tfNone;
+  uint32_t priority   = m_req->get_U32();
+  uint32_t lifetime   = m_req->get_U32();
+  uint32_t channelid  = m_req->get_U32();
+  time_t startTime    = m_req->get_U32();
+  time_t stopTime     = m_req->get_U32();
+  time_t day          = m_req->get_U32();
+  uint32_t weekdays   = m_req->get_U32();
+  const char *file    = m_req->get_String();
+  const char *aux     = m_req->get_String();
+
+  struct tm tm_r;
+  struct tm *time = localtime_r(&startTime, &tm_r);
+
+  if (day <= 0)
+    day = cTimer::SetTime(startTime, 0);
+
+  int start = time->tm_hour * 100 + time->tm_min;
+  time = localtime_r(&stopTime, &tm_r);
+  int stop = time->tm_hour * 100 + time->tm_min;
+
+  cString buffer;
+  const cChannel* channel = FindChannelByUID(channelid);
+
+  if(channel != NULL)
+    buffer = cString::sprintf("%u:%s:%s:%04d:%04d:%d:%d:%s:%s\n", flags, (const char*)channel->GetChannelID().ToString(), *cTimer::PrintDay(day, weekdays, true), start, stop, priority, lifetime, file, aux);
+
+  if (!t.Parse(buffer))
   {
-    if (active)
-      t.SetFlags(tfActive);
-    else
-      t.ClrFlags(tfActive);
-  }
-  else
-  {
-    uint32_t flags      = active ? tfActive : tfNone;
-    uint32_t priority   = m_req->get_U32();
-    uint32_t lifetime   = m_req->get_U32();
-    uint32_t channelid  = m_req->get_U32();
-    time_t startTime    = m_req->get_U32();
-    time_t stopTime     = m_req->get_U32();
-    time_t day          = m_req->get_U32();
-    uint32_t weekdays   = m_req->get_U32();
-    const char *file    = m_req->get_String();
-    const char *aux     = m_req->get_String();
-
-    struct tm tm_r;
-    struct tm *time = localtime_r(&startTime, &tm_r);
-    if (day <= 0)
-      day = cTimer::SetTime(startTime, 0);
-    int start = time->tm_hour * 100 + time->tm_min;
-    time = localtime_r(&stopTime, &tm_r);
-    int stop = time->tm_hour * 100 + time->tm_min;
-
-    cString buffer;
-    const cChannel* channel = FindChannelByUID(channelid);
-    if(channel != NULL) {
-      buffer = cString::sprintf("%u:%s:%s:%04d:%04d:%d:%d:%s:%s\n", flags, (const char*)channel->GetChannelID().ToString(), *cTimer::PrintDay(day, weekdays, true), start, stop, priority, lifetime, file, aux);
-    }
-
-    if (!t.Parse(buffer))
-    {
-      ERRORLOG("Error in timer settings");
-      m_resp->put_U32(XVDR_RET_DATAINVALID);
-      return true;
-    }
+    ERRORLOG("Error in timer settings");
+    m_resp->put_U32(XVDR_RET_DATAINVALID);
+    return true;
   }
 
   *timer = t;
