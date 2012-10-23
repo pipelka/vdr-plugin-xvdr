@@ -1549,6 +1549,12 @@ bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
     // playcount
     m_resp->put_U32(reccache.GetPlayCount(uid));
 
+    // content
+    if(event != NULL)
+      m_resp->put_U32(event->Contents());
+    else
+      m_resp->put_U32(0);
+
     free(fullname);
   }
 
