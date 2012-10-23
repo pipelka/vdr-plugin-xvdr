@@ -48,6 +48,7 @@
 #include "livepatfilter.h"
 #include "livereceiver.h"
 #include "livequeue.h"
+#include "channelcache.h"
 
 cLiveStreamer::cLiveStreamer(uint32_t timeout)
  : cThread("cLiveStreamer stream processor")
@@ -66,6 +67,7 @@ cLiveStreamer::cLiveStreamer(uint32_t timeout)
   m_SignalLost      = false;
   m_LangStreamType  = stMPEG2AUDIO;
   m_LanguageIndex   = -1;
+  m_uid             = 0;
 
   m_requestStreamChange = false;
 
@@ -233,10 +235,10 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, int soc
     return false;
   }
 
-  m_Channel    = channel;
-  m_Priority   = priority;
-  m_socket     = sock;
-  uint32_t uid = CreateChannelUID(m_Channel);
+  m_Channel  = channel;
+  m_Priority = priority;
+  m_socket   = sock;
+  m_uid      = CreateChannelUID(m_Channel);
 
   // check if any device is able to decrypt the channel - code taken from VDR
   int NumUsableSlots = 0;
@@ -307,7 +309,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, int soc
 
   // get cached demuxer data
   DEBUGLOG("Creating demuxers");
-  cChannelCache cache = cChannelCache::GetFromCache(uid);
+  cChannelCache cache = cChannelCache::GetFromCache(m_uid);
   if(cache.size() != 0) {
     cache.CreateDemuxers(this);
     RequestStreamChange();
@@ -783,24 +785,33 @@ void cLiveStreamer::SetLanguage(int lang, eStreamType streamtype)
 
 bool cLiveStreamer::IsReady()
 {
-  bool bHaveAudio = false;
-  bool bHaveVideo = false;
   bool bAllParsed = true;
 
   for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++)
   {
     if ((*i)->IsParsed())
     {
-      if ((*i)->Content() == scAUDIO)
-        bHaveAudio = true;
-      else if ((*i)->Content() == scVIDEO)
-        bHaveVideo = true;
+      if ((*i)->Content() == scVIDEO)
+      {
+        cChannelCache cache = cChannelCache::GetFromCache(m_uid);
+        cChannelCache::iterator info = cache.find((*i)->GetPID());
+        if(info != cache.end())
+        {
+          info->second.width = (*i)->GetWidth();
+          info->second.height = (*i)->GetHeight();
+          info->second.dar = (*i)->GetAspect();
+
+          // update cache information
+          cChannelCache::AddToCache(m_uid, cache);
+        }
+        return true;
+      }
     }
     else
       bAllParsed = false;
   }
 
-  return (bHaveAudio && bHaveVideo) || bAllParsed;
+  return bAllParsed;
 }
 
 void cLiveStreamer::Pause(bool on) {

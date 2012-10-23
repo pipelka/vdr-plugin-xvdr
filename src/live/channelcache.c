@@ -1,3 +1,4 @@
+#include "config/config.h"
 #include "channelcache.h"
 #include "livestreamer.h"
 #include "livereceiver.h"
@@ -49,6 +50,11 @@ cTSDemuxer* cChannelCache::CreateDemuxer(cLiveStreamer* streamer, const struct S
     case stMPEG2VIDEO:
     case stH264:
       stream = new cTSDemuxer(streamer, info.type, info.pid);
+      if(info.width != 0 && info.height != 0)
+      {
+        INFOLOG("Setting cached video information");
+        stream->SetVideoInformation(0, 0, info.width, info.height, info.dar, 1, 1);
+      }
       break;
 
     // handle audio streams

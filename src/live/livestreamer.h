@@ -84,6 +84,7 @@ private:
   int               m_LanguageIndex;
   eStreamType       m_LangStreamType;
   cLiveQueue*       m_Queue;
+  uint32_t          m_uid;
 
 protected:
   virtual void Action(void);

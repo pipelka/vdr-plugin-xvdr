@@ -18,6 +18,9 @@ struct StreamInfo {
     subtitlingType = 0;
     compositionPageId = 0;
     ancillaryPageId = 0;
+    width = 0;
+    height = 0;
+    dar = 0.0;
   }
 
   bool operator ==(const struct StreamInfo& b) const {
@@ -27,7 +30,10 @@ struct StreamInfo {
       (strcmp(lang, b.lang) == 0) &&
       (audioType == b.audioType) &&
       (subtitlingType == b.subtitlingType) &&
-      (ancillaryPageId == b.ancillaryPageId);
+      (ancillaryPageId == b.ancillaryPageId);/* &&
+      (width == b.width) &&
+      (height == b.height) &&
+      (dar == b.dar);*/
   }
 
   bool operator !=(const struct StreamInfo& b) const {
@@ -41,6 +47,9 @@ struct StreamInfo {
   int subtitlingType;
   int compositionPageId;
   int ancillaryPageId;
+  int width;
+  int height;
+  double dar;
 };
 
 class cChannelCache : public std::map<int, struct StreamInfo> {
