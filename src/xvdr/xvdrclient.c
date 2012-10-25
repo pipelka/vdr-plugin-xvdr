@@ -76,11 +76,8 @@ static uint32_t recid2uid(const char* recid)
   return uid;
 }
 
-cString cXVDRClient::CreateLogoURL(cChannel* channel)
+cString cXVDRClient::CreateServiceReference(cChannel* channel)
 {
-  if((const char*)XVDRServerConfig.PiconsURL == NULL || strlen((const char*)XVDRServerConfig.PiconsURL) == 0)
-    return "";
-
   int hash = 0;
 
   if(cSource::IsSat(channel->Source()))
@@ -103,17 +100,23 @@ cString cXVDRClient::CreateLogoURL(cChannel* channel)
   else if(cSource::IsAtsc(channel->Source()))
     ; // how should we handle ATSC ?
 
-  cString serviceref = cString::sprintf("1_0_%i_%X_%X_%X_%X_0_0_0.png",
+  cString serviceref = cString::sprintf("1_0_%i_%X_%X_%X_%X_0_0_0",
                                   (channel->Vpid() == 0) ? 2 : (channel->Vtype() == 27) ? 19 : 1,
                                   channel->Sid(),
                                   channel->Tid(),
                                   channel->Nid(),
                                   hash);
 
-  cString url;
-  url = AddDirectory(XVDRServerConfig.PiconsURL, serviceref);
+  return serviceref;
+}
 
-  return url;
+cString cXVDRClient::CreateLogoURL(cChannel* channel)
+{
+  if((const char*)XVDRServerConfig.PiconsURL == NULL || strlen((const char*)XVDRServerConfig.PiconsURL) == 0)
+    return "";
+
+  cString url = AddDirectory(XVDRServerConfig.PiconsURL, (const char*)CreateServiceReference(channel));
+  return cString::sprintf("%s.png", (const char*)url);
 }
 
 void cXVDRClient::PutTimer(cTimer* timer, MsgPacket* p)
@@ -1102,8 +1105,12 @@ bool cXVDRClient::processCHANNELS_GetChannels() /* OPCODE 63 */
     m_resp->put_U32(CreateChannelUID(channel));
     m_resp->put_U32(channel->Ca());
 
-    // logo url - for future use
+    // logo url
     m_resp->put_String((const char*)CreateLogoURL(channel));
+
+    // service reference
+    if(m_protocolVersion > 4)
+      m_resp->put_String((const char*)CreateServiceReference(channel));
   }
 
   Channels.Unlock();
