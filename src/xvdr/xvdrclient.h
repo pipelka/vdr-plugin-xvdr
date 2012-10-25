@@ -55,7 +55,6 @@ private:
   bool             m_StatusInterfaceEnabled;
   cLiveStreamer   *m_Streamer;
   bool             m_isStreaming;
-  cString          m_ClientAddress;
   cRecPlayer      *m_RecPlayer;
   MsgPacket       *m_req;
   MsgPacket       *m_resp;
@@ -85,7 +84,7 @@ protected:
 
 public:
 
-  cXVDRClient(int fd, unsigned int id, const char *ClientAdr);
+  cXVDRClient(int fd, unsigned int id);
   virtual ~cXVDRClient();
 
   void ChannelChange();

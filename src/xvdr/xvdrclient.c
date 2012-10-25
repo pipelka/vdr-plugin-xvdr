@@ -207,13 +207,12 @@ void cXVDRClient::PutTimer(cTimer* timer, MsgPacket* p)
 cMutex cXVDRClient::m_timerLock;
 cMutex cXVDRClient::m_switchLock;
 
-cXVDRClient::cXVDRClient(int fd, unsigned int id, const char *ClientAdr)
+cXVDRClient::cXVDRClient(int fd, unsigned int id)
 {
   m_Id                      = id;
   m_loggedIn                = false;
   m_Streamer                = NULL;
   m_isStreaming             = false;
-  m_ClientAddress           = ClientAdr;
   m_StatusInterfaceEnabled  = false;
   m_RecPlayer               = NULL;
   m_req                     = NULL;

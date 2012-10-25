@@ -130,7 +130,6 @@ cXVDRServer::~cXVDRServer()
 
 void cXVDRServer::NewClientConnected(int fd)
 {
-  char buf[64];
   struct sockaddr_in sin;
   socklen_t len = sizeof(sin);
 
@@ -173,8 +172,8 @@ void cXVDRServer::NewClientConnected(int fd)
   val = 1;
   setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val));
 
-  INFOLOG("Client with ID %d connected: ", m_IdCnt /*, cxSocket::ip2txt(sin.sin_addr.s_addr, sin.sin_port, buf)*/);
-  cXVDRClient *connection = new cXVDRClient(fd, m_IdCnt, ""/*cxSocket::ip2txt(sin.sin_addr.s_addr, sin.sin_port, buf)*/);
+  INFOLOG("Client %s:%i with ID %d connected.", inet_ntoa(sin.sin_addr), sin.sin_port, m_IdCnt);
+  cXVDRClient *connection = new cXVDRClient(fd, m_IdCnt);
   m_clients.push_back(connection);
   m_IdCnt++;
 }
