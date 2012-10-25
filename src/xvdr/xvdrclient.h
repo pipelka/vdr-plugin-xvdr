@@ -114,6 +114,7 @@ private:
   bool IsChannelWanted(cChannel* channel, bool radio = false);
   int  ChannelsCount();
   cString CreateLogoURL(cChannel* channel);
+  cString CreateServiceReference(cChannel* channel);
 
   bool process_Login();
   bool process_GetTime();
