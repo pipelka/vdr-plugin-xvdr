@@ -105,8 +105,9 @@ bool cLiveQueue::Add(MsgPacket* p)
     off_t length = lseek(m_writefd, 0, SEEK_CUR);
     if(length >= BufferSize)
     {
-      ftruncate(m_readfd, length);
-      lseek(m_writefd, 0, SEEK_SET);
+      // truncate to current position
+      if(ftruncate(m_writefd, length) == 0)
+        lseek(m_writefd, 0, SEEK_SET);
     }
     return true;
   }
