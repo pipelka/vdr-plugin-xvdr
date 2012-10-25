@@ -70,7 +70,7 @@ void cLiveQueue::Request()
   {
     // ring-buffer overrun ?
     off_t pos = lseek(m_readfd, 0, SEEK_CUR);
-    if(pos < BufferSize)
+    if(pos < (off_t)BufferSize)
       return;
 
     lseek(m_readfd, 0, SEEK_SET);
@@ -103,7 +103,7 @@ bool cLiveQueue::Add(MsgPacket* p)
 
     // ring-buffer overrun ?
     off_t length = lseek(m_writefd, 0, SEEK_CUR);
-    if(length >= BufferSize)
+    if(length >= (off_t)BufferSize)
     {
       // truncate to current position
       if(ftruncate(m_writefd, length) == 0)

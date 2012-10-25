@@ -280,7 +280,7 @@ bool cParserMPEG2Video::Parse_MPEG2Video_PicStart(int *frametype, cBitstream *bs
 
   *frametype = pct;
 
-  int vbvDelay = bs->readBits(16); /* vbv_delay */
+  /*int vbvDelay =*/ bs->readBits(16); /* vbv_delay */
   /*if (vbvDelay  == 0xffff)
     m_vbvDelay = -1;
   else

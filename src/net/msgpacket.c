@@ -394,7 +394,7 @@ uint32_t MsgPacket::crc32(const uint8_t* buf, int size) {
 bool MsgPacket::write(int fd, int timeout_ms) {
 	freeze();
 
-	int written = 0;
+	uint32_t written = 0;
 
 	while(written < m_usage) {
 		if(pollfd(fd, timeout_ms, false) == 0) {
