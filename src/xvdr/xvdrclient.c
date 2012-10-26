@@ -81,21 +81,34 @@ cString cXVDRClient::CreateLogoURL(cChannel* channel)
   if((const char*)XVDRServerConfig.PiconsURL == NULL || strlen((const char*)XVDRServerConfig.PiconsURL) == 0)
     return "";
 
-  int pos = channel->Source() & cSource::st_Pos;
-  if(pos > 0x00007FFF)
-    pos |= 0xFFFF0000;
+  int hash = 0;
 
-  if(pos < 0)
-    pos = -pos;
-  else
-    pos = 1800 + pos;
+  if(cSource::IsSat(channel->Source()))
+  {
+    hash = channel->Source() & cSource::st_Pos;
+    if(hash > 0x00007FFF)
+      hash |= 0xFFFF0000;
 
-  cString serviceref = cString::sprintf("1_0_%i_%X_%X_%X_%X0000_0_0_0.png",
+    if(hash < 0)
+      hash = -hash;
+    else
+      hash = 1800 + hash;
+
+    hash = hash << 16;
+  }
+  else if(cSource::IsCable(channel->Source()))
+    hash = 0xFFFF0000;
+  else if(cSource::IsTerr(channel->Source()))
+    hash = 0xEEEE0000;
+  else if(cSource::IsAtsc(channel->Source()))
+    ; // how should we handle ATSC ?
+
+  cString serviceref = cString::sprintf("1_0_%i_%X_%X_%X_%X_0_0_0.png",
                                   (channel->Vpid() == 0) ? 2 : (channel->Vtype() == 27) ? 19 : 1,
                                   channel->Sid(),
                                   channel->Tid(),
                                   channel->Nid(),
-                                  pos);
+                                  hash);
 
   cString url;
   url = AddDirectory(XVDRServerConfig.PiconsURL, serviceref);
