@@ -151,6 +151,8 @@ public:
 	*/
 	uint8_t* reserve(uint32_t length, bool fill = false, unsigned char c = 0);
 
+	void unreserve(uint32_t length);
+
 	/**
 	Consume space.
 	Consume a memory region in the payload of the packet. consume is the counter-part of reserve.

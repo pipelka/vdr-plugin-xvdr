@@ -215,6 +215,15 @@ uint8_t* MsgPacket::reserve(uint32_t length, bool fill, unsigned char c) {
 
 	return p;
 }
+
+void MsgPacket::unreserve(uint32_t length) {
+	if(m_usage < length) {
+		return;
+	}
+
+	m_usage -= length;
+}
+
 uint8_t* MsgPacket::consume(uint32_t length) {
 	if(m_size < m_readposition + length) {
 		return NULL;

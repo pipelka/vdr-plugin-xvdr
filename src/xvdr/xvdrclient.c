@@ -988,11 +988,9 @@ bool cXVDRClient::processRecStream_GetBlock() /* OPCODE 42 */
   uint8_t* p = m_resp->reserve(amount);
   uint32_t amountReceived = m_RecPlayer->getBlock(p, position, amount);
 
-  if (!amountReceived)
-  {
-    m_resp->put_U32(0);
-    DEBUGLOG("written 4(0) as getblock got 0");
-  }
+  // smaller chunk ?
+  if(amountReceived < amount)
+    m_resp->unreserve(amount - amountReceived);
 
   return true;
 }
