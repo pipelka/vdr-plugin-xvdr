@@ -992,6 +992,9 @@ bool cXVDRClient::processRecStream_GetBlock() /* OPCODE 42 */
   if(amountReceived < amount)
     m_resp->unreserve(amount - amountReceived);
 
+  if (amountReceived < amount)
+    memset(p + amountReceived, 0xFF, amount - amountReceived);
+
   return true;
 }
 
