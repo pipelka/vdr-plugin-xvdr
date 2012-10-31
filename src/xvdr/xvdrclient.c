@@ -994,6 +994,9 @@ bool cXVDRClient::processRecStream_GetBlock() /* OPCODE 42 */
     DEBUGLOG("written 4(0) as getblock got 0");
   }
 
+  if (amountReceived < amount)
+    memset(p + amountReceived, 0xFF, amount - amountReceived);
+
   return true;
 }
 
