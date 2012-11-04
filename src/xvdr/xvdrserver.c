@@ -224,6 +224,8 @@ void cXVDRServer::Action(void)
   cTimeMs channelReloadTimer;
   bool channelReloadTrigger = false;
 
+  SetPriority(19);
+
   // get initial state of the recordings
   int recState = -1;
   int recStateOld = -1;

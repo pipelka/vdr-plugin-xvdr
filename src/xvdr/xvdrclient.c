@@ -266,6 +266,8 @@ void cXVDRClient::Action(void)
 {
   bool bClosed(false);
 
+  SetPriority(10);
+
   while (Running())
   {
     m_req = MsgPacket::read(m_socket, bClosed, 2000);
@@ -848,6 +850,7 @@ bool cXVDRClient::process_ChannelFilter()
 bool cXVDRClient::processChannelStream_Open() /* OPCODE 20 */
 {
   cMutexLock lock(&m_timerLock);
+  SetPriority(-15);
 
   uint32_t uid = m_req->get_U32();
   int32_t priority = 50;
@@ -922,6 +925,7 @@ bool cXVDRClient::processChannelStream_Pause() /* OPCODE 23 */
 bool cXVDRClient::processRecStream_Open() /* OPCODE 40 */
 {
   cRecording *recording = NULL;
+  SetPriority(-15);
 
   const char* recid = m_req->get_String();
   unsigned int uid = recid2uid(recid);
