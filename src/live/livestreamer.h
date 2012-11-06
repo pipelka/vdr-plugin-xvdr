@@ -26,8 +26,6 @@
 #ifndef XVDR_RECEIVER_H
 #define XVDR_RECEIVER_H
 
-#include <linux/dvb/frontend.h>
-#include <linux/videodev2.h>
 #include <vdr/channels.h>
 #include <vdr/device.h>
 #include <vdr/receiver.h>
@@ -71,10 +69,6 @@ private:
   int               m_Priority;                     /*!> The priority over other streamers */
   std::list<cTSDemuxer*> m_Demuxers;
   int               m_socket;                       /*!> The socket class to communicate with client */
-  int               m_Frontend;                     /*!> File descriptor to access used receiving device  */
-  dvb_frontend_info m_FrontendInfo;                 /*!> DVB Information about the receiving device (DVB only) */
-  v4l2_capability   m_vcap;                         /*!> PVR Information about the receiving device (pvrinput only) */
-  cString           m_DeviceString;                 /*!> The name of the receiving device */
   bool              m_startup;
   bool              m_requestStreamChange;
   uint32_t          m_scanTimeout;                  /*!> Channel scanning timeout (in seconds) */

@@ -63,7 +63,6 @@ cLiveStreamer::cLiveStreamer(uint32_t timeout)
   m_Receiver        = NULL;
   m_Queue           = NULL;
   m_PatFilter       = NULL;
-  m_Frontend        = -1;
   m_startup         = true;
   m_SignalLost      = false;
   m_LangStreamType  = stMPEG2AUDIO;
@@ -72,8 +71,6 @@ cLiveStreamer::cLiveStreamer(uint32_t timeout)
 
   m_requestStreamChange = false;
 
-
-  memset(&m_FrontendInfo, 0, sizeof(m_FrontendInfo));
 
   if(m_scanTimeout == 0)
     m_scanTimeout = XVDRServerConfig.stream_timeout;
@@ -135,11 +132,6 @@ cLiveStreamer::~cLiveStreamer()
     }
     m_Demuxers.clear();
 
-  }
-  if (m_Frontend >= 0)
-  {
-    close(m_Frontend);
-    m_Frontend = -1;
   }
 
   delete m_Queue;
@@ -547,126 +539,51 @@ void cLiveStreamer::sendStatus(int status)
 
 void cLiveStreamer::sendSignalInfo()
 {
-  /* If no frontend is found m_Frontend is set to -2, in this case
-     return a empty signalinfo package */
-  if (m_Frontend == -2)
+  MsgPacket* resp = new MsgPacket(XVDR_STREAM_SIGNALINFO, XVDR_CHANNEL_STREAM);
+
+  int DeviceNumber = m_Device->DeviceNumber() + 1;
+  int Strength = m_Device->SignalStrength();
+  int Quality = m_Device->SignalQuality();
+
+  resp->put_String(*cString::sprintf("%s #%d - %s", 
+#if VDRVERSNUM < 10728
+#warning "VDR versions < 1.7.28 do not support all features"
+			"Unknown",
+			DeviceNumber,
+			"Unknown"));
+#else
+			(const char*)m_Device->DeviceType(),
+			DeviceNumber,
+			(const char*)m_Device->DeviceName()));
+#endif
+
+  // Quality:
+  // 4 - NO LOCK
+  // 3 - NO SYNC
+  // 2 - NO VITERBI
+  // 1 - NO CARRIER
+  // 0 - NO SIGNAL
+
+  if(Quality == -1)
   {
-    MsgPacket* resp = new MsgPacket(XVDR_STREAM_SIGNALINFO, XVDR_CHANNEL_STREAM);
-
-    resp->put_String(*cString::sprintf("Unknown"));
-    resp->put_String(*cString::sprintf("Unknown"));
-    resp->put_U32(0);
-    resp->put_U32(0);
-    resp->put_U32(0);
-    resp->put_U32(0);
-
-    m_Queue->Add(resp);
-    return;
-  }
-
-  if (m_Channel && ((m_Channel->Source() >> 24) == 'V'))
-  {
-    if (m_Frontend < 0)
-    {
-      for (int i = 0; i < 8; i++)
-      {
-        m_DeviceString = cString::sprintf("/dev/video%d", i);
-        m_Frontend = open(m_DeviceString, O_RDONLY | O_NONBLOCK);
-        if (m_Frontend >= 0)
-        {
-          if (ioctl(m_Frontend, VIDIOC_QUERYCAP, &m_vcap) < 0)
-          {
-            ERRORLOG("cannot read analog frontend info.");
-            close(m_Frontend);
-            m_Frontend = -1;
-            memset(&m_vcap, 0, sizeof(m_vcap));
-            continue;
-          }
-          break;
-        }
-      }
-      if (m_Frontend < 0)
-        m_Frontend = -2;
-    }
-
-    if (m_Frontend >= 0)
-    {
-      MsgPacket* resp = new MsgPacket(XVDR_STREAM_SIGNALINFO, XVDR_CHANNEL_STREAM);
-
-      resp->put_String(*cString::sprintf("Analog #%s - %s (%s)", *m_DeviceString, (char *) m_vcap.card, m_vcap.driver));
-      resp->put_String("");
-      resp->put_U32(0);
-      resp->put_U32(0);
-      resp->put_U32(0);
-      resp->put_U32(0);
-
-      m_Queue->Add(resp);
-    }
+    resp->put_String("Unknown (Incompatible device)");
+    Quality = 0;
   }
   else
-  {
-    if (m_Frontend < 0)
-    {
-      m_DeviceString = cString::sprintf(FRONTEND_DEVICE, m_Device->CardIndex(), 0);
-      m_Frontend = open(m_DeviceString, O_RDONLY | O_NONBLOCK);
-      if (m_Frontend >= 0)
-      {
-        if (ioctl(m_Frontend, FE_GET_INFO, &m_FrontendInfo) < 0)
-        {
-          ERRORLOG("cannot read frontend info.");
-          close(m_Frontend);
-          m_Frontend = -2;
-          memset(&m_FrontendInfo, 0, sizeof(m_FrontendInfo));
-          return;
-        }
-      }
-    }
+    resp->put_String(*cString::sprintf("%s:%s:%s:%s:%s", 
+			(Quality > 4) ? "LOCKED" : "-",
+			(Quality > 0) ? "SIGNAL" : "-",
+			(Quality > 1) ? "CARRIER" : "-",
+			(Quality > 2) ? "VITERBI" : "-",
+			(Quality > 3) ? "SYNC" : "-"));
 
-    if (m_Frontend >= 0)
-    {
-      MsgPacket* resp = new MsgPacket(XVDR_STREAM_SIGNALINFO, XVDR_CHANNEL_STREAM);
+  resp->put_U32((Quality << 16 ) / 100); // TODO: remove need to scale
+  resp->put_U32((Strength << 16 ) / 100); // TODO: remove need to scale
+  resp->put_U32(0);
+  resp->put_U32(0);
 
-      fe_status_t status;
-      uint16_t fe_snr;
-      uint16_t fe_signal;
-      uint32_t fe_ber;
-      uint32_t fe_unc;
-
-      memset(&status, 0, sizeof(status));
-      ioctl(m_Frontend, FE_READ_STATUS, &status);
-
-      if (ioctl(m_Frontend, FE_READ_SIGNAL_STRENGTH, &fe_signal) == -1)
-        fe_signal = -2;
-      if (ioctl(m_Frontend, FE_READ_SNR, &fe_snr) == -1)
-        fe_snr = -2;
-      if (ioctl(m_Frontend, FE_READ_BER, &fe_ber) == -1)
-        fe_ber = -2;
-      if (ioctl(m_Frontend, FE_READ_UNCORRECTED_BLOCKS, &fe_unc) == -1)
-        fe_unc = -2;
-
-      switch (m_Channel->Source() & cSource::st_Mask)
-      {
-        case cSource::stSat:
-          resp->put_String(*cString::sprintf("DVB-S%s #%d - %s", (m_FrontendInfo.caps & 0x10000000) ? "2" : "",  m_Device->DeviceNumber() + 1, m_FrontendInfo.name));
-          break;
-        case cSource::stCable:
-          resp->put_String(*cString::sprintf("DVB-C #%d - %s", m_Device->DeviceNumber() + 1, m_FrontendInfo.name));
-          break;
-        case cSource::stTerr:
-          resp->put_String(*cString::sprintf("DVB-T #%d - %s", m_Device->DeviceNumber(), m_FrontendInfo.name));
-          break;
-      }
-      resp->put_String(*cString::sprintf("%s:%s:%s:%s:%s", (status & FE_HAS_LOCK) ? "LOCKED" : "-", (status & FE_HAS_SIGNAL) ? "SIGNAL" : "-", (status & FE_HAS_CARRIER) ? "CARRIER" : "-", (status & FE_HAS_VITERBI) ? "VITERBI" : "-", (status & FE_HAS_SYNC) ? "SYNC" : "-"));
-      resp->put_U32(fe_snr);
-      resp->put_U32(fe_signal);
-      resp->put_U32(fe_ber);
-      resp->put_U32(fe_unc);
-
-      DEBUGLOG("sendSignalInfo");
-
-      m_Queue->Add(resp);
-    }
-  }
+  DEBUGLOG("sendSignalInfo");
+  m_Queue->Add(resp);
 }
 
 void cLiveStreamer::sendStreamInfo()
