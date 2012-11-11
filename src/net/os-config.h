@@ -67,3 +67,4 @@ uint16_t be16toh(uint16_t u);
 bool pollfd(int fd, int timeout_ms, bool in);
 bool setsock_nonblock(int fd, bool nonblock = true);
 int socketread(int fd, uint8_t* data, int datalen, int timeout_ms);
+char *xvdr_inet_ntoa(in6_addr addr);

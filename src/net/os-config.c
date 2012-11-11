@@ -1,5 +1,7 @@
 #include "os-config.h"
 #include <unistd.h>
+#include <stdio.h>
+#include <arpa/inet.h>
 
 // WINDOWS
 
@@ -104,3 +106,17 @@ int socketread(int fd, uint8_t* data, int datalen, int timeout_ms) {
         return 0;
 }
 
+char *xvdr_inet_ntoa(in6_addr addr)
+{
+	static char buff[INET6_ADDRSTRLEN];
+
+	if (IN6_IS_ADDR_V4MAPPED(&addr) || IN6_IS_ADDR_V4COMPAT(&addr))
+	{
+		snprintf(buff, sizeof(buff), "%d.%d.%d.%d",
+			addr.s6_addr[12], addr.s6_addr[13], addr.s6_addr[14], addr.s6_addr[15]);
+	}
+	else
+		inet_ntop(AF_INET6, &(addr.s6_addr), buff, INET6_ADDRSTRLEN);
+
+	return buff;
+}
