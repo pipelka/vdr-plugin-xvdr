@@ -43,6 +43,7 @@
 #include "xvdrserver.h"
 #include "xvdrclient.h"
 #include "recordings/recordingscache.h"
+#include "net/os-config.h"
 
 //#define ENABLE_CHANNELTRIGGER 1
 
@@ -84,7 +85,7 @@ cXVDRServer::cXVDRServer(int listenPort) : cThread("VDR XVDR Server")
     m_AllowedHostsFile = cString::sprintf("/video/" ALLOWED_HOSTS_FILE);
   }
 
-  m_ServerFD = socket(AF_INET, SOCK_STREAM, 0);
+  m_ServerFD = socket(AF_INET6, SOCK_STREAM, 0);
   if(m_ServerFD == -1)
     return;
 
@@ -93,10 +94,15 @@ cXVDRServer::cXVDRServer(int listenPort) : cThread("VDR XVDR Server")
   int one = 1;
   setsockopt(m_ServerFD, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int));
 
-  struct sockaddr_in s;
+  // setting the server socket option to listen on IPv4 and IPv6 simultaneously
+  int no = 0;
+  if (setsockopt(m_ServerFD, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&no, sizeof(no)) < 0)
+    ERRORLOG("cXVDRServer: setsockopt failed (errno=%d: %s)", errno, strerror(errno));
+
+  struct sockaddr_in6 s;
   memset(&s, 0, sizeof(s));
-  s.sin_family = AF_INET;
-  s.sin_port = htons(m_ServerPort);
+  s.sin6_family = AF_INET6;
+  s.sin6_port = htons(m_ServerPort);
 
   int x = bind(m_ServerFD, (struct sockaddr *)&s, sizeof(s));
   if (x < 0)
@@ -130,7 +136,7 @@ cXVDRServer::~cXVDRServer()
 
 void cXVDRServer::NewClientConnected(int fd)
 {
-  struct sockaddr_in sin;
+  struct sockaddr_in6 sin;
   socklen_t len = sizeof(sin);
 
   if (getpeername(fd, (struct sockaddr *)&sin, &len))
@@ -140,12 +146,16 @@ void cXVDRServer::NewClientConnected(int fd)
     return;
   }
 
-  cAllowedHosts AllowedHosts(m_AllowedHostsFile);
-  if (!AllowedHosts.Acceptable(sin.sin_addr.s_addr))
+  // Acceptable() method only supports in_addr_t argument so we're currently checking IPv4 hosts only
+  if (IN6_IS_ADDR_V4MAPPED(&sin.sin6_addr) || IN6_IS_ADDR_V4COMPAT(&sin.sin6_addr))
   {
-    ERRORLOG("Address not allowed to connect (%s)", *m_AllowedHostsFile);
-    close(fd);
-    return;
+    cAllowedHosts AllowedHosts(m_AllowedHostsFile);
+    if (!AllowedHosts.Acceptable(sin.sin6_addr.s6_addr32[3]))
+    {
+      ERRORLOG("Address not allowed to connect (%s)", *m_AllowedHostsFile);
+      close(fd);
+      return;
+    }
   }
 
   if (fcntl(fd, F_SETFL, fcntl (fd, F_GETFL) | O_NONBLOCK) == -1)
@@ -172,7 +182,7 @@ void cXVDRServer::NewClientConnected(int fd)
   val = 1;
   setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val));
 
-  INFOLOG("Client %s:%i with ID %d connected.", inet_ntoa(sin.sin_addr), sin.sin_port, m_IdCnt);
+  INFOLOG("Client %s:%i with ID %d connected.", xvdr_inet_ntoa(sin.sin6_addr), sin.sin6_port, m_IdCnt);
   cXVDRClient *connection = new cXVDRClient(fd, m_IdCnt);
   m_clients.push_back(connection);
   m_IdCnt++;
