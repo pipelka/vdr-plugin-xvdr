@@ -44,6 +44,7 @@ protected:
 
   int           m_ServerPort;
   int           m_ServerFD;
+  bool          m_IPv4Fallback;
   cString       m_AllowedHostsFile;
   ClientList    m_clients;
 

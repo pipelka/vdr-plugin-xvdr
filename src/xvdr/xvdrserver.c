@@ -73,6 +73,7 @@ public:
 
 cXVDRServer::cXVDRServer(int listenPort) : cThread("VDR XVDR Server")
 {
+  m_IPv4Fallback = false;
   m_ServerPort  = listenPort;
 
   if(*XVDRServerConfig.ConfigDirectory)
@@ -87,7 +88,14 @@ cXVDRServer::cXVDRServer(int listenPort) : cThread("VDR XVDR Server")
 
   m_ServerFD = socket(AF_INET6, SOCK_STREAM, 0);
   if(m_ServerFD == -1)
-    return;
+  {
+    // trying to fallback to IPv4
+    m_ServerFD = socket(AF_INET, SOCK_STREAM, 0);
+    if(m_ServerFD == -1)
+      return;
+    else
+      m_IPv4Fallback = true;
+  }
 
   fcntl(m_ServerFD, F_SETFD, fcntl(m_ServerFD, F_GETFD) | FD_CLOEXEC);
 
@@ -96,13 +104,21 @@ cXVDRServer::cXVDRServer(int listenPort) : cThread("VDR XVDR Server")
 
   // setting the server socket option to listen on IPv4 and IPv6 simultaneously
   int no = 0;
-  if (setsockopt(m_ServerFD, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&no, sizeof(no)) < 0)
+  if (!m_IPv4Fallback && setsockopt(m_ServerFD, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&no, sizeof(no)) < 0)
     ERRORLOG("cXVDRServer: setsockopt failed (errno=%d: %s)", errno, strerror(errno));
 
-  struct sockaddr_in6 s;
+  struct sockaddr_storage s;
   memset(&s, 0, sizeof(s));
-  s.sin6_family = AF_INET6;
-  s.sin6_port = htons(m_ServerPort);
+  if (!m_IPv4Fallback)
+  {
+    ((struct sockaddr_in6 *)&s)->sin6_family = AF_INET6;
+    ((struct sockaddr_in6 *)&s)->sin6_port = htons(m_ServerPort);
+  }
+  else
+  {
+    ((struct sockaddr_in *)&s)->sin_family = AF_INET;
+    ((struct sockaddr_in *)&s)->sin_port = htons(m_ServerPort);
+  }
 
   int x = bind(m_ServerFD, (struct sockaddr *)&s, sizeof(s));
   if (x < 0)
@@ -136,8 +152,9 @@ cXVDRServer::~cXVDRServer()
 
 void cXVDRServer::NewClientConnected(int fd)
 {
-  struct sockaddr_in6 sin;
+  struct sockaddr_storage sin;
   socklen_t len = sizeof(sin);
+  in_addr_t *ipv4_addr = NULL;
 
   if (getpeername(fd, (struct sockaddr *)&sin, &len))
   {
@@ -146,11 +163,20 @@ void cXVDRServer::NewClientConnected(int fd)
     return;
   }
 
+  if (!m_IPv4Fallback)
+  {
+    if (IN6_IS_ADDR_V4MAPPED(&((struct sockaddr_in6 *)&sin)->sin6_addr) ||
+        IN6_IS_ADDR_V4COMPAT(&((struct sockaddr_in6 *)&sin)->sin6_addr))
+      ipv4_addr = &((struct sockaddr_in6 *)&sin)->sin6_addr.s6_addr32[3];
+  }
+  else
+    ipv4_addr = &((struct sockaddr_in *)&sin)->sin_addr.s_addr;
+
   // Acceptable() method only supports in_addr_t argument so we're currently checking IPv4 hosts only
-  if (IN6_IS_ADDR_V4MAPPED(&sin.sin6_addr) || IN6_IS_ADDR_V4COMPAT(&sin.sin6_addr))
+  if (ipv4_addr)
   {
     cAllowedHosts AllowedHosts(m_AllowedHostsFile);
-    if (!AllowedHosts.Acceptable(sin.sin6_addr.s6_addr32[3]))
+    if (!AllowedHosts.Acceptable(*ipv4_addr))
     {
       ERRORLOG("Address not allowed to connect (%s)", *m_AllowedHostsFile);
       close(fd);
@@ -182,7 +208,10 @@ void cXVDRServer::NewClientConnected(int fd)
   val = 1;
   setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val));
 
-  INFOLOG("Client %s:%i with ID %d connected.", xvdr_inet_ntoa(sin.sin6_addr), sin.sin6_port, m_IdCnt);
+  if (!m_IPv4Fallback)
+    INFOLOG("Client %s:%i with ID %d connected.", xvdr_inet_ntoa(((struct sockaddr_in6 *)&sin)->sin6_addr), ((struct sockaddr_in6 *)&sin)->sin6_port, m_IdCnt);
+  else
+    INFOLOG("Client %s:%i with ID %d connected.", inet_ntoa(((struct sockaddr_in *)&sin)->sin_addr), ((struct sockaddr_in *)&sin)->sin_port, m_IdCnt);
   cXVDRClient *connection = new cXVDRClient(fd, m_IdCnt);
   m_clients.push_back(connection);
   m_IdCnt++;
