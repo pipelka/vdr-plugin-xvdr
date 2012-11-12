@@ -98,6 +98,7 @@ bool cLiveQueue::Add(MsgPacket* p)
     if(!p->write(m_writefd, 1000))
     {
       DEBUGLOG("Unable to write packet into timeshift ringbuffer !");
+      delete p;
       return false;
     }
 
@@ -109,6 +110,7 @@ bool cLiveQueue::Add(MsgPacket* p)
       if(ftruncate(m_writefd, length) == 0)
         lseek(m_writefd, 0, SEEK_SET);
     }
+    delete p;
     return true;
   }
 
