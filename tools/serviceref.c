@@ -1,7 +1,9 @@
 /*
- *      VDR Service Reference Tool
+ *      XVDR Service Reference Tool
  *
  *      Copyright (C) 2012 Alexander Pipelka
+ *
+ *      https://github.com/pipelka/vdr-plugin-xvdr
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by

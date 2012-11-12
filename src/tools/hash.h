@@ -1,8 +1,10 @@
 /*
- *      vdr-plugin-xvdr - XBMC server plugin for VDR
+ *      vdr-plugin-xvdr - XVDR server plugin for VDR
  *
  *      Copyright (C) 1986 Gary S. Brown (CRC32 code)
  *      Copyright (C) 2011 Alexander Pipelka
+ *
+ *      https://github.com/pipelka/vdr-plugin-xvdr
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
