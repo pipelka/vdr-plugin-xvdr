@@ -66,7 +66,7 @@ struct StreamInfo {
 
   int pid;
   eStreamType type;
-  char lang[MAXLANGCODE2];
+  char lang[4];
   int audioType;
   int subtitlingType;
   int compositionPageId;
