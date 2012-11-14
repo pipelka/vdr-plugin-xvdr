@@ -206,6 +206,7 @@ void cLiveStreamer::Action(void)
 
       m_FilterMutex.Lock();
       cTSDemuxer *demuxer = FindStreamDemuxer(ts_pid);
+      //INFOLOG("TS PID: %i", ts_pid);
       if (demuxer)
       {
         demuxer->ProcessTSPacket(buf);
@@ -310,7 +311,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, int soc
   }
 
   m_PatFilter = new cLivePatFilter(this, m_Channel);
-  m_Receiver = new cLiveReceiver(this, m_Channel, m_Priority);
+  m_Receiver = new cLiveReceiver(this, m_Priority);
 
   // get cached demuxer data
   DEBUGLOG("Creating demuxers");

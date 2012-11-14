@@ -27,8 +27,8 @@
 #include "livereceiver.h"
 #include "livestreamer.h"
 
-cLiveReceiver::cLiveReceiver(cLiveStreamer *Streamer, const cChannel* channel, int Priority)
- : cReceiver(channel, Priority)
+cLiveReceiver::cLiveReceiver(cLiveStreamer *Streamer, int Priority)
+ : cReceiver(NULL, Priority)
  , m_Streamer(Streamer)
 {
   DEBUGLOG("Starting live receiver");
