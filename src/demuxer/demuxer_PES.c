@@ -1,7 +1,7 @@
 /*
  *      vdr-plugin-xvdr - XVDR server plugin for VDR
  *
- *      Copyright (C) 2010 Alwin Esch (Team XBMC)
+ *      Copyright (C) 2012 Alexander Pipelka
  *
  *      https://github.com/pipelka/vdr-plugin-xvdr
  *
@@ -22,29 +22,35 @@
  *
  */
 
-#ifndef XVDR_DEMUXER_TELETEXT_H
-#define XVDR_DEMUXER_TELETEXT_H
+#include "demuxer_PES.h"
+#include "vdr/remux.h"
 
-#include "demuxer.h"
+cParserPES::cParserPES(cTSDemuxer *demuxer, int buffersize) : cParser(demuxer, buffersize, 0), m_length(0) {
+}
 
-// --- cParserTeletext -------------------------------------------------
+void cParserPES::Parse(unsigned char *data, int size, bool pusi) {
 
-class cParserTeletext : public cParser
-{
-private:
-  bool        m_firstPUSIseen;
-  bool        m_PESStart;
-  uint8_t    *m_teletextBuffer;
-  int         m_teletextBufferSize;
-  int         m_teletextBufferPtr;
-  int64_t     m_lastDTS;
-  int64_t     m_lastPTS;
+  // packet ready ?
+  if(!m_startup) {
+    int length = 0;
+    uint8_t* buffer = Get(length);
 
-public:
-  cParserTeletext(cTSDemuxer *demuxer);
-  virtual ~cParserTeletext();
+    if(length >= m_length && buffer != NULL) {
+      SendPayload(buffer, m_length);
+      Clear();
+    }
+  }
 
-  virtual void Parse(unsigned char *data, int size, bool pusi);
-};
+  if(pusi) {
+    int offset = ParsePESHeader(data, size);
+    m_length = PesLength(data) - PesPayloadOffset(data);
 
-#endif // XVDR_DEMUXER_TELETEXT_H
+    data += offset;
+    size -= offset;
+    m_startup = false;
+  }
+
+  // we start with the beginning of a packet
+  if(!m_startup)
+    Put(data, size);
+}

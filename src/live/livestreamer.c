@@ -72,7 +72,7 @@ cLiveStreamer::cLiveStreamer(int priority, uint32_t timeout)
   if(m_scanTimeout == 0)
     m_scanTimeout = XVDRServerConfig.stream_timeout;
 
-  SetTimeouts(0, 10);
+  SetTimeouts(0, 100);
 }
 
 cLiveStreamer::~cLiveStreamer()
@@ -155,6 +155,8 @@ void cLiveStreamer::Action(void)
       sendStatus(XVDR_STREAM_STATUS_SIGNALLOST);
       m_SignalLost = true;
     }
+
+    DEBUGLOG("cLiveStreamer: Got %i bytes", size);
 
     // no data
     if (buf == NULL || size <= TS_SIZE)
@@ -288,9 +290,7 @@ int cLiveStreamer::StreamChannel(const cChannel *channel, int sock)
 
   DEBUGLOG("Starting PAT scanner");
   m_Device->AttachFilter(m_PatFilter);
-
-  if(IsReady())
-    Attach();
+  Attach();
 
   INFOLOG("Successfully switched to channel %i - %s", channel->Number(), channel->Name());
   return XVDR_RET_OK;
@@ -324,7 +324,7 @@ void cLiveStreamer::Attach(void)
   DEBUGLOG("%s", __FUNCTION__);
   if (m_Device)
   {
-    //m_Device->Detach(this);
+    m_Device->Detach(this);
     m_Device->AttachReceiver(this);
   }
 }
@@ -706,7 +706,6 @@ bool cLiveStreamer::IsReady()
           cChannelCache::AddToCache(m_uid, cache);
         }
         m_ready = true;
-        Attach();
         return true;
       }
     }
@@ -715,9 +714,6 @@ bool cLiveStreamer::IsReady()
   }
 
   m_ready = bAllParsed;
-
-  if(m_ready)
-    Attach();
 
   return bAllParsed;
 }

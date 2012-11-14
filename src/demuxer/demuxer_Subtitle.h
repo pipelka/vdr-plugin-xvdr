@@ -26,6 +26,7 @@
 #define XVDR_DEMUXER_SUBTITLE_H
 
 #include "demuxer.h"
+#include "parser.h"
 
 // --- cParserSubtitle -------------------------------------------------
 

@@ -2,6 +2,7 @@
  *      vdr-plugin-xvdr - XVDR server plugin for VDR
  *
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
+ *      Copyright (C) 2012 Alexander Pipelka
  *
  *      https://github.com/pipelka/vdr-plugin-xvdr
  *
@@ -25,54 +26,20 @@
 #ifndef XVDR_DEMUXER_AC3_H
 #define XVDR_DEMUXER_AC3_H
 
-#include "demuxer.h"
-
-// --- cParserAC3 -------------------------------------------------
+#include "parser.h"
 
 class cParserAC3 : public cParser
 {
-private:
-  bool        m_firstPUSIseen;
-  bool        m_PESStart;
-  int         m_SampleRate;
-  int         m_Channels;
-  int         m_BitRate;
-
-  bool        m_FetchTimestamp;
-  int64_t     m_FrameOffset;        /* offset of the current frame */
-  int64_t     m_CurrentOffset;      /* current offset (incremented by each av_parser_parse()) */
-  int64_t     m_NextFrameOffset;    /* offset of the next frame */
-
-#define AV_PARSER_PTS_NB 4
-  int         m_CurrentFrameStartIndex;
-  int64_t     m_CurrentFrameOffset[AV_PARSER_PTS_NB];
-  int64_t     m_CurrentFramePTS[AV_PARSER_PTS_NB];
-  int64_t     m_CurrentFrameDTS[AV_PARSER_PTS_NB];
-  int64_t     m_CurrentFrameEnd[AV_PARSER_PTS_NB];
-  int64_t     m_Offset;             /* byte offset from starting packet start */
-  int64_t     m_PTS;                /* pts of the current frame */
-  int64_t     m_DTS;                /* dts of the current frame */
-  int64_t     m_NextDTS;
-
-  int         m_FrameSize;
-  bool        m_HeaderFound;
-
-#define AC3_MAX_CODED_FRAME_SIZE 1920*2
-  uint8_t     m_AC3Buffer[AC3_MAX_CODED_FRAME_SIZE];    /* input buffer */
-  int         m_AC3BufferSize;
-  int         m_AC3BufferPtr;
-
-  int FindHeaders(uint8_t **poutbuf, int *poutbuf_size,
-                  uint8_t *buf, int buf_size,
-                  int64_t pts, int64_t dts);
-  void FetchTimestamp(int off, bool remove);
-
 public:
+
   cParserAC3(cTSDemuxer *demuxer);
-  virtual ~cParserAC3();
 
-  virtual void Parse(unsigned char *data, int size, bool pusi);
+protected:
+
+  void ParsePayload(unsigned char* payload, int length);
+
+  bool CheckAlignmentHeader(unsigned char* buffer, int& framesize);
+
 };
-
 
 #endif // XVDR_DEMUXER_AC3_H

@@ -2,6 +2,7 @@
  *      vdr-plugin-xvdr - XVDR server plugin for VDR
  *
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
+ *      Copyright (C) 2012 Alexander Pipelka
  *
  *      https://github.com/pipelka/vdr-plugin-xvdr
  *
@@ -25,138 +26,12 @@
 #ifndef XVDR_DEMUXER_H
 #define XVDR_DEMUXER_H
 
-#include <vdr/device.h>
+#include <stdint.h>
 
-#define DVD_TIME_BASE 1000000
+class cLiveStreamer;
+class cParser;
+
 #define DVD_NOPTS_VALUE    (-1LL<<52) // should be possible to represent in both double and __int64
-
-/* PES PIDs */
-#define PRIVATE_STREAM1   0xBD
-#define PADDING_STREAM    0xBE
-#define PRIVATE_STREAM2   0xBF
-#define PRIVATE_STREAM3   0xFD
-#define AUDIO_STREAM_S    0xC0      /* 1100 0000 */
-#define AUDIO_STREAM_E    0xDF      /* 1101 1111 */
-#define VIDEO_STREAM_S    0xE0      /* 1110 0000 */
-#define VIDEO_STREAM_E    0xEF      /* 1110 1111 */
-
-#define AUDIO_STREAM_MASK 0x1F  /* 0001 1111 */
-#define VIDEO_STREAM_MASK 0x0F  /* 0000 1111 */
-#define AUDIO_STREAM      0xC0  /* 1100 0000 */
-#define VIDEO_STREAM      0xE0  /* 1110 0000 */
-
-#define ECM_STREAM        0xF0
-#define EMM_STREAM        0xF1
-#define DSM_CC_STREAM     0xF2
-#define ISO13522_STREAM   0xF3
-#define PROG_STREAM_DIR   0xFF
-
-inline bool PesIsHeader(const uchar *p)
-{
-  return !(p)[0] && !(p)[1] && (p)[2] == 1;
-}
-
-inline int PesHeaderLength(const uchar *p)
-{
-  return 8 + (p)[8] + 1;
-}
-
-inline bool PesIsVideoPacket(const uchar *p)
-{
-  return (((p)[3] & ~VIDEO_STREAM_MASK) == VIDEO_STREAM);
-}
-
-inline bool PesIsMPEGAudioPacket(const uchar *p)
-{
-  return (((p)[3] & ~AUDIO_STREAM_MASK) == AUDIO_STREAM);
-}
-
-inline bool PesIsPS1Packet(const uchar *p)
-{
-  return ((p)[3] == PRIVATE_STREAM1 || (p)[3] == PRIVATE_STREAM3 );
-}
-
-inline bool PesIsPaddingPacket(const uchar *p)
-{
-  return ((p)[3] == PADDING_STREAM);
-}
-
-inline bool PesIsAudioPacket(const uchar *p)
-{
-  return (PesIsMPEGAudioPacket(p) || PesIsPS1Packet(p));
-}
-
-#if APIVERSNUM < 10701
-
-#define TS_ERROR              0x80
-#define TS_PAYLOAD_START      0x40
-#define TS_TRANSPORT_PRIORITY 0x20
-#define TS_PID_MASK_HI        0x1F
-#define TS_SCRAMBLING_CONTROL 0xC0
-#define TS_ADAPT_FIELD_EXISTS 0x20
-#define TS_PAYLOAD_EXISTS     0x10
-#define TS_CONT_CNT_MASK      0x0F
-#define TS_ADAPT_DISCONT      0x80
-#define TS_ADAPT_RANDOM_ACC   0x40 // would be perfect for detecting independent frames, but unfortunately not used by all broadcasters
-#define TS_ADAPT_ELEM_PRIO    0x20
-#define TS_ADAPT_PCR          0x10
-#define TS_ADAPT_OPCR         0x08
-#define TS_ADAPT_SPLICING     0x04
-#define TS_ADAPT_TP_PRIVATE   0x02
-#define TS_ADAPT_EXTENSION    0x01
-
-inline bool TsHasPayload(const uchar *p)
-{
-  return p[3] & TS_PAYLOAD_EXISTS;
-}
-
-inline bool TsHasAdaptationField(const uchar *p)
-{
-  return p[3] & TS_ADAPT_FIELD_EXISTS;
-}
-
-inline bool TsPayloadStart(const uchar *p)
-{
-  return p[1] & TS_PAYLOAD_START;
-}
-
-inline bool TsError(const uchar *p)
-{
-  return p[1] & TS_ERROR;
-}
-
-inline int TsPid(const uchar *p)
-{
-  return (p[1] & TS_PID_MASK_HI) * 256 + p[2];
-}
-
-inline bool TsIsScrambled(const uchar *p)
-{
-  return p[3] & TS_SCRAMBLING_CONTROL;
-}
-
-inline int TsPayloadOffset(const uchar *p)
-{
-  return (p[3] & TS_ADAPT_FIELD_EXISTS) ? p[4] + 5 : 4;
-}
-
-inline int TsGetPayload(const uchar **p)
-{
-  int o = TsPayloadOffset(*p);
-  *p += o;
-  return TS_SIZE - o;
-}
-
-inline int TsContinuityCounter(const uchar *p)
-{
-  return p[3] & TS_CONT_CNT_MASK;
-}
-
-inline int TsGetAdaptationField(const uchar *p)
-{
-  return TsHasAdaptationField(p) ? p[5] : 0x00;
-}
-#endif
 
 enum eStreamContent
 {
@@ -211,32 +86,6 @@ struct sStreamPacket
   uint8_t  *data;
   int       size;
 };
-
-class cLiveStreamer;
-class cTSDemuxer;
-
-class cParser
-{
-public:
-  cParser(cTSDemuxer* demuxer);
-  virtual ~cParser() {};
-
-  virtual void Parse(unsigned char *data, int size, bool pusi) = 0;
-
-  int ParsePESHeader(uint8_t *buf, size_t len);
-
-  int64_t     m_LastDTS;
-  int64_t     m_curPTS;
-  int64_t     m_curDTS;
-  int64_t     m_epochDTS;
-
-  int         m_badDTS;
-  int         m_PID;
-
-protected:
-  cTSDemuxer* m_demuxer;
-};
-
 
 class cTSDemuxer
 {

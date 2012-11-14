@@ -27,9 +27,10 @@
 #define XVDR_DEMUXER_LATM_H
 
 #include "demuxer.h"
-#include "bitstream.h"
+#include "parser.h"
 
-// --- cParserLATM -------------------------------------------------
+class cBitstream;
+
 
 class cParserLATM : public cParser
 {
@@ -56,7 +57,7 @@ public:
   void ParseLATMAudioMuxElement(uint8_t *data, int len);
   void ReadStreamMuxConfig(cBitstream *bs);
   void ReadAudioSpecificConfig(cBitstream *bs);
-  uint32_t LATMGetValue(cBitstream *bs) { return bs->readBits(bs->readBits(2) * 8); }
+  uint32_t LATMGetValue(cBitstream *bs);
 };
 
 #endif // XVDR_DEMUXER_LATM_H

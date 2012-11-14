@@ -22,13 +22,9 @@
  *
  */
 
-#include <stdlib.h>
-#include <assert.h>
-
 #include "demuxer_Subtitle.h"
 
-cParserSubtitle::cParserSubtitle(cTSDemuxer *demuxer)
- : cParser(demuxer)
+cParserSubtitle::cParserSubtitle(cTSDemuxer *demuxer) : cParser(demuxer)
 {
   m_firstPUSIseen       = false;
   m_PESStart            = false;

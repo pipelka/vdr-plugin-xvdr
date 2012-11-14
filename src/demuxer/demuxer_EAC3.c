@@ -23,67 +23,76 @@
  *
  */
 
-#include "demuxer_AC3.h"
+#include "demuxer_EAC3.h"
 #include "bitstream.h"
 #include "ac3common.h"
 
-cParserAC3::cParserAC3(cTSDemuxer *demuxer) : cParser(demuxer, 64 * 1024, 4096)
+static const uint8_t EAC3Blocks[4] = {
+  1, 2, 3, 6
+};
+
+typedef enum {
+  EAC3_FRAME_TYPE_INDEPENDENT = 0,
+  EAC3_FRAME_TYPE_DEPENDENT,
+  EAC3_FRAME_TYPE_AC3_CONVERT,
+  EAC3_FRAME_TYPE_RESERVED
+} EAC3FrameType;
+
+cParserEAC3::cParserEAC3(cTSDemuxer *demuxer) : cParser(demuxer, 64 * 1024, 4096)
 {
   m_headersize = AC3_HEADER_SIZE;
 }
 
-bool cParserAC3::CheckAlignmentHeader(unsigned char* buffer, int& framesize) {
+bool cParserEAC3::CheckAlignmentHeader(unsigned char* buffer, int& framesize) {
   cBitstream bs(buffer, AC3_HEADER_SIZE * 8);
 
   if (bs.readBits(16) != 0x0B77)
     return false;
 
-  bs.skipBits(16);                // CRC
-  int fscod = bs.readBits(2);     // fscod
-  int frmsizcod = bs.readBits(6); // frmsizcod
+  bs.skipBits(2);  // frametype
+  bs.skipBits(3);  // substream id
 
-  if (fscod == 3 || frmsizcod > 37)
-    return false;
-
-  framesize = AC3FrameSizeTable[frmsizcod][fscod] * 2;
+  framesize = (bs.readBits(11) + 1) << 1;
   return true;
 }
 
-void cParserAC3::ParsePayload(unsigned char* payload, int length) {
+void cParserEAC3::ParsePayload(unsigned char* payload, int length) {
   cBitstream bs(payload, AC3_HEADER_SIZE * 8);
 
   if (bs.readBits(16) != 0x0B77)
     return;
 
-  bs.skipBits(16); // CRC
-  int fscod = bs.readBits(2);
-  int frmsizecod = bs.readBits(6);
-  int bsid = bs.readBits(5); // bsid
-  bs.skipBits(3); // bitstream mode
-  int acmod = bs.readBits(3);
-
-  if (fscod == 3 || frmsizecod > 37)
+  int frametype = bs.readBits(2);
+  if (frametype == EAC3_FRAME_TYPE_RESERVED)
     return;
 
-  if (acmod == AC3_CHMODE_STEREO)
+  bs.skipBits(3);
+
+  int framesize = (bs.readBits(11) + 1) << 1;
+  if (framesize < AC3_HEADER_SIZE)
+   return;
+
+  int numBlocks = 6;
+  int sr_code = bs.readBits(2);
+  if (sr_code == 3)
   {
-    bs.skipBits(2); // skip dsurmod
+    int sr_code2 = bs.readBits(2);
+    if (sr_code2 == 3)
+      return;
+
+    m_samplerate = AC3SampleRateTable[sr_code2] / 2;
   }
   else
   {
-    if ((acmod & 1) && acmod != AC3_CHMODE_MONO)
-      bs.skipBits(2);
-    if (acmod & 4)
-      bs.skipBits(2);
+    numBlocks = EAC3Blocks[bs.readBits(2)];
+    m_samplerate = AC3SampleRateTable[sr_code];
   }
+
+  int channelMode = bs.readBits(3);
   int lfeon = bs.readBits(1);
 
-  int srShift  = max(bsid, 8) - 8;
-  m_samplerate = AC3SampleRateTable[fscod] >> srShift;
-  m_bitrate    = (AC3BitrateTable[frmsizecod>>1] * 1000) >> srShift;
-  m_channels   = AC3ChannelsTable[acmod] + lfeon;
-
-  int framesize = AC3FrameSizeTable[frmsizecod][fscod] * 2;
+  m_bitrate  = (uint32_t)(8.0 * framesize * m_samplerate / (numBlocks * 256.0));
+  m_channels = AC3ChannelsTable[channelMode] + lfeon;
 
   m_duration = (framesize * 8 * 1000 * 90) / m_bitrate;
 

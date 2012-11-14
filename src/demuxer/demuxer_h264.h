@@ -25,7 +25,7 @@
 #ifndef XVDR_DEMUXER_H264_H
 #define XVDR_DEMUXER_H264_H
 
-#include "demuxer.h"
+#include "parser.h"
 
 class cBitstream;
 

@@ -28,6 +28,7 @@
 
 #include "config/config.h"
 #include "demuxer_LATM.h"
+#include "bitstream.h"
 
 static int aac_sample_rates[16] =
 {
@@ -36,8 +37,7 @@ static int aac_sample_rates[16] =
 };
 
 
-cParserLATM::cParserLATM(cTSDemuxer *demuxer)
- : cParser(demuxer)
+cParserLATM::cParserLATM(cTSDemuxer *demuxer) : cParser(demuxer)
 {
   m_streamBuffer              = NULL;
   m_streamBufferSize          = 0;
@@ -235,4 +235,9 @@ void cParserLATM::ReadAudioSpecificConfig(cBitstream *bs)
     bs->skipBits(1);    // ext3_flag
 
   m_demuxer->SetAudioInformation(m_ChannelConfig, m_SampleRate, 0, 0, 0);
+}
+
+uint32_t cParserLATM::LATMGetValue(cBitstream *bs)
+{
+  return bs->readBits(bs->readBits(2) * 8);
 }

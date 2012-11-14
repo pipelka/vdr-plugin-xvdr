@@ -59,12 +59,13 @@ OBJS = \
 	src/demuxer/demuxer.o \
 	src/demuxer/demuxer_LATM.o \
 	src/demuxer/demuxer_AC3.o \
-	src/demuxer/demuxer_DTS.o \
+	src/demuxer/demuxer_EAC3.o \
 	src/demuxer/demuxer_h264.o \
 	src/demuxer/demuxer_MPEGAudio.o \
 	src/demuxer/demuxer_MPEGVideo.o \
+	src/demuxer/demuxer_PES.o \
 	src/demuxer/demuxer_Subtitle.o \
-	src/demuxer/demuxer_Teletext.o \
+	src/demuxer/parser.o \
 	src/live/channelcache.o \
 	src/live/livepatfilter.o \
 	src/live/livequeue.o \
