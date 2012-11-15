@@ -56,8 +56,6 @@ protected:
 
   void Cleanup();
 
-  bool write(MsgPacket* packet);
-
   void CloseTimeShift();
 
   int m_socket;

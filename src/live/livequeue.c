@@ -97,7 +97,7 @@ bool cLiveQueue::Add(MsgPacket* p)
     // write packet
     if(!p->write(m_writefd, 1000))
     {
-      DEBUGLOG("Unable to write packet into timeshift ringbuffer !");
+      ERRORLOG("Unable to write packet into timeshift ringbuffer !");
       delete p;
       return false;
     }
@@ -163,21 +163,16 @@ void cLiveQueue::Action()
       m_cond.Wait(3000);
       continue;
     }
-
     // send packet
-    write(p);
-    delete p;
+    else {
+      cSocketLock locks(m_socket);
+      p->write(m_socket, 100);
+      delete p;
+    }
+
   }
 
   INFOLOG("LiveQueue stopped");
-}
-
-bool cLiveQueue::write(MsgPacket* packet)
-{
-  cSocketLock locks(m_socket);
-  while(!packet->write(m_socket, 50) && Running())
-    ;
-  return true;
 }
 
 void cLiveQueue::CloseTimeShift()
