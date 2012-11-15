@@ -286,7 +286,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, int soc
     return false;
   }
 
-  INFOLOG("Found available device %d", m_Device->CardIndex() + 1);
+  INFOLOG("Found available device %d", m_Device->DeviceNumber() + 1);
 
   if (!m_Device->SwitchChannel(m_Channel, false))
   {
@@ -647,13 +647,13 @@ void cLiveStreamer::sendSignalInfo()
       switch (m_Channel->Source() & cSource::st_Mask)
       {
         case cSource::stSat:
-          resp->put_String(*cString::sprintf("DVB-S%s #%d - %s", (m_FrontendInfo.caps & 0x10000000) ? "2" : "",  cDevice::ActualDevice()->CardIndex(), m_FrontendInfo.name));
+          resp->put_String(*cString::sprintf("DVB-S%s #%d - %s", (m_FrontendInfo.caps & 0x10000000) ? "2" : "",  m_Device->DeviceNumber() + 1, m_FrontendInfo.name));
           break;
         case cSource::stCable:
-          resp->put_String(*cString::sprintf("DVB-C #%d - %s", cDevice::ActualDevice()->CardIndex(), m_FrontendInfo.name));
+          resp->put_String(*cString::sprintf("DVB-C #%d - %s", m_Device->DeviceNumber() + 1, m_FrontendInfo.name));
           break;
         case cSource::stTerr:
-          resp->put_String(*cString::sprintf("DVB-T #%d - %s", cDevice::ActualDevice()->CardIndex(), m_FrontendInfo.name));
+          resp->put_String(*cString::sprintf("DVB-T #%d - %s", m_Device->DeviceNumber(), m_FrontendInfo.name));
           break;
       }
       resp->put_String(*cString::sprintf("%s:%s:%s:%s:%s", (status & FE_HAS_LOCK) ? "LOCKED" : "-", (status & FE_HAS_SIGNAL) ? "SIGNAL" : "-", (status & FE_HAS_CARRIER) ? "CARRIER" : "-", (status & FE_HAS_VITERBI) ? "VITERBI" : "-", (status & FE_HAS_SYNC) ? "SYNC" : "-"));
