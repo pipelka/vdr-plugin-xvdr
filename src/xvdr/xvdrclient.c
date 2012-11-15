@@ -308,6 +308,9 @@ void cXVDRClient::StopChannelStreaming()
 
 void cXVDRClient::TimerChange(const cTimer *Timer, eTimerChange Change)
 {
+  if(Change != tcAdd && Change != tcDel)
+    return;
+
   TimerChange();
 }
 
@@ -317,6 +320,7 @@ void cXVDRClient::TimerChange()
 
   if (m_StatusInterfaceEnabled)
   {
+    INFOLOG("Sending timer change request to client #%i ...", m_Id);
     cSocketLock locks(m_socket);
     MsgPacket* resp = new MsgPacket(XVDR_STATUS_TIMERCHANGE, XVDR_CHANNEL_STATUS);
     resp->write(m_socket, m_timeout);

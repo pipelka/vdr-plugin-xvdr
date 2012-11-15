@@ -231,10 +231,6 @@ void cXVDRServer::Action(void)
   Recordings.StateChanged(recState);
   recStateOld = recState;
 
-  // get initial state of the timers
-  int timerState = -1;
-  Timers.Modified(timerState);
-
   while (Running())
   {
     FD_ZERO(&fds);
@@ -291,7 +287,8 @@ void cXVDRServer::Action(void)
       }
 
       // update recordings
-      if(Recordings.StateChanged(recState) || (recState != recStateOld) || cRecordingsCache::GetInstance().Changed())
+      Recordings.StateChanged(recState);
+      if(recState != recStateOld || cRecordingsCache::GetInstance().Changed())
       {
         INFOLOG("Recordings state changed (%i)", recState);
         INFOLOG("Requesting clients to reload recordings list");
@@ -300,17 +297,6 @@ void cXVDRServer::Action(void)
 
         for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++)
           (*i)->RecordingsChange();
-      }
-
-      // update timers
-      if(Timers.Modified(timerState))
-      {
-        INFOLOG("Timers state changed (%i)", timerState);
-        INFOLOG("Requesting clients to reload timers");
-        for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++)
-        {
-         (*i)->TimerChange();
-        }
       }
       continue;
     }
