@@ -392,10 +392,6 @@ void cXVDRClient::Recording(const cDevice *Device, const char *Name, const char 
     resp->write(m_socket, m_timeout);
     delete resp;
   }
-
-  // request client to reload recordings list
-  if(On)
-    RecordingsChange();
 }
 
 void cXVDRClient::OsdStatusMessage(const char *Message)
