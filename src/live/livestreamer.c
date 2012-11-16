@@ -741,6 +741,10 @@ void cLiveStreamer::reorderStreams(int lang, eStreamType type)
 
     int w = i;
 
+    // video streams rule
+    if(stream->Content() == scVIDEO)
+      w = 100000;
+
     // only for audio streams
     if(stream->Content() != scAUDIO)
     {
