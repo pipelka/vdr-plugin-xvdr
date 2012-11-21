@@ -535,10 +535,6 @@ bool cXVDRClient::processRequest()
       result = process_EnableStatusInterface();
       break;
 
-    case XVDR_PING:
-      result = process_Ping();
-      break;
-
     case XVDR_UPDATECHANNELS:
       result = process_UpdateChannels();
       break;
@@ -702,6 +698,9 @@ bool cXVDRClient::processRequest()
     case XVDR_SCAN_STOP:
       result = processSCAN_Stop();
       break;
+
+    default:
+      break;
   }
 
   if(result)
@@ -779,13 +778,6 @@ bool cXVDRClient::process_EnableStatusInterface()
   SetStatusInterface(enabled);
 
   m_resp->put_U32(XVDR_RET_OK);
-
-  return true;
-}
-
-bool cXVDRClient::process_Ping() /* OPCODE 7 */
-{
-  m_resp->put_U32(1);
 
   return true;
 }

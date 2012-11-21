@@ -118,7 +118,6 @@ private:
   bool process_Login();
   bool process_GetTime();
   bool process_EnableStatusInterface();
-  bool process_Ping();
   bool process_UpdateChannels();
   bool process_ChannelFilter();
 
