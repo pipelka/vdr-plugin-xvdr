@@ -68,6 +68,7 @@ cLiveStreamer::cLiveStreamer(uint32_t timeout)
   m_LangStreamType  = stMPEG2AUDIO;
   m_LanguageIndex   = -1;
   m_uid             = 0;
+  m_ready           = false;
 
   m_requestStreamChange = false;
 
@@ -712,6 +713,9 @@ void cLiveStreamer::SetLanguage(int lang, eStreamType streamtype)
 
 bool cLiveStreamer::IsReady()
 {
+  if(m_ready)
+    return true;
+
   bool bAllParsed = true;
 
   for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++)
@@ -731,6 +735,7 @@ bool cLiveStreamer::IsReady()
           // update cache information
           cChannelCache::AddToCache(m_uid, cache);
         }
+        m_ready = true;
         return true;
       }
     }
@@ -738,6 +743,7 @@ bool cLiveStreamer::IsReady()
       bAllParsed = false;
   }
 
+  m_ready = bAllParsed;
   return bAllParsed;
 }
 

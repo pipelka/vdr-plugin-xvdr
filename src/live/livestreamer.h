@@ -79,6 +79,7 @@ private:
   eStreamType       m_LangStreamType;
   cLiveQueue*       m_Queue;
   uint32_t          m_uid;
+  bool              m_ready;
 
 protected:
   virtual void Action(void);
