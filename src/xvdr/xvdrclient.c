@@ -1413,6 +1413,13 @@ bool cXVDRClient::processTIMER_Update() /* OPCODE 85 */
     return true;
   }
 
+  if(timer->Recording())
+  {
+    INFOLOG("Will not update timer #%i - currently recording", index);
+    m_resp->put_U32(XVDR_RET_OK);
+    return true;
+  }
+
   cTimer t = *timer;
 
   uint32_t flags      = active ? tfActive : tfNone;
