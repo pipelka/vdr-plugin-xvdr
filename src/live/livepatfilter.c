@@ -27,7 +27,6 @@
 #include "tools/hash.h"
 
 #include "livepatfilter.h"
-#include "livereceiver.h"
 #include "livestreamer.h"
 
 static const char * const psStreamTypes[] = {

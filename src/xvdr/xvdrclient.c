@@ -294,10 +294,10 @@ void cXVDRClient::Action(void)
 bool cXVDRClient::StartChannelStreaming(const cChannel *channel, uint32_t timeout, int32_t priority)
 {
   cMutexLock lock(&m_switchLock);
-  m_Streamer = new cLiveStreamer(timeout);
+  m_Streamer = new cLiveStreamer(priority, timeout);
   m_Streamer->SetLanguage(m_LanguageIndex, m_LangStreamType);
 
-  return m_Streamer->StreamChannel(channel, priority, m_socket, m_resp);
+  return m_Streamer->StreamChannel(channel, m_socket, m_resp);
 }
 
 void cXVDRClient::StopChannelStreaming()

@@ -47,20 +47,19 @@
 
 #include "livestreamer.h"
 #include "livepatfilter.h"
-#include "livereceiver.h"
 #include "livequeue.h"
 #include "channelcache.h"
 
-cLiveStreamer::cLiveStreamer(uint32_t timeout)
+cLiveStreamer::cLiveStreamer(int priority, uint32_t timeout)
  : cThread("cLiveStreamer stream processor")
- , cRingBufferLinear(MEGABYTE(5), TS_SIZE*2, true)
+ , cRingBufferLinear(MEGABYTE(10), TS_SIZE * 2, true)
+ , cReceiver(NULL, priority)
  , m_scanTimeout(timeout)
 {
   m_Channel         = NULL;
-  m_Priority        = 0;
+  m_Priority        = priority;
   m_socket          = -1;
   m_Device          = NULL;
-  m_Receiver        = NULL;
   m_Queue           = NULL;
   m_PatFilter       = NULL;
   m_startup         = true;
@@ -76,7 +75,7 @@ cLiveStreamer::cLiveStreamer(uint32_t timeout)
   if(m_scanTimeout == 0)
     m_scanTimeout = XVDRServerConfig.stream_timeout;
 
-  SetTimeouts(0, 50);
+  SetTimeouts(0, 10);
 }
 
 cLiveStreamer::~cLiveStreamer()
@@ -91,15 +90,7 @@ cLiveStreamer::~cLiveStreamer()
 
   if (m_Device)
   {
-    if (m_Receiver)
-    {
-      DEBUGLOG("Detaching Live Receiver");
-      m_Device->Detach(m_Receiver);
-    }
-    else
-    {
-      DEBUGLOG("No live receiver present");
-    }
+    m_Device->Detach(this);
 
     if (m_PatFilter)
     {
@@ -109,12 +100,6 @@ cLiveStreamer::~cLiveStreamer()
     else
     {
       DEBUGLOG("No live filter present");
-    }
-
-    if (m_Receiver)
-    {
-      DEBUGLOG("Deleting Live Receiver");
-      DELETENULL(m_Receiver);
     }
 
     if (m_PatFilter)
@@ -161,7 +146,7 @@ void cLiveStreamer::Action(void)
     used = 0;
     buf = Get(size);
 
-    if (!m_Receiver->IsAttached())
+    if (!IsAttached())
     {
       INFOLOG("returning from streamer thread, receiver is no more attached");
       break;
@@ -178,7 +163,7 @@ void cLiveStreamer::Action(void)
     if (buf == NULL || size <= TS_SIZE)
       continue;
 
-    /* Make sure we are looking at a TS packet */
+    // Sync to TS packet
     while (size > TS_SIZE)
     {
       if (buf[0] == TS_SYNC_BYTE && buf[TS_SIZE] == TS_SYNC_BYTE)
@@ -186,6 +171,13 @@ void cLiveStreamer::Action(void)
       used++;
       buf++;
       size--;
+    }
+
+    // TS packet sync not found !
+    if (buf[0] != TS_SYNC_BYTE)
+    {
+      Del(used);
+      continue;
     }
 
     while (size >= TS_SIZE)
@@ -221,7 +213,7 @@ void cLiveStreamer::Action(void)
   }
 }
 
-bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, int sock, MsgPacket *resp)
+bool cLiveStreamer::StreamChannel(const cChannel *channel, int sock, MsgPacket *resp)
 {
   if (channel == NULL)
   {
@@ -231,7 +223,6 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, int soc
   }
 
   m_Channel  = channel;
-  m_Priority = priority;
   m_socket   = sock;
   m_uid      = CreateChannelUID(m_Channel);
 
@@ -304,7 +295,6 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, int soc
   }
 
   m_PatFilter = new cLivePatFilter(this, m_Channel);
-  m_Receiver = new cLiveReceiver(this, m_Priority);
 
   // get cached demuxer data
   DEBUGLOG("Creating demuxers");
@@ -316,7 +306,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int priority, int soc
 
   DEBUGLOG("Starting PAT scanner");
   m_Device->AttachFilter(m_PatFilter);
-  m_Device->AttachReceiver(m_Receiver);
+  m_Device->AttachReceiver(this);
 
   INFOLOG("Successfully switched to channel %i - %s", m_Channel->Number(), m_Channel->Name());
   return true;
@@ -350,11 +340,8 @@ void cLiveStreamer::Attach(void)
   DEBUGLOG("%s", __FUNCTION__);
   if (m_Device)
   {
-    if (m_Receiver)
-    {
-      m_Device->Detach(m_Receiver);
-      m_Device->AttachReceiver(m_Receiver);
-    }
+    m_Device->Detach(this);
+    m_Device->AttachReceiver(this);
   }
 }
 
@@ -363,8 +350,7 @@ void cLiveStreamer::Detach(void)
   DEBUGLOG("%s", __FUNCTION__);
   if (m_Device)
   {
-    if (m_Receiver)
-      m_Device->Detach(m_Receiver);
+    m_Device->Detach(this);
   }
 }
 
@@ -760,4 +746,12 @@ void cLiveStreamer::RequestPacket()
     return;
 
   m_Queue->Request();
+}
+
+void cLiveStreamer::Receive(uchar *Data, int Length)
+{
+  int p = Put(Data, Length);
+
+  if (p != Length)
+    ReportOverflow(Length - p);
 }

@@ -25,7 +25,6 @@
 #include "config/config.h"
 #include "channelcache.h"
 #include "livestreamer.h"
-#include "livereceiver.h"
 
 cMutex cChannelCache::m_access;
 std::map<uint32_t, cChannelCache> cChannelCache::m_cache;
@@ -51,7 +50,7 @@ void cChannelCache::CreateDemuxers(cLiveStreamer* streamer) {
     delete *i;
 
   streamer->m_Demuxers.clear();
-  streamer->m_Receiver->SetPids(NULL);
+  streamer->SetPids(NULL);
 
   // create new stream demuxers
   for (iterator i = begin(); i != end(); i++)
@@ -61,7 +60,7 @@ void cChannelCache::CreateDemuxers(cLiveStreamer* streamer) {
     if (dmx != NULL)
     {
       streamer->m_Demuxers.push_back(dmx);
-      streamer->m_Receiver->AddPid(info.pid);
+      streamer->AddPid(info.pid);
     }
   }
 

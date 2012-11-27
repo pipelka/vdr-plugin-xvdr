@@ -36,7 +36,6 @@
 #include <list>
 
 class cChannel;
-class cLiveReceiver;
 class cTSDemuxer;
 class MsgPacket;
 class cLivePatFilter;
@@ -44,6 +43,7 @@ class cLiveQueue;
 
 class cLiveStreamer : public cThread
                     , public cRingBufferLinear
+                    , public cReceiver
 {
 private:
   friend class cTSDemuxer;
@@ -64,7 +64,6 @@ private:
 
   const cChannel   *m_Channel;                      /*!> Channel to stream */
   cDevice          *m_Device;                       /*!> The receiving device the channel depents to */
-  cLiveReceiver    *m_Receiver;                     /*!> Our stream transceiver */
   cLivePatFilter   *m_PatFilter;                    /*!> Filter processor to get changed pid's */
   int               m_Priority;                     /*!> The priority over other streamers */
   std::list<cTSDemuxer*> m_Demuxers;
@@ -82,16 +81,17 @@ private:
   bool              m_ready;
 
 protected:
-  virtual void Action(void);
+  void Action(void);
+  void Receive(uchar *Data, int Length);
+  void Activate(bool On);
+
   void RequestStreamChange();
 
 public:
-  cLiveStreamer(uint32_t timeout = 0);
+  cLiveStreamer(int priority, uint32_t timeout = 0);
   virtual ~cLiveStreamer();
 
-  void Activate(bool On);
-
-  bool StreamChannel(const cChannel *channel, int priority, int sock, MsgPacket* resp);
+  bool StreamChannel(const cChannel *channel, int sock, MsgPacket* resp);
   bool IsReady();
   bool IsStarting() { return m_startup; }
   void SetLanguage(int lang, eStreamType streamtype = stAC3);

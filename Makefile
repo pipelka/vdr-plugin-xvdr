@@ -68,7 +68,6 @@ OBJS = \
 	src/live/channelcache.o \
 	src/live/livepatfilter.o \
 	src/live/livequeue.o \
-	src/live/livereceiver.o \
 	src/live/livestreamer.o \
 	src/net/msgpacket.o \
 	src/net/os-config.o \
