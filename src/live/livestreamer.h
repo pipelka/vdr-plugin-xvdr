@@ -62,7 +62,6 @@ private:
   void sendStreamInfo();
   void sendStatus(int status);
 
-  const cChannel   *m_Channel;                      /*!> Channel to stream */
   cDevice          *m_Device;                       /*!> The receiving device the channel depents to */
   cLivePatFilter   *m_PatFilter;                    /*!> Filter processor to get changed pid's */
   int               m_Priority;                     /*!> The priority over other streamers */

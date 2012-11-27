@@ -56,7 +56,6 @@ cLiveStreamer::cLiveStreamer(int priority, uint32_t timeout)
  , cReceiver(NULL, priority)
  , m_scanTimeout(timeout)
 {
-  m_Channel         = NULL;
   m_Priority        = priority;
   m_socket          = -1;
   m_Device          = NULL;
@@ -222,25 +221,24 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int sock, MsgPacket *
     return false;
   }
 
-  m_Channel  = channel;
   m_socket   = sock;
-  m_uid      = CreateChannelUID(m_Channel);
+  m_uid      = CreateChannelUID(channel);
 
   // check if any device is able to decrypt the channel - code taken from VDR
   int NumUsableSlots = 0;
 
-  if (m_Channel->Ca() >= CA_ENCRYPTED_MIN) {
+  if (channel->Ca() >= CA_ENCRYPTED_MIN) {
     for (cCamSlot *CamSlot = CamSlots.First(); CamSlot; CamSlot = CamSlots.Next(CamSlot)) {
       if (CamSlot->ModuleStatus() == msReady) {
-        if (CamSlot->ProvidesCa(m_Channel->Caids())) {
-          if (!ChannelCamRelations.CamChecked(m_Channel->GetChannelID(), CamSlot->SlotNumber())) {
+        if (CamSlot->ProvidesCa(channel->Caids())) {
+          if (!ChannelCamRelations.CamChecked(channel->GetChannelID(), CamSlot->SlotNumber())) {
             NumUsableSlots++;
           }
        }
       }
     }
     if (!NumUsableSlots) {
-      ERRORLOG("Unable to decrypt channel %i - %s", m_Channel->Number(), m_Channel->Name());
+      ERRORLOG("Unable to decrypt channel %i - %s", channel->Number(), channel->Name());
       resp->put_U32(XVDR_RET_ENCRYPTED);
       return false;
     }
@@ -254,11 +252,11 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int sock, MsgPacket *
     m_Device = cDevice::GetDevice(channel, m_Priority, false);
 
   INFOLOG("--------------------------------------");
-  INFOLOG("Channel streaming request: %i - %s", m_Channel->Number(), m_Channel->Name());
+  INFOLOG("Channel streaming request: %i - %s", channel->Number(), channel->Name());
 
   if (m_Device == NULL)
   {
-    ERRORLOG("Can't get device for channel %i - %s", m_Channel->Number(), m_Channel->Name());
+    ERRORLOG("Can't get device for channel %i - %s", channel->Number(), channel->Name());
 
     // return status "recording running" if there is an active timer
     time_t now = time(NULL);
@@ -272,9 +270,9 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int sock, MsgPacket *
 
   INFOLOG("Found available device %d", m_Device->DeviceNumber() + 1);
 
-  if (!m_Device->SwitchChannel(m_Channel, false))
+  if (!m_Device->SwitchChannel(channel, false))
   {
-    ERRORLOG("Can't switch to channel %i - %s", m_Channel->Number(), m_Channel->Name());
+    ERRORLOG("Can't switch to channel %i - %s", channel->Number(), channel->Name());
     resp->put_U32(XVDR_RET_ERROR);
     return false;
   }
@@ -294,7 +292,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int sock, MsgPacket *
     m_Queue->Start();
   }
 
-  m_PatFilter = new cLivePatFilter(this, m_Channel);
+  m_PatFilter = new cLivePatFilter(this, channel);
 
   // get cached demuxer data
   DEBUGLOG("Creating demuxers");
@@ -308,7 +306,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int sock, MsgPacket *
   m_Device->AttachFilter(m_PatFilter);
   m_Device->AttachReceiver(this);
 
-  INFOLOG("Successfully switched to channel %i - %s", m_Channel->Number(), m_Channel->Name());
+  INFOLOG("Successfully switched to channel %i - %s", channel->Number(), channel->Name());
   return true;
 }
 

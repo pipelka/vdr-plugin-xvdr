@@ -69,7 +69,6 @@ void cChannelCache::CreateDemuxers(cLiveStreamer* streamer) {
 
 cTSDemuxer* cChannelCache::CreateDemuxer(cLiveStreamer* streamer, const struct StreamInfo& info) const {
   cTSDemuxer* stream = NULL;
-  cCamSlot* cam = NULL;
 
   switch (info.type)
   {
@@ -105,13 +104,6 @@ cTSDemuxer* cChannelCache::CreateDemuxer(cLiveStreamer* streamer, const struct S
     // teletext
     case stTELETEXT:
       stream = new cTSDemuxer(streamer, info.type, info.pid);
-
-      // add teletext pid if there is a CAM connected
-      // (some broadcasters encrypt teletext data)
-      cam = streamer->m_Device->CamSlot();
-      if(cam != NULL)
-        cam->AddPid(streamer->m_Channel->Sid(), info.pid, 0x06);
-
       break;
 
     // unsupported stream
