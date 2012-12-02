@@ -247,7 +247,6 @@ private:
   int                   m_PID;
   bool                  m_parsed;
 
-  bool                  m_pesError;
   cParser              *m_pesParser;
 
   char                  m_language[4];  // ISO 639 3-letter language code (empty string if undefined)

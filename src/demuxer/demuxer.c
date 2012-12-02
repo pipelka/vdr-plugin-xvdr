@@ -136,7 +136,6 @@ cTSDemuxer::cTSDemuxer(cLiveStreamer *streamer, eStreamType type, int pid)
   , m_parsed(false)
   , m_audiotype(0)
 {
-  m_pesError        = false;
   m_pesParser       = NULL;
   m_language[0]     = 0;
   m_FpsScale        = 0;
@@ -281,10 +280,16 @@ bool cTSDemuxer::ProcessTSPacket(unsigned char *data)
     return false;
 
   bool pusi  = TsPayloadStart(data);
+
   int  bytes = TS_SIZE - TsPayloadOffset(data);
 
   if(bytes < 0 || bytes > TS_SIZE)
     return false;
+
+  if (TsIsScrambled(data)) {
+    INFOLOG("scrambled packet");
+    return false;
+  }
 
   if (TsError(data))
   {
@@ -298,25 +303,12 @@ bool cTSDemuxer::ProcessTSPacket(unsigned char *data)
     return true;
   }
 
-  /* drop broken PES packets */
-  if (m_pesError && !pusi)
-  {
-    return false;
-  }
-
   /* strip ts header */
   data += TS_SIZE - bytes;
 
-  /* handle new payload unit */
-  if (pusi)
-  {
-    if (!PesIsHeader(data))
-    {
-      m_pesError = true;
-      return false;
-    }
-    m_pesError = false;
-  }
+  // valid packet ?
+  if (pusi && !PesIsHeader(data))
+    return false;
 
   /* Parse the data */
   if (m_pesParser)
