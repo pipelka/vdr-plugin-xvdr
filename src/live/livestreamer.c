@@ -56,7 +56,6 @@ cLiveStreamer::cLiveStreamer(int priority, uint32_t timeout)
  , m_scanTimeout(timeout)
 {
   m_Priority        = priority;
-  m_socket          = -1;
   m_Device          = NULL;
   m_Queue           = NULL;
   m_PatFilter       = NULL;
@@ -88,7 +87,7 @@ cLiveStreamer::~cLiveStreamer()
 
   if (m_Device)
   {
-    m_Device->Detach(this);
+    Detach();
 
     if (m_PatFilter)
     {
@@ -211,16 +210,14 @@ void cLiveStreamer::Action(void)
   }
 }
 
-bool cLiveStreamer::StreamChannel(const cChannel *channel, int sock, MsgPacket *resp)
+int cLiveStreamer::StreamChannel(const cChannel *channel, int sock)
 {
   if (channel == NULL)
   {
     ERRORLOG("Starting streaming of channel without valid channel");
-    resp->put_U32(XVDR_RET_ERROR);
-    return false;
+    return XVDR_RET_ERROR;
   }
 
-  m_socket   = sock;
   m_uid      = CreateChannelUID(channel);
 
   // check if any device is able to decrypt the channel - code taken from VDR
@@ -238,8 +235,7 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int sock, MsgPacket *
     }
     if (!NumUsableSlots) {
       ERRORLOG("Unable to decrypt channel %i - %s", channel->Number(), channel->Name());
-      resp->put_U32(XVDR_RET_ENCRYPTED);
-      return false;
+      return XVDR_RET_ENCRYPTED;
     }
   }
 
@@ -260,11 +256,9 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int sock, MsgPacket *
     // return status "recording running" if there is an active timer
     time_t now = time(NULL);
     if(Timers.GetMatch(now) != NULL)
-      resp->put_U32(XVDR_RET_RECRUNNING);
-    else
-      resp->put_U32(XVDR_RET_DATALOCKED);
+      return XVDR_RET_RECRUNNING;
 
-    return false;
+    return XVDR_RET_DATALOCKED;
   }
 
   INFOLOG("Found available device %d", m_Device->DeviceNumber() + 1);
@@ -272,22 +266,13 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int sock, MsgPacket *
   if (!m_Device->SwitchChannel(channel, false))
   {
     ERRORLOG("Can't switch to channel %i - %s", channel->Number(), channel->Name());
-    resp->put_U32(XVDR_RET_ERROR);
-    return false;
-  }
-
-  // Send the OK response here, that it is before the Stream end message
-  resp->put_U32(XVDR_RET_OK);
-
-  {
-    cSocketLock locks(m_socket);
-    resp->write(sock, 3000);
+    return XVDR_RET_ERROR;
   }
 
   // create send queue
   if (m_Queue == NULL)
   {
-    m_Queue = new cLiveQueue(m_socket);
+    m_Queue = new cLiveQueue(sock);
     m_Queue->Start();
   }
 
@@ -303,10 +288,12 @@ bool cLiveStreamer::StreamChannel(const cChannel *channel, int sock, MsgPacket *
 
   DEBUGLOG("Starting PAT scanner");
   m_Device->AttachFilter(m_PatFilter);
-  m_Device->AttachReceiver(this);
+
+  if(IsReady())
+    Attach();
 
   INFOLOG("Successfully switched to channel %i - %s", channel->Number(), channel->Name());
-  return true;
+  return XVDR_RET_OK;
 }
 
 cTSDemuxer *cLiveStreamer::FindStreamDemuxer(int Pid)
@@ -337,7 +324,7 @@ void cLiveStreamer::Attach(void)
   DEBUGLOG("%s", __FUNCTION__);
   if (m_Device)
   {
-    m_Device->Detach(this);
+    //m_Device->Detach(this);
     m_Device->AttachReceiver(this);
   }
 }
@@ -719,6 +706,7 @@ bool cLiveStreamer::IsReady()
           cChannelCache::AddToCache(m_uid, cache);
         }
         m_ready = true;
+        Attach();
         return true;
       }
     }
@@ -727,6 +715,10 @@ bool cLiveStreamer::IsReady()
   }
 
   m_ready = bAllParsed;
+
+  if(m_ready)
+    Attach();
+
   return bAllParsed;
 }
 

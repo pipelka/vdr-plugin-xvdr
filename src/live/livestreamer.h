@@ -66,7 +66,6 @@ private:
   cLivePatFilter   *m_PatFilter;                    /*!> Filter processor to get changed pid's */
   int               m_Priority;                     /*!> The priority over other streamers */
   std::list<cTSDemuxer*> m_Demuxers;
-  int               m_socket;                       /*!> The socket class to communicate with client */
   bool              m_startup;
   bool              m_requestStreamChange;
   uint32_t          m_scanTimeout;                  /*!> Channel scanning timeout (in seconds) */
@@ -90,7 +89,7 @@ public:
   cLiveStreamer(int priority, uint32_t timeout = 0);
   virtual ~cLiveStreamer();
 
-  bool StreamChannel(const cChannel *channel, int sock, MsgPacket* resp);
+  int StreamChannel(const cChannel *channel, int sock);
   bool IsReady();
   bool IsStarting() { return m_startup; }
   void SetLanguage(int lang, eStreamType streamtype = stAC3);

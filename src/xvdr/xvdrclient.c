@@ -291,13 +291,13 @@ void cXVDRClient::Action(void)
   StopChannelStreaming();
 }
 
-bool cXVDRClient::StartChannelStreaming(const cChannel *channel, uint32_t timeout, int32_t priority)
+int cXVDRClient::StartChannelStreaming(const cChannel *channel, uint32_t timeout, int32_t priority)
 {
   cMutexLock lock(&m_switchLock);
   m_Streamer = new cLiveStreamer(priority, timeout);
   m_Streamer->SetLanguage(m_LanguageIndex, m_LangStreamType);
 
-  return m_Streamer->StreamChannel(channel, m_socket, m_resp);
+  return m_Streamer->StreamChannel(channel, m_socket);
 }
 
 void cXVDRClient::StopChannelStreaming()
@@ -869,15 +869,14 @@ bool cXVDRClient::processChannelStream_Open() /* OPCODE 20 */
   }
   else
   {
-    if (StartChannelStreaming(channel, timeout, priority))
-    {
-      INFOLOG("Started streaming of channel %s (timeout %i seconds, priority %i)", channel->Name(), timeout, priority);
-      // return here without sending the response
-      // (was already done in cLiveStreamer::StreamChannel)
-      return false;
-    }
+    int status = StartChannelStreaming(channel, timeout, priority);
 
-    DEBUGLOG("Can't stream channel %s", channel->Name());
+    if (status == XVDR_RET_OK)
+      INFOLOG("Started streaming of channel %s (timeout %i seconds, priority %i)", channel->Name(), timeout, priority);
+    else
+      DEBUGLOG("Can't stream channel %s", channel->Name());
+
+    m_resp->put_U32(status);
   }
 
   return true;
