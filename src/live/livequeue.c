@@ -28,7 +28,6 @@
 
 #include "config/config.h"
 #include "net/msgpacket.h"
-#include "net/socketlock.h"
 #include "livequeue.h"
 
 cString cLiveQueue::TimeShiftDir = "/video";
@@ -165,8 +164,7 @@ void cLiveQueue::Action()
     }
     // send packet
     else {
-      cSocketLock locks(m_socket);
-      p->write(m_socket, 100);
+      p->write(m_socket, 500);
       delete p;
     }
 

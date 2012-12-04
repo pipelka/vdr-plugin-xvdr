@@ -41,7 +41,6 @@
 
 #include "config/config.h"
 #include "net/msgpacket.h"
-#include "net/socketlock.h"
 #include "xvdr/xvdrcommand.h"
 #include "tools/hash.h"
 
