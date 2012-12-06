@@ -1,8 +1,8 @@
 /*
  *      vdr-plugin-xvdr - XVDR server plugin for VDR
  *
- *      Copyright (C) 2012 Alexander Pipelka
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
+ *      Copyright (C) 2012 Aleaxander Pipelka
  *
  *      https://github.com/pipelka/vdr-plugin-xvdr
  *
@@ -26,38 +26,32 @@
 #ifndef XVDR_DEMUXER_LATM_H
 #define XVDR_DEMUXER_LATM_H
 
-#include "demuxer.h"
 #include "parser.h"
 
 class cBitstream;
 
-
 class cParserLATM : public cParser
 {
-private:
-  uint8_t    *m_streamBuffer;
-  int         m_streamBufferSize;
-  int         m_streamBufferPtr;
-  int         m_streamParserPtr;
-  bool        m_firstPUSIseen;
-
-  bool        m_Configured;
-  int         m_AudioMuxVersion_A;
-  int         m_FrameLengthType;
-  int         m_SampleRateIndex;
-  int         m_ChannelConfig;
-  int         m_FrameDuration;
-  int         m_SampleRate;
-
 public:
-  cParserLATM(cTSDemuxer *demuxer);
-  virtual ~cParserLATM();
 
-  virtual void Parse(unsigned char *data, int size, bool pusi);
-  void ParseLATMAudioMuxElement(uint8_t *data, int len);
+  cParserLATM(cTSDemuxer *demuxer);
+
+protected:
+
+  void ParsePayload(unsigned char* data, int len);
+
+  void SendPayload(unsigned char* payload, int length);
+
+  bool CheckAlignmentHeader(unsigned char* buffer, int& framesize);
+
   void ReadStreamMuxConfig(cBitstream *bs);
+
   void ReadAudioSpecificConfig(cBitstream *bs);
-  uint32_t LATMGetValue(cBitstream *bs);
+
+private:
+
+  int m_samplerateindex;
+
 };
 
 #endif // XVDR_DEMUXER_LATM_H

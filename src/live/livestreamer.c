@@ -467,7 +467,7 @@ void cLiveStreamer::sendStreamChange()
         break;
 
       case stLATM:
-        resp->put_String("LATM");
+        resp->put_String("AAC");
         resp->put_String(stream->GetLanguage());
         // for future protocol versions: add audio_type
         //resp->put_U8(stream->GetAudioType());
