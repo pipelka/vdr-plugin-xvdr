@@ -1,7 +1,7 @@
 /*
  *      vdr-plugin-xvdr - XVDR server plugin for VDR
  *
- *      Copyright (C) 2010 Alwin Esch (Team XBMC)
+ *      Copyright (C) 2012 Alexander Pipelka
  *
  *      https://github.com/pipelka/vdr-plugin-xvdr
  *
@@ -24,110 +24,19 @@
 
 #include "demuxer_Subtitle.h"
 
-cParserSubtitle::cParserSubtitle(cTSDemuxer *demuxer) : cParser(demuxer)
-{
-  m_firstPUSIseen       = false;
-  m_PESStart            = false;
-  m_subtitleBuffer      = NULL;
-  m_subtitleBufferSize  = 0;
-  m_subtitleBufferPtr   = 0;
-  m_lastDTS             = DVD_NOPTS_VALUE;
-  m_lastPTS             = DVD_NOPTS_VALUE;
-  m_lastLength          = 0;
-  m_curLength           = 0;
+cParserSubtitle::cParserSubtitle(cTSDemuxer *demuxer) : cParserPES(demuxer, 8192) {
 }
 
-cParserSubtitle::~cParserSubtitle()
-{
-  if (m_subtitleBuffer)
-    free(m_subtitleBuffer);
-}
+void cParserSubtitle::SendPayload(unsigned char* payload, int length) {
 
-void cParserSubtitle::Parse(unsigned char *data, int size, bool pusi)
-{
-  if (pusi)
-  {
-    /* Payload unit start */
-    m_subtitleBufferPtr = 0;
-    m_firstPUSIseen = true;
-  }
-
-  /* Wait for first pusi */
-  if (!m_firstPUSIseen)
+  if (length < 3 || payload[0] != 0x20 || payload[1] != 0x00)
     return;
 
-  if (m_subtitleBuffer == NULL)
-  {
-    m_subtitleBufferSize  = 4000;
-    m_subtitleBuffer      = (uint8_t*)malloc(m_subtitleBufferSize);
-  }
+  payload += 2;
+  length -= 3;
 
-  if (m_subtitleBufferPtr + size + 4 >= m_subtitleBufferSize)
-  {
-    m_subtitleBufferSize  += size * 4;
-    m_subtitleBuffer       = (uint8_t*)realloc(m_subtitleBuffer, m_subtitleBufferSize);
-  }
-
-  memcpy(m_subtitleBuffer+m_subtitleBufferPtr, data, size);
-  m_subtitleBufferPtr += size;
-
-  if (m_subtitleBufferPtr < 6)
+  if (payload[length] != 0xff)
     return;
 
-  uint32_t startcode =
-    (m_subtitleBuffer[0] << 24) |
-    (m_subtitleBuffer[1] << 16) |
-    (m_subtitleBuffer[2] << 8) |
-    (m_subtitleBuffer[3]);
-
-  if (startcode == 0x1be)
-  {
-    m_firstPUSIseen = false;
-    return;
-  }
-
-  int psize = m_subtitleBuffer[4] << 8 | m_subtitleBuffer[5];
-
-  if (m_subtitleBufferPtr != psize + 6)
-    return;
-
-  m_firstPUSIseen = false;
-
-  int hlen = ParsePESHeader(m_subtitleBuffer, m_subtitleBufferPtr);
-  if (hlen < 0)
-    return;
-
-  if (m_lastDTS == DVD_NOPTS_VALUE)
-  {
-    m_lastDTS = m_curDTS;
-    m_lastPTS = m_curPTS;
-  }
-
-  psize -= hlen - 6;
-  uint8_t *buf = m_subtitleBuffer + hlen;
-
-  if (psize < 2 || buf[0] != 0x20 || buf[1] != 0x00)
-    return;
-
-  psize -= 2;
-  buf += 2;
-
-  if (psize >= 6)
-  {
-    // end_of_PES_data_field_marker
-    if (buf[psize - 1] == 0xff)
-    {
-      sStreamPacket pkt;
-      pkt.data     = buf;
-      pkt.size     = psize - 1;
-      pkt.duration = m_curDTS-m_lastDTS;
-      pkt.dts      = m_curPTS;
-      pkt.pts      = m_curPTS;
-      m_demuxer->SendPacket(&pkt);
-
-      m_lastDTS = m_curDTS;
-      m_lastPTS = m_curPTS;
-    }
-  }
-
+  cParser::SendPayload(payload, length);
 }

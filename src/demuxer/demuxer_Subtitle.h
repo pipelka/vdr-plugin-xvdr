@@ -1,7 +1,7 @@
 /*
  *      vdr-plugin-xvdr - XVDR server plugin for VDR
  *
- *      Copyright (C) 2010 Alwin Esch (Team XBMC)
+ *      Copyright (C) 2012 Alexander Pipelka
  *
  *      https://github.com/pipelka/vdr-plugin-xvdr
  *
@@ -25,29 +25,18 @@
 #ifndef XVDR_DEMUXER_SUBTITLE_H
 #define XVDR_DEMUXER_SUBTITLE_H
 
-#include "demuxer.h"
-#include "parser.h"
+#include "demuxer_PES.h"
 
-// --- cParserSubtitle -------------------------------------------------
-
-class cParserSubtitle : public cParser
+class cParserSubtitle : public cParserPES
 {
-private:
-  bool        m_firstPUSIseen;
-  bool        m_PESStart;
-  uint8_t    *m_subtitleBuffer;
-  int         m_subtitleBufferSize;
-  int         m_subtitleBufferPtr;
-  int64_t     m_lastDTS;
-  int64_t     m_lastPTS;
-  int         m_lastLength;
-  int         m_curLength;
-
 public:
-  cParserSubtitle(cTSDemuxer *demuxer);
-  virtual ~cParserSubtitle();
 
-  virtual void Parse(unsigned char *data, int size, bool pusi);
+  cParserSubtitle(cTSDemuxer *demuxer);
+
+protected:
+
+  void SendPayload(unsigned char* payload, int length);
+
 };
 
 
