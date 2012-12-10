@@ -31,6 +31,7 @@
 #include "parser.h"
 #include "pes.h"
 #include "demuxer_LATM.h"
+#include "demuxer_ADTS.h"
 #include "demuxer_AC3.h"
 #include "demuxer_EAC3.h"
 #include "demuxer_h264.h"
@@ -79,7 +80,7 @@ cTSDemuxer::cTSDemuxer(cLiveStreamer *streamer, eStreamType type, int pid)
       break;
 
     case stAAC:
-      m_pesParser = NULL; //new cParser(this);
+      m_pesParser = new cParserADTS(this);
       m_streamContent = scAUDIO;
       break;
 
