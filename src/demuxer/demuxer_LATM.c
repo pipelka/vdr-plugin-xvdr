@@ -25,12 +25,7 @@
 
 #include "demuxer_LATM.h"
 #include "bitstream.h"
-
-static int aac_sample_rates[16] =
-{
-  96000, 88200, 64000, 48000, 44100, 32000,
-  24000, 22050, 16000, 12000, 11025, 8000, 7350
-};
+#include "aaccommon.h"
 
 static uint32_t LATMGetValue(cBitstream *bs) {
   return bs->readBits(bs->readBits(2) * 8);
@@ -187,9 +182,12 @@ void cParserLATM::ReadAudioSpecificConfig(cBitstream *bs) {
   if (m_samplerateindex == 0xf)
     return;
 
-  m_samplerate = aac_sample_rates[m_samplerateindex];
+  m_samplerate = aac_samplerates[m_samplerateindex];
   m_duration = 1024 * 90000 / m_samplerate;
-  m_channels = bs->readBits(4);
+
+  int channelindex = bs->readBits(4);
+  if(channelindex > 7) channelindex = 0;
+  m_channels = aac_channels[channelindex];
 
   bs->skipBits(1);      //framelen_flag
   if (bs->readBits1())  // depends_on_coder
