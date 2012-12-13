@@ -48,6 +48,8 @@ protected:
 
   virtual bool CheckAlignmentHeader(unsigned char* buffer, int& framesize);
 
+  int FindStartCode(unsigned char* buffer, int buffersize, int offset, uint32_t startcode, uint32_t mask = 0xFFFFFFFF);
+
   cTSDemuxer* m_demuxer;
 
   int64_t m_curPTS;

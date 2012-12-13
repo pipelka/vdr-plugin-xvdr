@@ -213,3 +213,17 @@ bool cParser::CheckAlignmentHeader(unsigned char* buffer, int& framesize) {
   framesize = 0;
   return true;
 }
+
+int cParser::FindStartCode(unsigned char* buffer, int buffersize, int offset, uint32_t startcode, uint32_t mask) {
+  uint32_t sc = 0xFFFFFFFF;
+
+  while(offset < buffersize) {
+
+    sc = (sc << 8) | buffer[offset++];
+
+    if(sc == startcode)
+      return offset - 4;
+  }
+
+  return -1;
+}
