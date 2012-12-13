@@ -142,18 +142,15 @@ int64_t cTSDemuxer::Rescale(int64_t a)
 
 void cTSDemuxer::SendPacket(sStreamPacket *pkt)
 {
-  if(pkt->dts == DVD_NOPTS_VALUE) return;
-  if(pkt->pts == DVD_NOPTS_VALUE) return;
-
-  int64_t dts = pkt->dts;
-  int64_t pts = pkt->pts;
+  int64_t dts = (pkt->dts == DVD_NOPTS_VALUE) ? pkt->dts : Rescale(pkt->dts);
+  int64_t pts = (pkt->pts == DVD_NOPTS_VALUE) ? pkt->pts : Rescale(pkt->pts);
 
   // Rescale
   pkt->type     = m_streamType;
   pkt->content  = m_streamContent;
   pkt->pid      = GetPID();
-  pkt->dts      = Rescale(dts);
-  pkt->pts      = Rescale(pts);
+  pkt->dts      = dts;
+  pkt->pts      = pts;
   pkt->duration = Rescale(pkt->duration);
 
   m_Streamer->sendStreamPacket(pkt);
