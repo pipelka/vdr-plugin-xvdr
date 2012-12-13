@@ -34,7 +34,7 @@
 #include "demuxer_ADTS.h"
 #include "demuxer_AC3.h"
 #include "demuxer_EAC3.h"
-#include "demuxer_h264.h"
+#include "demuxer_H264.h"
 #include "demuxer_MPEGAudio.h"
 #include "demuxer_MPEGVideo.h"
 #include "demuxer_PES.h"
