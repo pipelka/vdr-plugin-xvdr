@@ -26,28 +26,45 @@
 #include "vdr/remux.h"
 
 cParserPES::cParserPES(cTSDemuxer *demuxer, int buffersize) : cParser(demuxer, buffersize, 0), m_length(0) {
+  m_startup = true;
 }
 
 void cParserPES::Parse(unsigned char *data, int size, bool pusi) {
 
-  // packet ready ?
+  // packet completely assembled ?
   if(!m_startup) {
     int length = 0;
     uint8_t* buffer = Get(length);
 
-    if(length >= m_length && buffer != NULL) {
+    if(((length >= m_length && m_length != 0) || (m_length == 0 && pusi)) && buffer != NULL) {
+      // get buffer size for packets with undefined length
+      if(m_length == 0)
+        m_length = Available();
+
+      // parse payload
+      ParsePayload(buffer, m_length);
+
+      // send payload data
       SendPayload(buffer, m_length);
-      Clear();
     }
   }
 
+  // new packet
   if(pusi) {
-    int offset = ParsePESHeader(data, size);
-    m_length = PesLength(data) - PesPayloadOffset(data);
+    // get packet payload length
+    if(PesHasLength(data))
+      m_length = PesLength(data) - PesPayloadOffset(data);
+    else
+      m_length = 0;
 
+    // strip PES header
+    int offset = ParsePESHeader(data, size);
     data += offset;
     size -= offset;
     m_startup = false;
+
+    // reset buffer
+    Clear();
   }
 
   // we start with the beginning of a packet
