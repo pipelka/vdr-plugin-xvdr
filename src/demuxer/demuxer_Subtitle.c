@@ -24,7 +24,7 @@
 
 #include "demuxer_Subtitle.h"
 
-cParserSubtitle::cParserSubtitle(cTSDemuxer *demuxer) : cParserPES(demuxer, 8192) {
+cParserSubtitle::cParserSubtitle(cTSDemuxer *demuxer) : cParserPES(demuxer, 64 * 1024) {
 }
 
 void cParserSubtitle::SendPayload(unsigned char* payload, int length) {
