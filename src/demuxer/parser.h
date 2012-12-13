@@ -54,8 +54,6 @@ protected:
 
   int64_t m_curPTS;
   int64_t m_curDTS;
-  int64_t m_PTS;
-  int64_t m_DTS;
 
   int m_samplerate;
   int m_bitrate;
@@ -69,9 +67,9 @@ private:
 
   void PutData(unsigned char *data, int size, bool pusi);
 
-  int64_t PesGetPTS(const uint8_t *buf, int len);
+  /*int64_t PesGetPTS(const uint8_t *buf, int len);
 
-  int64_t PesGetDTS(const uint8_t *buf, int len);
+  int64_t PesGetDTS(const uint8_t *buf, int len);*/
 
   int FindAlignmentOffset(unsigned char* buffer, int buffersize, int startoffset, int& framesize);
 

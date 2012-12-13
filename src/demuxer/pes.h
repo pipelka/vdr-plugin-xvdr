@@ -25,6 +25,8 @@
 #ifndef XVDR_PES_H
 #define XVDR_PES_H
 
+#include "vdr/remux.h"
+
 // PES PIDs
 
 #define PRIVATE_STREAM1   0xBD
@@ -47,8 +49,6 @@
 #define ISO13522_STREAM   0xF3
 #define PROG_STREAM_DIR   0xFF
 
-#define PTS_MASK 0x1ffffffffLL
-
 // PES helper functions
 
 inline bool PesIsHeader(const uchar *p)
@@ -56,25 +56,27 @@ inline bool PesIsHeader(const uchar *p)
   return !(p)[0] && !(p)[1] && (p)[2] == 1;
 }
 
-inline bool PesIsVideoPacket(const uchar *p)
+#if VDRVERSNUM < 10732 // VDR VERSION < 1.7.32
+
+#define MAX33BIT  0x00000001FFFFFFFFLL // max. possible value with 33 bit
+
+inline bool PesHasDts(const uchar *p)
 {
-  return (((p)[3] & ~VIDEO_STREAM_MASK) == VIDEO_STREAM);
+  return (p[7] & 0x40) && p[8] >= 10;
 }
 
-inline bool PesIsMPEGAudioPacket(const uchar *p)
+inline int64_t PesGetDts(const uchar *p)
 {
-  return (((p)[3] & ~AUDIO_STREAM_MASK) == AUDIO_STREAM);
+  return ((((int64_t)p[14]) & 0x0E) << 29) |
+         (( (int64_t)p[15])         << 22) |
+         ((((int64_t)p[16]) & 0xFE) << 14) |
+         (( (int64_t)p[17])         <<  7) |
+         ((((int64_t)p[18]) & 0xFE) >>  1);
 }
 
-inline bool PesIsPS1Packet(const uchar *p)
-{
-  return ((p)[3] == PRIVATE_STREAM1 || (p)[3] == PRIVATE_STREAM3 );
-}
+inline int64_t PtsAdd(int64_t Pts1, int64_t Pts2) { return (Pts1 + Pts2) & MAX33BIT; }
 
-inline bool PesIsAudioPacket(const uchar *p)
-{
-  return (PesIsMPEGAudioPacket(p) || PesIsPS1Packet(p));
-}
+#endif // VERSION 1.7.32
 
 #endif // XVDR_PES_H
 

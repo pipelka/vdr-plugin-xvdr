@@ -26,7 +26,6 @@
 #include "config/config.h"
 #include "bitstream.h"
 #include "pes.h"
-#include "vdr/remux.h"
 
 cParser::cParser(cTSDemuxer *demuxer, int buffersize, int packetsize) : cRingBufferLinear(buffersize, packetsize), m_demuxer(demuxer), m_startup(true)
 {
@@ -38,57 +37,10 @@ cParser::cParser(cTSDemuxer *demuxer, int buffersize, int packetsize) : cRingBuf
 
   m_curPTS = DVD_NOPTS_VALUE;
   m_curDTS = DVD_NOPTS_VALUE;
-  m_PTS = DVD_NOPTS_VALUE;
-  m_DTS = DVD_NOPTS_VALUE;
 }
 
 cParser::~cParser()
 {
-}
-
-int64_t cParser::PesGetPTS(const uint8_t *buf, int len)
-{
-  /* assume mpeg2 pes header ... */
-  if (PesIsVideoPacket(buf) || PesIsAudioPacket(buf)) {
-
-    if ((buf[6] & 0xC0) != 0x80)
-      return DVD_NOPTS_VALUE;
-    if ((buf[6] & 0x30) != 0)
-      return DVD_NOPTS_VALUE;
-
-    if ((len > 13) && (buf[7] & 0x80)) { /* pts avail */
-      int64_t pts;
-      pts  = ((int64_t)(buf[ 9] & 0x0E)) << 29 ;
-      pts |= ((int64_t) buf[10])         << 22 ;
-      pts |= ((int64_t)(buf[11] & 0xFE)) << 14 ;
-      pts |= ((int64_t) buf[12])         <<  7 ;
-      pts |= ((int64_t)(buf[13] & 0xFE)) >>  1 ;
-      return pts;
-    }
-  }
-  return DVD_NOPTS_VALUE;
-}
-
-int64_t cParser::PesGetDTS(const uint8_t *buf, int len)
-{
-  if (PesIsVideoPacket(buf) || PesIsAudioPacket(buf))
-  {
-    if ((buf[6] & 0xC0) != 0x80)
-      return DVD_NOPTS_VALUE;
-    if ((buf[6] & 0x30) != 0)
-      return DVD_NOPTS_VALUE;
-
-    if (len > 18 && (buf[7] & 0x40)) { /* dts avail */
-      int64_t dts;
-      dts  = ((int64_t)( buf[14] & 0x0E)) << 29 ;
-      dts |=  (int64_t)( buf[15]         << 22 );
-      dts |=  (int64_t)((buf[16] & 0xFE) << 14 );
-      dts |=  (int64_t)( buf[17]         <<  7 );
-      dts |=  (int64_t)((buf[18] & 0xFE) >>  1 );
-      return dts;
-    }
-  }
-  return DVD_NOPTS_VALUE;
 }
 
 int cParser::ParsePESHeader(uint8_t *buf, size_t len)
@@ -97,23 +49,14 @@ int cParser::ParsePESHeader(uint8_t *buf, size_t len)
   unsigned int hdr_len = PesPayloadOffset(buf);
 
   // PTS / DTS
-  int64_t pts = PesGetPTS(buf, len);
-  int64_t dts = PesGetDTS(buf, len);
+  int64_t pts = PesHasPts(buf) ? PesGetPts(buf) : DVD_NOPTS_VALUE;
+  int64_t dts = PesHasDts(buf) ? PesGetDts(buf) : DVD_NOPTS_VALUE;
 
   if (dts == DVD_NOPTS_VALUE)
    dts = pts;
 
-  dts = dts & PTS_MASK;
-  pts = pts & PTS_MASK;
-
   if(pts != 0) m_curDTS = dts;
   if(dts != 0) m_curPTS = pts;
-
-  if (m_DTS == DVD_NOPTS_VALUE)
-    m_DTS = m_curDTS;
-
-  if (m_PTS == DVD_NOPTS_VALUE)
-    m_PTS = m_curPTS;
 
   return hdr_len;
 }
@@ -169,8 +112,8 @@ void cParser::Parse(unsigned char *data, int datasize, bool pusi)
       ParsePayload(buffer, framesize);
       SendPayload(buffer, framesize);
 
-      m_curPTS += m_duration;
-      m_curDTS += m_duration;
+      m_curPTS = PtsAdd(m_curPTS, m_duration);
+      m_curDTS = PtsAdd(m_curDTS, m_duration);
 
       Del(framesize);
     }
