@@ -129,10 +129,9 @@ void cLiveStreamer::RequestStreamChange()
 
 void cLiveStreamer::Action(void)
 {
-  int size              = 0;
-  int used              = 0;
-  unsigned char *buf    = NULL;
-  m_startup             = true;
+  int size = 0;
+  unsigned char *buf = NULL;
+  m_startup = true;
 
   cTimeMs last_info;
   last_info.Set(0);
@@ -140,7 +139,6 @@ void cLiveStreamer::Action(void)
   while (Running())
   {
     size = 0;
-    used = 0;
     buf = Get(size);
 
     if (!IsAttached())
@@ -163,6 +161,7 @@ void cLiveStreamer::Action(void)
       continue;
 
     // Sync to TS packet
+    int used = 0;
     while (size > TS_SIZE)
     {
       if (buf[0] == TS_SYNC_BYTE && buf[TS_SIZE] == TS_SYNC_BYTE)
@@ -171,37 +170,32 @@ void cLiveStreamer::Action(void)
       buf++;
       size--;
     }
+    Del(used);
 
-    // TS packet sync not found !
-    if (buf[0] != TS_SYNC_BYTE)
-    {
-      Del(used);
-      continue;
-    }
 
     while (size >= TS_SIZE)
     {
       if(!Running())
-      {
         break;
-      }
+
+      // TS packet sync not found !
+      if (buf[0] != TS_SYNC_BYTE)
+        break;
 
       unsigned int ts_pid = TsPid(buf);
 
-      m_FilterMutex.Lock();
-      cTSDemuxer *demuxer = FindStreamDemuxer(ts_pid);
-      //INFOLOG("TS PID: %i", ts_pid);
-      if (demuxer)
       {
-        demuxer->ProcessTSPacket(buf);
+        cMutexLock lock(&m_FilterMutex);
+        cTSDemuxer *demuxer = FindStreamDemuxer(ts_pid);
+
+        if (demuxer)
+          demuxer->ProcessTSPacket(buf);
       }
-      m_FilterMutex.Unlock();
 
       buf += TS_SIZE;
       size -= TS_SIZE;
-      used += TS_SIZE;
+      Del(TS_SIZE);
     }
-    Del(used);
 
     if(last_info.Elapsed() >= 10*1000 && IsReady())
     {
@@ -220,7 +214,7 @@ int cLiveStreamer::StreamChannel(const cChannel *channel, int sock)
     return XVDR_RET_ERROR;
   }
 
-  m_uid      = CreateChannelUID(channel);
+  m_uid = CreateChannelUID(channel);
 
   // check if any device is able to decrypt the channel - code taken from VDR
   int NumUsableSlots = 0;
