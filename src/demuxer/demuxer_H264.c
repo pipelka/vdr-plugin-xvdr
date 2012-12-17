@@ -1,7 +1,7 @@
 /*
  *      vdr-plugin-xvdr - XVDR server plugin for VDR
  *
- *      Copyright (C) 20120 Alexander Pipelka
+ *      Copyright (C) 2012 Alexander Pipelka
  *
  *      https://github.com/pipelka/vdr-plugin-xvdr
  *
