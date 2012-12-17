@@ -1657,6 +1657,7 @@ bool cXVDRClient::processRECORDINGS_Rename() /* OPCODE 103 */
     Recordings.Update();
 
     free(filename_old);
+    delete[] filename_new;
   }
 
   m_resp->put_U32(r);
