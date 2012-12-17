@@ -67,10 +67,6 @@ private:
 
   void PutData(unsigned char *data, int size, bool pusi);
 
-  /*int64_t PesGetPTS(const uint8_t *buf, int len);
-
-  int64_t PesGetDTS(const uint8_t *buf, int len);*/
-
   int FindAlignmentOffset(unsigned char* buffer, int buffersize, int startoffset, int& framesize);
 
 };
