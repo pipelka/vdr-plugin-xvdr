@@ -59,14 +59,9 @@ enum eStreamType
   stTELETEXT,
 };
 
-#define PKT_I_FRAME 1
-#define PKT_P_FRAME 2
-#define PKT_B_FRAME 3
-#define PKT_NTYPES  4
 struct sStreamPacket
 {
   sStreamPacket() {
-    frametype = 0;
     type = stNONE;
     content = scNONE;
   }
@@ -78,10 +73,6 @@ struct sStreamPacket
   int64_t   dts;
   int64_t   pts;
   int       duration;
-
-  uint8_t   commercial;
-  uint8_t   componentindex;
-  uint8_t   frametype;
 
   uint8_t  *data;
   int       size;
