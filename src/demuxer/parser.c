@@ -78,9 +78,16 @@ void cParser::PutData(unsigned char* data, int length, bool pusi)
   // get PTS / DTS on PES start
   if (pusi)
   {
+    int64_t pts = m_curPTS;
+    int64_t dts = m_curDTS;
+
     int offset = ParsePESHeader(data, length);
     data += offset;
     length -= offset;
+
+    if(pts > m_curPTS) m_curPTS = pts;
+    if(dts > m_curDTS) m_curDTS = dts;
+
     m_startup = false;
   }
 
@@ -97,15 +104,9 @@ void cParser::Parse(unsigned char *data, int datasize, bool pusi)
   int length = 0;
   uint8_t* buffer = Get(length);
 
-  if(length < m_headersize || buffer == NULL)
-  {
-    PutData(data, datasize, pusi);
-    return;
-  }
-
   // do we have a sync ?
   int framesize = 0;
-  if(CheckAlignmentHeader(buffer, framesize))
+  if(length > m_headersize && buffer != NULL && CheckAlignmentHeader(buffer, framesize))
   {
     if(framesize > 0 && length >= framesize)
     {
