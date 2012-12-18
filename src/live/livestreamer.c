@@ -72,7 +72,7 @@ cLiveStreamer::cLiveStreamer(int priority, uint32_t timeout)
   if(m_scanTimeout == 0)
     m_scanTimeout = XVDRServerConfig.stream_timeout;
 
-  SetTimeouts(0, 100);
+  SetTimeouts(0, 10);
 }
 
 cLiveStreamer::~cLiveStreamer()
