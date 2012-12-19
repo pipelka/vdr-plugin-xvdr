@@ -55,7 +55,7 @@ bool cParserMPEG2Audio::ParseAudioHeader(uint8_t* buffer, int& channels, int& sa
   uint32_t header = ((buffer[0] << 24) | (buffer[1] << 16) | (buffer[2] <<  8) | buffer[3]);
 
   // syncword FFE
-  if ((header & 0xfff00000) != 0xfff00000)
+  if ((header & 0xffe00000) != 0xffe00000)
     return false;
 
   int lsf = 0;
