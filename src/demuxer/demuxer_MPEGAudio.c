@@ -30,8 +30,7 @@
 
 static const uint16_t FrequencyTable[3] = { 44100, 48000, 32000 };
 
-static const uint16_t BitrateTable[2][3][15] =
-{
+static const uint16_t BitrateTable[2][3][15] = {
   {
     {0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448 },
     {0, 32, 48, 56, 64,  80,  96,  112, 128, 160, 192, 224, 256, 320, 384 },
@@ -43,6 +42,13 @@ static const uint16_t BitrateTable[2][3][15] =
     {0, 8,  16, 24, 32,  40,  48,  56,  64,  80,  96,  112, 128, 144, 160}
   }
 };
+
+static const int Coefficients[2][3] = {
+  { 12, 144, 144 },
+  { 12, 144, 72 }
+};
+
+const int SlotSizes[3] = { 4, 1, 1 };
 
 
 cParserMPEG2Audio::cParserMPEG2Audio(cTSDemuxer *demuxer) : cParser(demuxer, 64 * 1024, 2048)
@@ -98,10 +104,7 @@ bool cParserMPEG2Audio::ParseAudioHeader(uint8_t* buffer, int& channels, int& sa
     return false;
 
   // frame size in bytes
-  if(layer == 1)
-    framesize = (12 * bitrate / samplerate + padding) * 4;
-  else
-    framesize = 144 * bitrate / samplerate + padding;
+  framesize = ((Coefficients[lsf][layer - 1] * bitrate) / samplerate + padding) * SlotSizes[layer - 1];
 
   return true;
 }
