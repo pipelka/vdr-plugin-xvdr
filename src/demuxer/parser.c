@@ -94,7 +94,13 @@ void cParser::PutData(unsigned char* data, int length, bool pusi)
   // put data
   if(!m_startup && length > 0 && data != NULL)
   {
-    Put(data, length);
+    int put = Put(data, length);
+    // reset buffer on overflow
+    if(put < length)
+    {
+      ERRORLOG("Parser buffer overflow - resetting");
+      Clear();
+    }
   }
 }
 
