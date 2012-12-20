@@ -46,6 +46,30 @@ const struct cParserH264::pixel_aspect_t cParserH264::m_aspect_ratios[] = {
 #define NAL_SPS 0x07
 
 
+// golomb decoding
+uint32_t read_golomb_ue(cBitstream* bs)
+{
+  int leadingZeroBits = -1;
+
+  for (uint32_t b = 0; !b; ++leadingZeroBits)
+    b = bs->readBits(1);
+
+  return ((1 << leadingZeroBits) - 1) + bs->readBits(leadingZeroBits);
+}
+
+int32_t read_golomb_se(cBitstream* bs)
+{
+  int32_t v = read_golomb_ue(bs);
+  if(v == 0)
+    return 0;
+
+  int32_t neg = v & 1;
+  v = (v + 1) >> 1;
+
+  return neg ? -v : v;
+}
+
+
 cParserH264::cParserH264(cTSDemuxer *demuxer) : cParserPES(demuxer, 512 * 1024)
 {
 }
@@ -116,6 +140,7 @@ int cParserH264::nalUnescape(uint8_t *dst, const uint8_t *src, int len)
 
 bool cParserH264::Parse_SPS(uint8_t *buf, int len, struct pixel_aspect_t& pixelaspect, int& width, int& height)
 {
+  bool seq_scaling_matrix_present = false;
   cBitstream bs(buf, len * 8);
 
   int profile_idc = bs.readBits(8); // profile idc
@@ -137,7 +162,7 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len, struct pixel_aspect_t& pixela
   bs.skipBits(8); // constraint set flag 0-4, 4 bits reserved
 
   bs.skipBits(8); // level idc
-  bs.readGolombUE(); // sequence parameter set id
+  read_golomb_ue(&bs); // sequence parameter set id
 
   // high profile ?
   if (profile_idc == PROFILE_HP ||
@@ -146,45 +171,45 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len, struct pixel_aspect_t& pixela
       profile_idc == PROFILE_HI444 ||
       profile_idc == PROFILE_CAVLC444)
   {
-    if(bs.readGolombUE() == 3) // chroma_format_idc
+    int chroma_format_idc = read_golomb_ue(&bs);
+    if(chroma_format_idc == 3) // chroma_format_idc
       bs.skipBits(1); // residual_colour_transform_flag
 
-    bs.readGolombUE(); // bit_depth_luma - 8
-    bs.readGolombUE(); // bit_depth_chroma - 8
+    read_golomb_ue(&bs); // bit_depth_luma - 8
+    read_golomb_ue(&bs); // bit_depth_chroma - 8
     bs.skipBits(1); // transform_bypass
 
-    if (bs.readBits1()) // seq_scaling_matrix_present
+    seq_scaling_matrix_present = bs.readBits1();
+
+    if (seq_scaling_matrix_present) // seq_scaling_matrix_present
     {
-      for (int i = 0; i < 8; i++)
+      for (int i = 0; i < ((chroma_format_idc != 3) ? 8 : 12); i++)
       {
         if (bs.readBits1()) // seq_scaling_list_present
         {
-          int last = 8, next = 8, size = (i<6) ? 16 : 64;
-          for (int j = 0; j < size; j++)
-          {
-            if (next)
-              next = (last + bs.readGolombSE()) & 0xff;
-            last = next ?: last;
-          }
+          int s = (i<6) ? 16 : 64;
+
+          for (int j = 0; j < s; j++)
+            read_golomb_se(&bs);
         }
       }
     }
   }
 
-  bs.readGolombUE(); // log2_max_frame_num - 4
-  int pic_order_cnt_type = bs.readGolombUE();
+  read_golomb_ue(&bs); // log2_max_frame_num - 4
+  int pic_order_cnt_type = read_golomb_ue(&bs);
 
   if (pic_order_cnt_type == 0)
-    bs.readGolombUE(); // log2_max_poc_lsb - 4
+    read_golomb_ue(&bs); // log2_max_poc_lsb - 4
   else if (pic_order_cnt_type == 1)
   {
     bs.skipBits(1); // delta_pic_order_always_zero
-    bs.readGolombSE(); // offset_for_non_ref_pic
-    bs.readGolombSE(); // offset_for_top_to_bottom_field
+    read_golomb_se(&bs); // offset_for_non_ref_pic
+    read_golomb_se(&bs); // offset_for_top_to_bottom_field
 
-    unsigned int tmp = bs.readGolombUE(); // num_ref_frames_in_pic_order_cnt_cycle
+    unsigned int tmp = read_golomb_ue(&bs); // num_ref_frames_in_pic_order_cnt_cycle
     for (unsigned int i = 0; i < tmp; i++)
-      bs.readGolombSE(); // offset_for_ref_frame
+      read_golomb_se(&bs); // offset_for_ref_frame
   }
   else if(pic_order_cnt_type != 2)
   {
@@ -192,11 +217,11 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len, struct pixel_aspect_t& pixela
     return false;
   }
 
-  bs.readGolombUE(); // ref_frames
+  read_golomb_ue(&bs); // ref_frames
   bs.skipBits(1); // gaps_in_frame_num_allowed
 
-  width = bs.readGolombUE() + 1;
-  height = bs.readGolombUE() + 1;
+  width = read_golomb_ue(&bs) + 1;
+  height = read_golomb_ue(&bs) + 1;
   unsigned int frame_mbs_only = bs.readBits1();
 
   width  *= 16;
@@ -210,10 +235,10 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len, struct pixel_aspect_t& pixela
   // frame_cropping_flag
   if (bs.readBits1())
   {
-    uint32_t crop_left   = bs.readGolombUE();
-    uint32_t crop_right  = bs.readGolombUE();
-    uint32_t crop_top    = bs.readGolombUE();
-    uint32_t crop_bottom = bs.readGolombUE();
+    uint32_t crop_left = read_golomb_ue(&bs);
+    uint32_t crop_right = read_golomb_ue(&bs);
+    uint32_t crop_top = read_golomb_ue(&bs);
+    uint32_t crop_bottom = read_golomb_ue(&bs);
 
     width -= 2*(crop_left + crop_right);
 

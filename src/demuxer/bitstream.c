@@ -84,34 +84,10 @@ unsigned int cBitstream::showBits(int num)
   return r;
 }
 
-unsigned int cBitstream::readGolombUE()
-{
-  int lzb = -1;
-
-  for(int b = 0; !b; lzb++)
-    b = readBits1();
-
-  return (1 << lzb) - 1 + readBits(lzb);
-}
-
-signed int cBitstream::readGolombSE()
-{
-  int v, neg;
-  v = readGolombUE();
-  if(v == 0)
-    return 0;
-
-  neg = v & 1;
-  v = (v + 1) >> 1;
-  return neg ? -v : v;
-}
-
-
 unsigned int cBitstream::remainingBits()
 {
   return m_len - m_offset;
 }
-
 
 void cBitstream::putBits(int val, int num)
 {
@@ -129,3 +105,4 @@ void cBitstream::putBits(int val, int num)
     m_offset++;
   }
 }
+

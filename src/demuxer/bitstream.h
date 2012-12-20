@@ -40,8 +40,6 @@ public:
   unsigned int readBits(int num);
   unsigned int showBits(int num);
   unsigned int readBits1() { return readBits(1); }
-  unsigned int readGolombUE();
-  signed int   readGolombSE();
   unsigned int remainingBits();
   void         putBits(int val, int num);
   int          length() { return m_len; }
