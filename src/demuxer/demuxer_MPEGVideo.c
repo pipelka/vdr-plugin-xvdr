@@ -64,7 +64,7 @@ void cParserMPEG2Video::ParseSequenceStart(unsigned char* data, int length) {
   int height = bs.readBits(12);
 
   // display aspect ratio
-  double DAR = DAR = aspectratios[bs.readBits(4)];
+  double DAR = aspectratios[bs.readBits(4)];
 
   // frame rate / duration
   m_duration = framedurations[bs.readBits(4)];
