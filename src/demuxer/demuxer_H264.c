@@ -63,7 +63,7 @@ int32_t read_golomb_se(cBitstream* bs)
   if(v == 0)
     return 0;
 
-  int32_t neg = v & 1;
+  int32_t neg = !(v & 1);
   v = (v + 1) >> 1;
 
   return neg ? -v : v;
@@ -183,14 +183,17 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len, struct pixel_aspect_t& pixela
 
     if (seq_scaling_matrix_present) // seq_scaling_matrix_present
     {
-      for (int i = 0; i < ((chroma_format_idc != 3) ? 8 : 12); i++)
+      for (int i = 0; i < 8; i++)
       {
         if (bs.readBits1()) // seq_scaling_list_present
         {
-          int s = (i<6) ? 16 : 64;
-
-          for (int j = 0; j < s; j++)
-            read_golomb_se(&bs);
+          int last = 8, next = 8, size = (i<6) ? 16 : 64;
+          for (int j = 0; j < size; j++) {
+            if (next) {
+              next = (last + read_golomb_se(&bs)) & 0xff;
+            }
+            last = next ?: last;
+          }
         }
       }
     }
