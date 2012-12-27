@@ -159,3 +159,100 @@ void cStreamInfo::info() const {
 
   INFOLOG("Stream: %s PID: %i %s", TypeName(m_type), m_pid, buffer);
 }
+
+std::fstream& operator<< (std::fstream& lhs, const cStreamInfo& rhs) {
+  // write item sync
+  lhs << (int)0xFEFEFEFE << std::endl;
+
+  // write general data
+  lhs << rhs.m_type << std::endl;
+  lhs << rhs.m_content << std::endl;
+  lhs << rhs.m_pid << std::endl;
+
+  // write specific data
+  switch(rhs.m_content) {
+    case cStreamInfo::scAUDIO:
+      lhs << rhs.m_language << std::endl;
+      lhs << rhs.m_audiotype << std::endl;
+      lhs << rhs.m_channels << std::endl;
+      lhs << rhs.m_samplerate << std::endl;
+      lhs << rhs.m_bitrate << std::endl;
+      lhs << rhs.m_bitspersample << std::endl;
+      lhs << rhs.m_blockalign << std::endl;
+      break;
+    case cStreamInfo::scVIDEO:
+      lhs << rhs.m_fpsscale << std::endl;
+      lhs << rhs.m_fpsrate << std::endl;
+      lhs << rhs.m_height << std::endl;
+      lhs << rhs.m_width << std::endl;
+      lhs << (unsigned long long)(rhs.m_aspect * 1000000000) << std::endl;
+      break;
+    case cStreamInfo::scSUBTITLE:
+      lhs << rhs.m_language << std::endl;
+      lhs << rhs.m_subtitlingtype << std::endl;
+      lhs << rhs.m_compositionpageid << std::endl;
+      lhs << rhs.m_ancillarypageid << std::endl;
+      break;
+    case cStreamInfo::scTELETEXT:
+      break;
+    default:
+      break;
+  }
+
+  return lhs;
+}
+
+std::fstream& operator>> (std::fstream& lhs, cStreamInfo& rhs) {
+  unsigned long long a;
+  unsigned int check = 0;
+  lhs >> check;
+
+  if(check != 0xFEFEFEFE)
+    return lhs;
+
+  // read general data
+  int t = 0;
+  lhs >> t;
+  rhs.m_type = static_cast<cStreamInfo::Type>(t);
+
+  int c = 0;
+  lhs >> c;
+  rhs.m_content = static_cast<cStreamInfo::Content>(c);
+
+  lhs >> rhs.m_pid;
+
+  // read specific data
+  switch(rhs.m_content) {
+    case cStreamInfo::scAUDIO:
+      lhs >> rhs.m_language;
+      lhs >> rhs.m_audiotype;
+      lhs >> rhs.m_channels;
+      lhs >> rhs.m_samplerate;
+      lhs >> rhs.m_bitrate;
+      lhs >> rhs.m_bitspersample;
+      lhs >> rhs.m_blockalign;
+      break;
+    case cStreamInfo::scVIDEO:
+      lhs >> rhs.m_fpsscale;
+      lhs >> rhs.m_fpsrate;
+      lhs >> rhs.m_height;
+      lhs >> rhs.m_width;
+      lhs >> a;
+      rhs.m_aspect = (double)a / 1000000000.0;
+      break;
+    case cStreamInfo::scSUBTITLE:
+      lhs >> rhs.m_language;
+      lhs >> rhs.m_subtitlingtype;
+      lhs >> rhs.m_compositionpageid;
+      lhs >> rhs.m_ancillarypageid;
+      break;
+    case cStreamInfo::scTELETEXT:
+      break;
+    default:
+      break;
+  }
+
+  rhs.m_parsed = true;
+
+  return lhs;
+}

@@ -42,6 +42,7 @@
 
 #include "xvdrserver.h"
 #include "xvdrclient.h"
+#include "live/channelcache.h"
 #include "recordings/recordingscache.h"
 #include "net/os-config.h"
 
@@ -147,6 +148,9 @@ cXVDRServer::~cXVDRServer()
   }
   m_clients.erase(m_clients.begin(), m_clients.end());
   Cancel();
+
+  cChannelCache::SaveChannelCacheData();
+
   INFOLOG("XVDR Server stopped");
 }
 
@@ -222,6 +226,7 @@ void cXVDRServer::Action(void)
   fd_set fds;
   struct timeval tv;
   cTimeMs channelReloadTimer;
+  cTimeMs channelCacheTimer;
   bool channelReloadTrigger = false;
 
   SetPriority(19);
@@ -252,14 +257,20 @@ void cXVDRServer::Action(void)
       // remove disconnected clients
       for (ClientList::iterator i = m_clients.begin(); i != m_clients.end();)
       {
+        bool bChanged = false;
+
         if (!(*i)->Active())
         {
           INFOLOG("Client with ID %u seems to be disconnected, removing from client list", (*i)->GetID());
           delete (*i);
           i = m_clients.erase(i);
+          bChanged = true;
         }
         else {
           i++;
+        }
+        if(bChanged) {
+          cChannelCache::SaveChannelCacheData();
         }
       }
 
@@ -288,6 +299,12 @@ void cXVDRServer::Action(void)
         ShutdownHandler.SetUserInactiveTimeout();
       }
 
+      // store channel cache
+      if(m_clients.size() > 0 && channelCacheTimer.Elapsed() >= 60*1000) {
+        cChannelCache::SaveChannelCacheData();
+        channelCacheTimer.Set(0);
+      }
+
       // update recordings
       Recordings.StateChanged(recState);
       if(recState != recStateOld || cRecordingsCache::GetInstance().Changed())
@@ -300,6 +317,8 @@ void cXVDRServer::Action(void)
         for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++)
           (*i)->RecordingsChange();
       }
+
+      // no connect request -> continue waiting
       continue;
     }
 

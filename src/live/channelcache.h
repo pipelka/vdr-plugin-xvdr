@@ -29,6 +29,7 @@
 #include "demuxer/demuxer.h"
 #include <list>
 #include <map>
+#include <fstream>
 #include <string.h>
 
 class cLiveStreamer;
@@ -50,6 +51,10 @@ public:
 
   bool changed() const { return m_bChanged; }
 
+  static void LoadChannelCacheData();
+
+  static void SaveChannelCacheData();
+
   static void AddToCache(uint32_t channeluid, const cChannelCache& channel);
 
   static cChannelCache GetFromCache(uint32_t channeluid);
@@ -66,5 +71,9 @@ private:
 
   bool m_bChanged;
 };
+
+std::fstream& operator<< (std::fstream& lhs, const cChannelCache& rhs);
+
+std::fstream& operator>> (std::fstream& lhs, cChannelCache& rhs);
 
 #endif // XVDR_CHANNELCACHEITEM_H

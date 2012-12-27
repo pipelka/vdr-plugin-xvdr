@@ -55,6 +55,7 @@
 #define FRONTEND_DEVICE     "/dev/dvb/adapter%d/frontend%d"
 #define GENERAL_CONFIG_FILE "xvdr.conf"
 #define RESUME_DATA_FILE    "resume.data"
+#define CHANNEL_CACHE_FILE  "channelcache.data"
 
 #define LISTEN_PORT       34891
 #define LISTEN_PORT_S    "34891"

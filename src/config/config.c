@@ -32,6 +32,7 @@
 #include <vdr/videodir.h>
 
 #include "config.h"
+#include "live/channelcache.h"
 #include "live/livequeue.h"
 #include "recordings/recordingscache.h"
 
@@ -56,6 +57,7 @@ void cXVDRServerConfig::Load() {
   }
 
   cLiveQueue::RemoveTimeShiftFiles();
+  cChannelCache::LoadChannelCacheData();
 }
 
 bool cXVDRServerConfig::Parse(const char* Name, const char* Value)

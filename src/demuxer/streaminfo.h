@@ -26,6 +26,7 @@
 #define XVDR_STREAMINFO_H
 
 #include <stdint.h>
+#include <fstream>
 #include <string>
 
 class cStreamInfo {
@@ -84,7 +85,6 @@ public:
 
   void info() const;
 
-
 protected:
 
   Content m_content;   // stream content (e.g. scVIDEO)
@@ -123,5 +123,9 @@ private:
   void Initialize();
 
 };
+
+std::fstream& operator<< (std::fstream& lhs, const cStreamInfo& rhs);
+
+std::fstream& operator>> (std::fstream& lhs, cStreamInfo& rhs);
 
 #endif // XVDR_STREAMINFO_H
