@@ -65,7 +65,7 @@ cLivePatFilter::cLivePatFilter(cLiveStreamer *Streamer, const cChannel *Channel)
 
 }
 
-void cLivePatFilter::GetLanguage(SI::PMT::Stream& stream, char *langs, int& type)
+void cLivePatFilter::GetLanguage(SI::PMT::Stream& stream, char *langs, uint8_t& type)
 {
   SI::Descriptor *d;
   for (SI::Loop::Iterator it; (d = stream.streamDescriptors.getNext(it)); )
@@ -90,13 +90,13 @@ void cLivePatFilter::GetLanguage(SI::PMT::Stream& stream, char *langs, int& type
   }
 }
 
-bool cLivePatFilter::GetStreamInfo(SI::PMT::Stream& stream, struct StreamInfo& info)
+bool cLivePatFilter::GetStreamInfo(SI::PMT::Stream& stream, cStreamInfo& info)
 {
   SI::Descriptor *d;
 
-  info.pid = stream.getPid();
+  info.m_pid = stream.getPid();
 
-  if (!info.pid)
+  if (!info.m_pid)
     return false;
 
   switch (stream.getStreamType())
@@ -105,26 +105,26 @@ bool cLivePatFilter::GetStreamInfo(SI::PMT::Stream& stream, struct StreamInfo& i
     case 0x02: // ISO/IEC 13818-2 Video
     case 0x80: // ATSC Video MPEG2 (ATSC DigiCipher QAM)
       DEBUGLOG("PMT scanner adding PID %d (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()]);
-      info.type = stMPEG2VIDEO;
+      info.m_type = cStreamInfo::stMPEG2VIDEO;
       return true;
 
     case 0x03: // ISO/IEC 11172 Audio
     case 0x04: // ISO/IEC 13818-3 Audio
-      info.type = stMPEG2AUDIO;
-      GetLanguage(stream, info.lang, info.audioType);
-      DEBUGLOG("PMT scanner adding PID %d (%s) (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], info.lang);
+      info.m_type = cStreamInfo::stMPEG2AUDIO;
+      GetLanguage(stream, info.m_language, info.m_audiotype);
+      DEBUGLOG("PMT scanner adding PID %d (%s) (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], info.m_language);
       return true;
 
     case 0x0f: // ISO/IEC 13818-7 Audio with ADTS transport syntax
-      info.type = stAAC;
-      GetLanguage(stream, info.lang, info.audioType);
-      DEBUGLOG("PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "AAC", info.lang);
+      info.m_type = cStreamInfo::stAAC;
+      GetLanguage(stream, info.m_language, info.m_audiotype);
+      DEBUGLOG("PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "AAC", info.m_language);
       return true;
 
     case 0x11: // ISO/IEC 14496-3 Audio with LATM transport syntax
-      info.type = stLATM;
-      GetLanguage(stream, info.lang, info.audioType);
-      DEBUGLOG("PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "LATM", info.lang);
+      info.m_type = cStreamInfo::stLATM;
+      GetLanguage(stream, info.m_language, info.m_audiotype);
+      DEBUGLOG("PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "LATM", info.m_language);
       return true;
 
 #if 1
@@ -142,7 +142,7 @@ bool cLivePatFilter::GetStreamInfo(SI::PMT::Stream& stream, struct StreamInfo& i
 
     case 0x1b: // ISO/IEC 14496-10 Video (MPEG-4 part 10/AVC, aka H.264)
       DEBUGLOG("PMT scanner adding PID %d (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()]);
-      info.type = stH264;
+      info.m_type = cStreamInfo::stH264;
       return true;
 
     case 0x05: // ISO/IEC 13818-1 private sections
@@ -152,56 +152,56 @@ bool cLivePatFilter::GetStreamInfo(SI::PMT::Stream& stream, struct StreamInfo& i
         switch (d->getDescriptorTag())
         {
           case SI::AC3DescriptorTag:
-            info.type = stAC3;
-            GetLanguage(stream, info.lang, info.audioType);
-            DEBUGLOG("PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "AC3", info.lang);
+            info.m_type = cStreamInfo::stAC3;
+            GetLanguage(stream, info.m_language, info.m_audiotype);
+            DEBUGLOG("PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "AC3", info.m_language);
             delete d;
             return true;
 
           case SI::EnhancedAC3DescriptorTag:
-            info.type = stEAC3;
-            GetLanguage(stream, info.lang, info.audioType);
-            DEBUGLOG("PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "EAC3", info.lang);
+            info.m_type = cStreamInfo::stEAC3;
+            GetLanguage(stream, info.m_language, info.m_audiotype);
+            DEBUGLOG("PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "EAC3", info.m_language);
             delete d;
             return true;
 
-          case SI::DTSDescriptorTag:
-            info.type = stDTS;
-            GetLanguage(stream, info.lang, info.audioType);
-            DEBUGLOG("PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "DTS", info.lang);
+          /*case SI::DTSDescriptorTag:
+            info.m_type = cStreamInfo::stDTS;
+            GetLanguage(stream, info.m_language, info.m_audiotype);
+            DEBUGLOG("PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "DTS", info.m_language);
             delete d;
-            return true;
+            return true;*/
 
           case SI::AACDescriptorTag:
-            info.type = stAAC;
-            GetLanguage(stream, info.lang, info.audioType);
-            DEBUGLOG("PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "AAC", info.lang);
+            info.m_type = cStreamInfo::stAAC;
+            GetLanguage(stream, info.m_language, info.m_audiotype);
+            DEBUGLOG("PMT scanner: adding PID %d (%s) %s (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "AAC", info.m_language);
             delete d;
             return true;
 
           case SI::TeletextDescriptorTag:
-            info.type = stTELETEXT;
+            info.m_type = cStreamInfo::stTELETEXT;
             DEBUGLOG("PMT scanner: adding PID %d (%s) %s\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "Teletext");
             delete d;
             return true;
 
           case SI::SubtitlingDescriptorTag:
           {
-            info.type              = stDVBSUB;
-            info.subtitlingType    = 0;
-            info.compositionPageId = 0;
-            info.ancillaryPageId   = 0;
+            info.m_type = cStreamInfo::stDVBSUB;
+            info.m_subtitlingtype = 0;
+            info.m_compositionpageid = 0;
+            info.m_ancillarypageid   = 0;
             SI::SubtitlingDescriptor *sd = (SI::SubtitlingDescriptor *)d;
             SI::SubtitlingDescriptor::Subtitling sub;
-            char *s = info.lang;
+            char *s = info.m_language;
             int n = 0;
             for (SI::Loop::Iterator it; sd->subtitlingLoop.getNext(sub, it); )
             {
               if (sub.languageCode[0])
               {
-                info.subtitlingType    = sub.getSubtitlingType();
-                info.compositionPageId = sub.getCompositionPageId();
-                info.ancillaryPageId   = sub.getAncillaryPageId();
+                info.m_subtitlingtype = sub.getSubtitlingType();
+                info.m_compositionpageid = sub.getCompositionPageId();
+                info.m_ancillarypageid = sub.getAncillaryPageId();
                 if (n > 0)
                   *s++ = '+';
                 strn0cpy(s, I18nNormalizeLanguageCode(sub.languageCode), MAXLANGCODE1);
@@ -209,6 +209,7 @@ bool cLivePatFilter::GetStreamInfo(SI::PMT::Stream& stream, struct StreamInfo& i
                 if (n++ > 1)
                   break;
               }
+              info.m_parsed = true;
             }
             delete d;
             DEBUGLOG("PMT scanner: adding PID %d (%s) %s\n", stream.getPid(), psStreamTypes[stream.getStreamType()], "DVBSUB");
@@ -248,7 +249,7 @@ bool cLivePatFilter::GetStreamInfo(SI::PMT::Stream& stream, struct StreamInfo& i
               {
                 DEBUGLOG("PMT scanner: Adding pid %d (type 0x%x) RegDesc len %d (%c%c%c%c)\n",
                             stream.getPid(), stream.getStreamType(), d->getLength(), rawdata[2], rawdata[3], rawdata[4], rawdata[5]);
-                info.type = stAC3;
+                info.m_type = cStreamInfo::stAC3;
                 delete d;
                 return true;
               }
@@ -268,7 +269,7 @@ bool cLivePatFilter::GetStreamInfo(SI::PMT::Stream& stream, struct StreamInfo& i
       break;
   }
 
-  info.type = stNONE;
+  info.m_type = cStreamInfo::stNONE;
   return false;
 }
 
@@ -329,13 +330,15 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
     cChannelCache cache;
     for (SI::Loop::Iterator it; pmt.streamLoop.getNext(stream, it); )
     {
-      struct StreamInfo info;
-      if (GetStreamInfo(stream, info) && cache.size() < MAXRECEIVEPIDS)
+      cStreamInfo info;
+      if (GetStreamInfo(stream, info) && cache.size() < MAXRECEIVEPIDS) {
+        info.SetContent();
         cache.AddStream(info);
+      }
     }
 
     // no new streams found -> exit
-    if (cache == m_ChannelCache)
+    if (m_ChannelCache.ismetaof(cache))
       return;
 
     m_Streamer->m_FilterMutex.Lock();
@@ -343,13 +346,22 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
     // create new stream demuxers
     cache.CreateDemuxers(m_Streamer);
 
-    INFOLOG("Currently unknown new streams found, requesting stream change");
+    if(!m_Streamer->IsReady())
+    {
+      m_Streamer->m_ready = false;
+      INFOLOG("Will cache new stream information when all streams are parsed");
+    }
+    else
+    {
+      INFOLOG("Currently unknown new streams found, requesting stream change");
+    }
+
+    m_Streamer->RequestStreamChange();
 
     // write changed data back to the cache
     m_ChannelCache = cache;
     cChannelCache::AddToCache(CreateChannelUID(m_Channel), m_ChannelCache);
 
-    m_Streamer->RequestStreamChange();
     m_Streamer->m_FilterMutex.Unlock();
   }
 }

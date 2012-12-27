@@ -234,7 +234,7 @@ cXVDRClient::cXVDRClient(int fd, unsigned int id)
   m_processSCAN_Socket      = -1;
   m_compressionLevel        = 0;
   m_LanguageIndex           = -1;
-  m_LangStreamType          = stMPEG2AUDIO;
+  m_LangStreamType          = cStreamInfo::stMPEG2AUDIO;
   m_channelCount            = 0;
   m_timeout                 = 3000;
 
@@ -730,7 +730,7 @@ bool cXVDRClient::process_Login() /* OPCODE 1 */
   {
     language = m_req->get_String();
     m_LanguageIndex = I18nLanguageIndex(language);
-    m_LangStreamType = (eStreamType)m_req->get_U8();
+    m_LangStreamType = (cStreamInfo::Type)m_req->get_U8();
   }
 
   if (m_protocolVersion > XVDR_PROTOCOLVERSION || m_protocolVersion < 4)

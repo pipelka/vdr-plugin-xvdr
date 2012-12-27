@@ -61,7 +61,7 @@ cLiveStreamer::cLiveStreamer(int priority, uint32_t timeout)
   m_PatFilter       = NULL;
   m_startup         = true;
   m_SignalLost      = false;
-  m_LangStreamType  = stMPEG2AUDIO;
+  m_LangStreamType  = cStreamInfo::stMPEG2AUDIO;
   m_LanguageIndex   = -1;
   m_uid             = 0;
   m_ready           = false;
@@ -109,7 +109,7 @@ cLiveStreamer::~cLiveStreamer()
     {
       if ((*i) != NULL)
       {
-        DEBUGLOG("Deleting stream demuxer for pid=%i and type=%i", (*i)->GetPID(), (*i)->Type());
+        DEBUGLOG("Deleting stream demuxer for pid=%i and type=%i", (*i)->GetPID(), (*i)->GetType());
         delete (*i);
       }
     }
@@ -153,8 +153,6 @@ void cLiveStreamer::Action(void)
       sendStatus(XVDR_STREAM_STATUS_SIGNALLOST);
       m_SignalLost = true;
     }
-
-    DEBUGLOG("cLiveStreamer: Got %i bytes", size);
 
     // no data
     if (buf == NULL || size <= TS_SIZE)
@@ -278,6 +276,7 @@ int cLiveStreamer::StreamChannel(const cChannel *channel, int sock)
   DEBUGLOG("Creating demuxers");
   cChannelCache cache = cChannelCache::GetFromCache(m_uid);
   if(cache.size() != 0) {
+    INFOLOG("Channel information found in cache");
     cache.CreateDemuxers(this);
     RequestStreamChange();
   }
@@ -318,7 +317,6 @@ void cLiveStreamer::Attach(void)
   DEBUGLOG("%s", __FUNCTION__);
   if (m_Device)
   {
-    m_Device->Detach(this);
     m_Device->AttachReceiver(this);
   }
 }
@@ -353,7 +351,7 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
     sendStreamChange();
 
   // if a audio or video packet was sent, the signal is restored
-  if(m_SignalLost && (pkt->content == scVIDEO || pkt->content == scAUDIO)) {
+  if(m_SignalLost && (pkt->content == cStreamInfo::scVIDEO || pkt->content == cStreamInfo::scAUDIO)) {
     INFOLOG("signal restored");
     sendStatus(XVDR_STREAM_STATUS_SIGNALRESTORED);
     m_SignalLost = false;
@@ -388,6 +386,16 @@ void cLiveStreamer::sendStreamChange()
 
   DEBUGLOG("sendStreamChange");
 
+  cChannelCache cache;
+  INFOLOG("Stored channel information in cache:");
+  for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++) {
+    cache.AddStream(*(*i));
+    (*i)->info();
+  }
+  cChannelCache::AddToCache(m_uid, cache);
+
+  m_FilterMutex.Lock();
+
   // reorder streams as preferred
   reorderStreams(m_LanguageIndex, m_LangStreamType);
 
@@ -401,93 +409,39 @@ void cLiveStreamer::sendStreamChange()
     int streamid = stream->GetPID();
     resp->put_U32(streamid);
 
-    switch(stream->Type())
+    switch(stream->GetContent())
     {
-      case stMPEG2AUDIO:
-        resp->put_String("MPEG2AUDIO");
+      case cStreamInfo::scAUDIO:
+        resp->put_String(stream->TypeName());
         resp->put_String(stream->GetLanguage());
-        // for future protocol versions: add audio_type
-        //resp->put_U8(stream->GetAudioType());
-        DEBUGLOG("MPEG2AUDIO: %i (%s)", streamid, stream->GetLanguage());
         break;
 
-      case stMPEG2VIDEO:
-        resp->put_String("MPEG2VIDEO");
+      case cStreamInfo::scVIDEO:
+        resp->put_String(stream->TypeName());
         resp->put_U32(stream->GetFpsScale());
         resp->put_U32(stream->GetFpsRate());
         resp->put_U32(stream->GetHeight());
         resp->put_U32(stream->GetWidth());
         resp->put_S64(stream->GetAspect() * 10000.0);
-        DEBUGLOG("MPEG2VIDEO: %i", streamid);
         break;
 
-      case stAC3:
-        resp->put_String("AC3");
-        resp->put_String(stream->GetLanguage());
-        // for future protocol versions: add audio_type
-        //resp->put_U8(stream->GetAudioType());
-        DEBUGLOG("AC3: %i (%s)", streamid, stream->GetLanguage());
-        break;
-
-      case stH264:
-        resp->put_String("H264");
-        resp->put_U32(stream->GetFpsScale());
-        resp->put_U32(stream->GetFpsRate());
-        resp->put_U32(stream->GetHeight());
-        resp->put_U32(stream->GetWidth());
-        resp->put_S64(stream->GetAspect() * 10000.0);
-        DEBUGLOG("H264: %i", streamid);
-        break;
-
-      case stDVBSUB:
-        resp->put_String("DVBSUB");
+      case cStreamInfo::scSUBTITLE:
+        resp->put_String(stream->TypeName());
         resp->put_String(stream->GetLanguage());
         resp->put_U32(stream->CompositionPageId());
         resp->put_U32(stream->AncillaryPageId());
-        DEBUGLOG("DVBSUB: %i", streamid);
         break;
 
-      case stTELETEXT:
-        resp->put_String("TELETEXT");
-        DEBUGLOG("TELETEXT: %i", streamid);
-        break;
-
-      case stAAC:
-        resp->put_String("AAC");
-        resp->put_String(stream->GetLanguage());
-        // for future protocol versions: add audio_type
-        //resp->put_U8(stream->GetAudioType());
-        DEBUGLOG("AAC: %i (%s)", streamid, stream->GetLanguage());
-        break;
-
-      case stLATM:
-        resp->put_String("AAC");
-        resp->put_String(stream->GetLanguage());
-        // for future protocol versions: add audio_type
-        //resp->put_U8(stream->GetAudioType());
-        DEBUGLOG("LATM: %i (%s)", streamid, stream->GetLanguage());
-        break;
-
-      case stEAC3:
-        resp->put_String("EAC3");
-        resp->put_String(stream->GetLanguage());
-        // for future protocol versions: add audio_type
-        //resp->put_U8(stream->GetAudioType());
-        DEBUGLOG("EAC3: %i (%s)", streamid, stream->GetLanguage());
-        break;
-
-      case stDTS:
-        resp->put_String("DTS");
-        resp->put_String(stream->GetLanguage());
-        // for future protocol versions: add audio_type
-        //resp->put_U8(stream->GetAudioType());
-        DEBUGLOG("DTS: %i (%s)", streamid, stream->GetLanguage());
+      case cStreamInfo::scTELETEXT:
+        resp->put_String(stream->TypeName());
         break;
 
       default:
         break;
     }
   }
+
+  m_FilterMutex.Unlock();
 
   m_Queue->Add(resp);
   m_requestStreamChange = false;
@@ -568,9 +522,9 @@ void cLiveStreamer::sendStreamInfo()
     if (stream == NULL)
       continue;
 
-    switch (stream->Content())
+    switch (stream->GetContent())
     {
-      case scAUDIO:
+      case cStreamInfo::scAUDIO:
         resp->put_U32(stream->GetPID());
         resp->put_String(stream->GetLanguage());
         resp->put_U32(stream->GetChannels());
@@ -580,7 +534,7 @@ void cLiveStreamer::sendStreamInfo()
         resp->put_U32(stream->GetBitsPerSample());
         break;
 
-      case scVIDEO:
+      case cStreamInfo::scVIDEO:
         resp->put_U32(stream->GetPID());
         resp->put_U32(stream->GetFpsScale());
         resp->put_U32(stream->GetFpsRate());
@@ -589,7 +543,7 @@ void cLiveStreamer::sendStreamInfo()
         resp->put_S64(stream->GetAspect() * 10000.0);
         break;
 
-      case scSUBTITLE:
+      case cStreamInfo::scSUBTITLE:
         resp->put_U32(stream->GetPID());
         resp->put_String(stream->GetLanguage());
         resp->put_U32(stream->CompositionPageId());
@@ -605,10 +559,10 @@ void cLiveStreamer::sendStreamInfo()
   m_Queue->Add(resp);
 }
 
-void cLiveStreamer::reorderStreams(int lang, eStreamType type)
+void cLiveStreamer::reorderStreams(int lang, cStreamInfo::Type type)
 {
   // do not reorder if there isn't any preferred language
-  if (lang == -1 && type == stNONE)
+  if (lang == -1 && type == cStreamInfo::stNONE)
     return;
 
   std::map<int, cTSDemuxer*> weight;
@@ -624,11 +578,11 @@ void cLiveStreamer::reorderStreams(int lang, eStreamType type)
     int w = i;
 
     // video streams rule
-    if(stream->Content() == scVIDEO)
+    if(stream->GetContent() == cStreamInfo::scVIDEO)
       w = 100000;
 
     // only for audio streams
-    if(stream->Content() != scAUDIO)
+    if(stream->GetContent() != cStreamInfo::scAUDIO)
     {
       weight[w] = stream;
       continue;
@@ -639,7 +593,7 @@ void cLiveStreamer::reorderStreams(int lang, eStreamType type)
     w += (streamLangIndex == lang) ? 10000 : 0;
 
     // weight of streamtype (1000)
-    w += (stream->Type() == type) ? 1000 : 0;
+    w += (stream->GetType() == type) ? 1000 : 0;
 
     // weight of languagedescriptor (100)
     int ldw = stream->GetAudioType() * 100;
@@ -649,24 +603,18 @@ void cLiveStreamer::reorderStreams(int lang, eStreamType type)
     weight[w] = stream;
   }
 
-  // lock processing
-  m_FilterMutex.Lock();
-
   // reorder streams on weight
   int idx = 0;
   m_Demuxers.clear();
   for(std::map<int, cTSDemuxer*>::reverse_iterator i = weight.rbegin(); i != weight.rend(); i++, idx++)
   {
     cTSDemuxer* stream = i->second;
-    DEBUGLOG("Stream : Type %i / %s Weight: %i", stream->Type(), stream->GetLanguage(), i->first);
+    DEBUGLOG("Stream : Type %i / %s Weight: %i", stream->GetType(), stream->GetLanguage(), i->first);
     m_Demuxers.push_back(stream);
   }
-
-  // unlock processing
-  m_FilterMutex.Unlock();
 }
 
-void cLiveStreamer::SetLanguage(int lang, eStreamType streamtype)
+void cLiveStreamer::SetLanguage(int lang, cStreamInfo::Type streamtype)
 {
   if(lang == -1)
     return;
@@ -684,27 +632,10 @@ bool cLiveStreamer::IsReady()
 
   for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++)
   {
-    if ((*i)->IsParsed())
-    {
-      if ((*i)->Content() == scVIDEO)
-      {
-        cChannelCache cache = cChannelCache::GetFromCache(m_uid);
-        cChannelCache::iterator info = cache.find((*i)->GetPID());
-        if(info != cache.end())
-        {
-          info->second.width = (*i)->GetWidth();
-          info->second.height = (*i)->GetHeight();
-          info->second.dar = (*i)->GetAspect();
-
-          // update cache information
-          cChannelCache::AddToCache(m_uid, cache);
-        }
-        m_ready = true;
-        return true;
-      }
-    }
-    else
+    if (!(*i)->IsParsed()) {
       bAllParsed = false;
+      break;
+    }
   }
 
   m_ready = bAllParsed;

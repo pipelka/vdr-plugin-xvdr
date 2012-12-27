@@ -27,47 +27,22 @@
 #define XVDR_DEMUXER_H
 
 #include <stdint.h>
+#include "streaminfo.h"
 
 class cLiveStreamer;
 class cParser;
 
 #define DVD_NOPTS_VALUE    (-1LL<<52) // should be possible to represent in both double and __int64
 
-enum eStreamContent
-{
-  scNONE,
-  scVIDEO,
-  scAUDIO,
-  scSUBTITLE,
-  scTELETEXT,
-  scPROGRAMM
-};
-
-enum eStreamType
-{
-  stNONE = -1,
-  stMPEG2AUDIO = 0,
-  stAC3,
-  stEAC3,
-  stAAC,
-  stLATM,
-  stDTS,
-  stMPEG2VIDEO = 10,
-  stH264,
-  stDVBSUB = 20,
-  stTEXTSUB,
-  stTELETEXT,
-};
-
 struct sStreamPacket
 {
   sStreamPacket() {
-    type = stNONE;
-    content = scNONE;
+    type = cStreamInfo::stNONE;
+    content = cStreamInfo::scNONE;
   }
 
-  eStreamType type;
-  eStreamContent content;
+  cStreamInfo::Type type;
+  cStreamInfo::Content content;
 
   int64_t   pid;
   int64_t   dts;
@@ -78,40 +53,18 @@ struct sStreamPacket
   int       size;
 };
 
-class cTSDemuxer
+class cTSDemuxer : public cStreamInfo
 {
 private:
-  cLiveStreamer        *m_Streamer;
-  eStreamContent        m_streamContent;
-  eStreamType           m_streamType;
-  int                   m_PID;
-  bool                  m_parsed;
 
-  cParser              *m_pesParser;
-
-  char                  m_language[4];  // ISO 639 3-letter language code (empty string if undefined)
-  uint8_t               m_audiotype;    // ISO 639 audio type
-
-  int                   m_FpsScale;     // scale of 1000 and a rate of 29970 will result in 29.97 fps
-  int                   m_FpsRate;
-  int                   m_Height;       // height of the stream reported by the demuxer
-  int                   m_Width;        // width of the stream reported by the demuxer
-  float                 m_Aspect;       // display aspect of stream
-
-  int                   m_Channels;
-  int                   m_SampleRate;
-  int                   m_BitRate;
-  int                   m_BitsPerSample;
-  int                   m_BlockAlign;
-
-  unsigned char         m_subtitlingType;
-  uint16_t              m_compositionPageId;
-  uint16_t              m_ancillaryPageId;
+  cLiveStreamer* m_Streamer;
+  cParser* m_pesParser;
 
   int64_t Rescale(int64_t a);
 
 public:
-  cTSDemuxer(cLiveStreamer *streamer, eStreamType type, int pid);
+  cTSDemuxer(cLiveStreamer *streamer, cStreamInfo::Type type, int pid);
+  cTSDemuxer(cLiveStreamer *streamer, const cStreamInfo& info);
   virtual ~cTSDemuxer();
 
   bool ProcessTSPacket(unsigned char *data);
@@ -120,32 +73,34 @@ public:
   void SetLanguageDescriptor(const char *language, uint8_t atype);
   const char *GetLanguage() { return m_language; }
   uint8_t GetAudioType() { return m_audiotype; }
-  const eStreamContent Content() const { return m_streamContent; }
-  const eStreamType Type() const { return m_streamType; }
-  const int GetPID() const { return m_PID; }
   bool IsParsed() const { return m_parsed; }
 
   /* Video Stream Information */
   void SetVideoInformation(int FpsScale, int FpsRate, int Height, int Width, float Aspect, int num, int den);
-  uint32_t GetFpsScale() const { return m_FpsScale; }
-  uint32_t GetFpsRate() const { return m_FpsRate; }
-  uint32_t GetHeight() const { return m_Height; }
-  uint32_t GetWidth() const { return m_Width; }
-  double GetAspect() const { return m_Aspect; }
+  uint32_t GetFpsScale() const { return m_fpsscale; }
+  uint32_t GetFpsRate() const { return m_fpsrate; }
+  uint32_t GetHeight() const { return m_height; }
+  uint32_t GetWidth() const { return m_width; }
+  double GetAspect() const { return m_aspect; }
 
   /* Audio Stream Information */
   void SetAudioInformation(int Channels, int SampleRate, int BitRate, int BitsPerSample, int BlockAlign);
-  uint32_t GetChannels() const { return m_Channels; }
-  uint32_t GetSampleRate() const { return m_SampleRate; }
-  uint32_t GetBlockAlign() const { return m_BlockAlign; }
-  uint32_t GetBitRate() const { return m_BitRate; }
-  uint32_t GetBitsPerSample() const { return m_BitsPerSample; }
+  uint32_t GetChannels() const { return m_channels; }
+  uint32_t GetSampleRate() const { return m_samplerate; }
+  uint32_t GetBlockAlign() const { return m_blockalign; }
+  uint32_t GetBitRate() const { return m_bitrate; }
+  uint32_t GetBitsPerSample() const { return m_bitspersample; }
 
   /* Subtitle related stream information */
   void SetSubtitlingDescriptor(unsigned char SubtitlingType, uint16_t CompositionPageId, uint16_t AncillaryPageId);
-  unsigned char SubtitlingType() const { return m_subtitlingType; }
-  uint16_t CompositionPageId() const { return m_compositionPageId; }
-  uint16_t AncillaryPageId() const { return m_ancillaryPageId; }
+  unsigned char SubtitlingType() const { return m_subtitlingtype; }
+  uint16_t CompositionPageId() const { return m_compositionpageid; }
+  uint16_t AncillaryPageId() const { return m_ancillarypageid; }
+
+private:
+
+  cParser* CreateParser(cStreamInfo::Type type);
+
 };
 
 #endif // XVDR_DEMUXER_H

@@ -54,7 +54,7 @@ private:
   void Attach(void);
   cTSDemuxer *FindStreamDemuxer(int Pid);
 
-  void reorderStreams(int lang, eStreamType type);
+  void reorderStreams(int lang, cStreamInfo::Type type);
 
   void sendStreamPacket(sStreamPacket *pkt);
   void sendStreamChange();
@@ -73,7 +73,7 @@ private:
   bool              m_SignalLost;
   cMutex            m_FilterMutex;
   int               m_LanguageIndex;
-  eStreamType       m_LangStreamType;
+  cStreamInfo::Type m_LangStreamType;
   cLiveQueue*       m_Queue;
   uint32_t          m_uid;
   bool              m_ready;
@@ -92,7 +92,7 @@ public:
   int StreamChannel(const cChannel *channel, int sock);
   bool IsReady();
   bool IsStarting() { return m_startup; }
-  void SetLanguage(int lang, eStreamType streamtype = stAC3);
+  void SetLanguage(int lang, cStreamInfo::Type streamtype = cStreamInfo::stAC3);
   void Pause(bool on);
   void RequestPacket();
 

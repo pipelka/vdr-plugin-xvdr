@@ -42,85 +42,45 @@
 
 #define DVD_TIME_BASE 1000000
 
-cTSDemuxer::cTSDemuxer(cLiveStreamer *streamer, eStreamType type, int pid)
-  : m_Streamer(streamer)
-  , m_streamType(type)
-  , m_PID(pid)
-  , m_parsed(false)
-  , m_audiotype(0)
-{
-  m_pesParser       = NULL;
-  m_language[0]     = 0;
-  m_FpsScale        = 0;
-  m_FpsRate         = 0;
-  m_Height          = 0;
-  m_Width           = 0;
-  m_Aspect          = 0.0f;
-  m_Channels        = 0;
-  m_SampleRate      = 0;
-  m_BitRate         = 0;
-  m_BitsPerSample   = 0;
-  m_BlockAlign      = 0;
+cTSDemuxer::cTSDemuxer(cLiveStreamer *streamer, const cStreamInfo& info) : cStreamInfo(info), m_Streamer(streamer) {
+  m_pesParser = CreateParser(m_type);
+  SetContent();
+}
 
-  switch (m_streamType)
+cTSDemuxer::cTSDemuxer(cLiveStreamer *streamer, cStreamInfo::Type type, int pid) : cStreamInfo(pid, type), m_Streamer(streamer) {
+  m_pesParser = CreateParser(m_type);
+}
+
+cParser* cTSDemuxer::CreateParser(cStreamInfo::Type type) {
+  switch(type)
   {
     case stMPEG2VIDEO:
-      m_pesParser = new cParserMPEG2Video(this);
-      m_streamContent = scVIDEO;
-      break;
-
+      return new cParserMPEG2Video(this);
     case stH264:
-      m_pesParser = new cParserH264(this);
-      m_streamContent = scVIDEO;
-      break;
-
+      return new cParserH264(this);
     case stMPEG2AUDIO:
-      m_pesParser = new cParserMPEG2Audio(this);
-      m_streamContent = scAUDIO;
-      break;
-
+      return new cParserMPEG2Audio(this);
     case stAAC:
-      m_pesParser = new cParserADTS(this);
-      m_streamContent = scAUDIO;
-      break;
-
+      return new cParserADTS(this);
     case stLATM:
-      m_pesParser = new cParserLATM(this);
-      m_streamContent = scAUDIO;
-      break;
-
+      return new cParserLATM(this);
     case stAC3:
-      m_pesParser = new cParserAC3(this);
-      m_streamContent = scAUDIO;
-      break;
-
-    case stDTS:
-      m_pesParser = NULL; //new cParser(this);
-      m_streamContent = scAUDIO;
-      break;
-
+      return new cParserAC3(this);
     case stEAC3:
-      m_pesParser = new cParserEAC3(this);
-      m_streamContent = scAUDIO;
-      break;
-
+      return new cParserEAC3(this);
     case stTELETEXT:
-      m_pesParser = new cParserPES(this);
       m_parsed = true;
-      m_streamContent = scTELETEXT;
-      break;
-
+      return new cParserPES(this);
     case stDVBSUB:
-      m_pesParser = new cParserSubtitle(this);
-      m_parsed = true;
-      m_streamContent = scSUBTITLE;
-      break;
-
+      return new cParserSubtitle(this);
     default:
-      ERRORLOG("Unrecognised type %i", m_streamType);
-      m_streamContent = scNONE;
+      ERRORLOG("Unrecognized type %i", m_type);
+      m_content = scNONE;
+      m_type = stNONE;
       break;
   }
+
+  return NULL;
 }
 
 cTSDemuxer::~cTSDemuxer()
@@ -146,8 +106,8 @@ void cTSDemuxer::SendPacket(sStreamPacket *pkt)
   int64_t pts = (pkt->pts == DVD_NOPTS_VALUE) ? pkt->pts : Rescale(pkt->pts);
 
   // Rescale
-  pkt->type     = m_streamType;
-  pkt->content  = m_streamContent;
+  pkt->type     = m_type;
+  pkt->content  = m_content;
   pkt->pid      = GetPID();
   pkt->dts      = dts;
   pkt->pts      = pts;
@@ -215,7 +175,7 @@ void cTSDemuxer::SetVideoInformation(int FpsScale, int FpsRate, int Height, int 
     return;
 
   // only register changed video information
-  if(Width == m_Width && Height == m_Height && Aspect == m_Aspect && m_Streamer->IsReady())
+  if(Width == m_width && Height == m_height && Aspect == m_aspect && m_Streamer->IsReady())
     return;
 
   INFOLOG("--------------------------------------");
@@ -233,11 +193,11 @@ void cTSDemuxer::SetVideoInformation(int FpsScale, int FpsRate, int Height, int 
 
   INFOLOG("--------------------------------------");
 
-  m_FpsScale = FpsScale;
-  m_FpsRate  = FpsRate;
-  m_Height   = Height;
-  m_Width    = Width;
-  m_Aspect   = Aspect;
+  m_fpsscale = FpsScale;
+  m_fpsrate  = FpsRate;
+  m_height   = Height;
+  m_width    = Width;
+  m_aspect   = Aspect;
   m_parsed   = true;
 
   if(m_Streamer->IsReady())
@@ -247,7 +207,7 @@ void cTSDemuxer::SetVideoInformation(int FpsScale, int FpsRate, int Height, int 
 void cTSDemuxer::SetAudioInformation(int Channels, int SampleRate, int BitRate, int BitsPerSample, int BlockAlign)
 {
   // only register changed audio information
-  if(Channels == m_Channels && SampleRate == m_SampleRate && BitRate == m_BitRate)
+  if(Channels == m_channels && SampleRate == m_samplerate && BitRate == m_bitrate)
     return;
 
   INFOLOG("--------------------------------------");
@@ -258,18 +218,21 @@ void cTSDemuxer::SetAudioInformation(int Channels, int SampleRate, int BitRate, 
     INFOLOG("Bitrate: %i bps", BitRate);
   INFOLOG("--------------------------------------");
 
-  m_Channels      = Channels;
-  m_SampleRate    = SampleRate;
-  m_BlockAlign    = BlockAlign;
-  m_BitRate       = BitRate;
-  m_BitsPerSample = BitsPerSample;
+  m_channels      = Channels;
+  m_samplerate    = SampleRate;
+  m_blockalign    = BlockAlign;
+  m_bitrate       = BitRate;
+  m_bitspersample = BitsPerSample;
   m_parsed        = true;
+
+  if(m_Streamer->IsReady())
+    m_Streamer->RequestStreamChange();
 }
 
 void cTSDemuxer::SetSubtitlingDescriptor(unsigned char SubtitlingType, uint16_t CompositionPageId, uint16_t AncillaryPageId)
 {
-  m_subtitlingType    = SubtitlingType;
-  m_compositionPageId = CompositionPageId;
-  m_ancillaryPageId   = AncillaryPageId;
+  m_subtitlingtype    = SubtitlingType;
+  m_compositionpageid = CompositionPageId;
+  m_ancillarypageid   = AncillaryPageId;
   m_parsed            = true;
 }

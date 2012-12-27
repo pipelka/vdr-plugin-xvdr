@@ -35,7 +35,7 @@
 #include <vdr/receiver.h>
 #include <vdr/status.h>
 
-#include "demuxer/demuxer.h"
+#include "demuxer/streaminfo.h"
 
 class cChannel;
 class cDevice;
@@ -49,28 +49,28 @@ class cXVDRClient : public cThread
 {
 private:
 
-  unsigned int     m_Id;
-  int              m_socket;
-  bool             m_loggedIn;
-  bool             m_StatusInterfaceEnabled;
-  cLiveStreamer   *m_Streamer;
-  bool             m_isStreaming;
-  cRecPlayer      *m_RecPlayer;
-  MsgPacket       *m_req;
-  MsgPacket       *m_resp;
-  cCharSetConv     m_toUTF8;
-  uint32_t         m_protocolVersion;
-  cMutex           m_msgLock;
-  static cMutex    m_timerLock;
-  static cMutex    m_switchLock;
-  int              m_compressionLevel;
-  int              m_LanguageIndex;
-  eStreamType      m_LangStreamType;
-  std::list<int>   m_caids;
-  bool             m_wantfta;
-  bool             m_filterlanguage;
-  int              m_channelCount;
-  int              m_timeout;
+  unsigned int      m_Id;
+  int               m_socket;
+  bool              m_loggedIn;
+  bool              m_StatusInterfaceEnabled;
+  cLiveStreamer    *m_Streamer;
+  bool              m_isStreaming;
+  cRecPlayer       *m_RecPlayer;
+  MsgPacket        *m_req;
+  MsgPacket        *m_resp;
+  cCharSetConv      m_toUTF8;
+  uint32_t          m_protocolVersion;
+  cMutex            m_msgLock;
+  static cMutex     m_timerLock;
+  static cMutex     m_switchLock;
+  int               m_compressionLevel;
+  int               m_LanguageIndex;
+  cStreamInfo::Type m_LangStreamType;
+  std::list<int>    m_caids;
+  bool              m_wantfta;
+  bool              m_filterlanguage;
+  int               m_channelCount;
+  int               m_timeout;
 
 protected:
 

@@ -32,12 +32,12 @@ std::map<uint32_t, cChannelCache> cChannelCache::m_cache;
 cChannelCache::cChannelCache() : m_bChanged(false) {
 }
 
-void cChannelCache::AddStream(const struct StreamInfo& s) {
-  if(s.pid == 0 || s.type == stNONE)
+void cChannelCache::AddStream(const cStreamInfo& s) {
+  if(s.GetPID() == 0 || s.GetType() == cStreamInfo::stNONE)
     return;
 
-  StreamInfo old = (*this)[s.pid];
-  (*this)[s.pid] = s;
+  cStreamInfo old = (*this)[s.GetPID()];
+  (*this)[s.GetPID()] = s;
 
   m_bChanged = (old != s);
 }
@@ -55,63 +55,17 @@ void cChannelCache::CreateDemuxers(cLiveStreamer* streamer) {
   // create new stream demuxers
   for (iterator i = begin(); i != end(); i++)
   {
-    StreamInfo& info = i->second;
-    cTSDemuxer* dmx = CreateDemuxer(streamer, info);
+    cStreamInfo& info = i->second;
+    cTSDemuxer* dmx = new cTSDemuxer(streamer, info);
     if (dmx != NULL)
     {
+      dmx->info();
       streamer->m_Demuxers.push_back(dmx);
-      streamer->AddPid(info.pid);
+      streamer->AddPid(info.GetPID());
     }
   }
 
   streamer->Attach();
-}
-
-cTSDemuxer* cChannelCache::CreateDemuxer(cLiveStreamer* streamer, const struct StreamInfo& info) const {
-  cTSDemuxer* stream = NULL;
-
-  switch (info.type)
-  {
-    // hande video streams
-    case stMPEG2VIDEO:
-    case stH264:
-      stream = new cTSDemuxer(streamer, info.type, info.pid);
-      if(info.width != 0 && info.height != 0)
-      {
-        INFOLOG("Setting cached video information");
-        stream->SetVideoInformation(0, 0, info.width, info.height, info.dar, 1, 1);
-      }
-      break;
-
-    // handle audio streams
-    case stMPEG2AUDIO:
-    case stAC3:
-    case stEAC3:
-    case stDTS:
-    case stAAC:
-    case stLATM:
-      stream = new cTSDemuxer(streamer, info.type, info.pid);
-      stream->SetLanguageDescriptor(info.lang, info.audioType);
-      break;
-
-    // subtitles
-    case stDVBSUB:
-      stream = new cTSDemuxer(streamer, info.type, info.pid);
-      stream->SetLanguageDescriptor(info.lang, info.audioType);
-      stream->SetSubtitlingDescriptor(info.subtitlingType, info.compositionPageId, info.ancillaryPageId);
-      break;
-
-    // teletext
-    case stTELETEXT:
-      stream = new cTSDemuxer(streamer, info.type, info.pid);
-      break;
-
-    // unsupported stream
-    default:
-      break;
-  }
-
-  return stream;
 }
 
 bool cChannelCache::operator ==(const cChannelCache& c) const {
@@ -125,8 +79,24 @@ bool cChannelCache::operator ==(const cChannelCache& c) const {
   return true;
 }
 
-bool cChannelCache::contains(const struct StreamInfo& s) const {
-  const_iterator i = find(s.pid);
+bool cChannelCache::ismetaof(const cChannelCache& c) const {
+  if (size() != c.size())
+    return false;
+
+  for(const_iterator i = begin(); i != end(); i++) {
+    const_iterator it = c.find(i->second.GetPID());
+    if(it == c.end())
+      return false;
+
+    if(!i->second.ismetaof(it->second))
+      return false;
+  }
+
+  return true;
+}
+
+bool cChannelCache::contains(const cStreamInfo& s) const {
+  const_iterator i = find(s.GetPID());
 
   if (i == end())
     return false;

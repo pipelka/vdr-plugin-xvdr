@@ -45,8 +45,8 @@ private:
   cLiveStreamer  *m_Streamer;
   cChannelCache   m_ChannelCache;
 
-  bool GetStreamInfo(SI::PMT::Stream& stream, struct StreamInfo& info);
-  void GetLanguage(SI::PMT::Stream& stream, char *langs, int& type);
+  bool GetStreamInfo(SI::PMT::Stream& stream, cStreamInfo& info);
+  void GetLanguage(SI::PMT::Stream& stream, char *langs, uint8_t& type);
   virtual void Process(u_short Pid, u_char Tid, const u_char *Data, int Length);
 
 public:
