@@ -59,7 +59,6 @@ private:
   void sendStreamPacket(sStreamPacket *pkt);
   void sendStreamChange();
   void sendSignalInfo();
-  void sendStreamInfo();
   void sendStatus(int status);
 
   cDevice          *m_Device;                       /*!> The receiving device the channel depents to */

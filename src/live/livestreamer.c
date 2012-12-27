@@ -195,10 +195,9 @@ void cLiveStreamer::Action(void)
       Del(TS_SIZE);
     }
 
-    if(last_info.Elapsed() >= 10*1000 && IsReady())
+    if(last_info.Elapsed() >= 5*1000 && IsReady())
     {
       last_info.Set(0);
-      sendStreamInfo();
       sendSignalInfo();
     }
   }
@@ -414,6 +413,11 @@ void cLiveStreamer::sendStreamChange()
       case cStreamInfo::scAUDIO:
         resp->put_String(stream->TypeName());
         resp->put_String(stream->GetLanguage());
+        /*resp->put_U32(stream->GetChannels());
+        resp->put_U32(stream->GetSampleRate());
+        resp->put_U32(stream->GetBlockAlign());
+        resp->put_U32(stream->GetBitRate());
+        resp->put_U32(stream->GetBitsPerSample());*/
         break;
 
       case cStreamInfo::scVIDEO:
@@ -445,8 +449,6 @@ void cLiveStreamer::sendStreamChange()
 
   m_Queue->Add(resp);
   m_requestStreamChange = false;
-
-  sendStreamInfo();
 }
 
 void cLiveStreamer::sendStatus(int status)
@@ -502,60 +504,6 @@ void cLiveStreamer::sendSignalInfo()
   resp->put_U32(0);
 
   DEBUGLOG("sendSignalInfo");
-  m_Queue->Add(resp);
-}
-
-void cLiveStreamer::sendStreamInfo()
-{
-  if(m_Demuxers.size() == 0)
-    return;
-
-  MsgPacket* resp = new MsgPacket(XVDR_STREAM_CONTENTINFO, XVDR_CHANNEL_STREAM);
-
-  // reorder streams as preferred
-  reorderStreams(m_LanguageIndex, m_LangStreamType);
-
-  for (std::list<cTSDemuxer*>::iterator idx = m_Demuxers.begin(); idx != m_Demuxers.end(); idx++)
-  {
-    cTSDemuxer* stream = (*idx);
-
-    if (stream == NULL)
-      continue;
-
-    switch (stream->GetContent())
-    {
-      case cStreamInfo::scAUDIO:
-        resp->put_U32(stream->GetPID());
-        resp->put_String(stream->GetLanguage());
-        resp->put_U32(stream->GetChannels());
-        resp->put_U32(stream->GetSampleRate());
-        resp->put_U32(stream->GetBlockAlign());
-        resp->put_U32(stream->GetBitRate());
-        resp->put_U32(stream->GetBitsPerSample());
-        break;
-
-      case cStreamInfo::scVIDEO:
-        resp->put_U32(stream->GetPID());
-        resp->put_U32(stream->GetFpsScale());
-        resp->put_U32(stream->GetFpsRate());
-        resp->put_U32(stream->GetHeight());
-        resp->put_U32(stream->GetWidth());
-        resp->put_S64(stream->GetAspect() * 10000.0);
-        break;
-
-      case cStreamInfo::scSUBTITLE:
-        resp->put_U32(stream->GetPID());
-        resp->put_String(stream->GetLanguage());
-        resp->put_U32(stream->CompositionPageId());
-        resp->put_U32(stream->AncillaryPageId());
-        break;
-
-      default:
-        break;
-    }
-  }
-
-  DEBUGLOG("sendStreamInfo");
   m_Queue->Add(resp);
 }
 
