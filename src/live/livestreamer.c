@@ -507,8 +507,8 @@ void cLiveStreamer::sendSignalInfo()
   MsgPacket* resp = new MsgPacket(XVDR_STREAM_SIGNALINFO, XVDR_CHANNEL_STREAM);
 
   int DeviceNumber = m_Device->DeviceNumber() + 1;
-  int Strength = m_Device->SignalStrength();
-  int Quality = m_Device->SignalQuality();
+  int Strength = 0; //m_Device->SignalStrength();
+  int Quality = -1; //m_Device->SignalQuality();
 
   resp->put_String(*cString::sprintf("%s #%d - %s", 
 #if VDRVERSNUM < 10728
