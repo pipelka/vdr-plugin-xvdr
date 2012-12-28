@@ -33,6 +33,8 @@
 #include <vdr/ringbuffer.h>
 
 #include "demuxer/demuxer.h"
+#include "xvdr/xvdrcommand.h"
+
 #include <list>
 
 class cChannel;
@@ -76,6 +78,7 @@ private:
   cLiveQueue*       m_Queue;
   uint32_t          m_uid;
   bool              m_ready;
+  uint32_t          m_protocolVersion;
 
 protected:
   void Action(void);
@@ -85,7 +88,7 @@ protected:
   void RequestStreamChange();
 
 public:
-  cLiveStreamer(int priority, uint32_t timeout = 0);
+  cLiveStreamer(int priority, uint32_t timeout = 0, uint32_t protocolVersion = XVDR_PROTOCOLVERSION);
   virtual ~cLiveStreamer();
 
   int StreamChannel(const cChannel *channel, int sock);

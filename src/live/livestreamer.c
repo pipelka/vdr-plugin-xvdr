@@ -49,7 +49,7 @@
 #include "livequeue.h"
 #include "channelcache.h"
 
-cLiveStreamer::cLiveStreamer(int priority, uint32_t timeout)
+cLiveStreamer::cLiveStreamer(int priority, uint32_t timeout, uint32_t protocolVersion)
  : cThread("cLiveStreamer stream processor")
  , cRingBufferLinear(MEGABYTE(10), TS_SIZE * 2, true)
  , cReceiver(NULL, priority)
@@ -65,6 +65,7 @@ cLiveStreamer::cLiveStreamer(int priority, uint32_t timeout)
   m_LanguageIndex   = -1;
   m_uid             = 0;
   m_ready           = false;
+  m_protocolVersion = protocolVersion;
 
   m_requestStreamChange = false;
 
@@ -370,6 +371,9 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
   packet->put_U16(pkt->pid);
   packet->put_S64(pkt->pts);
   packet->put_S64(pkt->dts);
+  if(m_protocolVersion >= 5) {
+    packet->put_U32(pkt->duration);
+  }
 
   // write payload into stream packet
   packet->put_U32(pkt->size);
@@ -413,11 +417,13 @@ void cLiveStreamer::sendStreamChange()
       case cStreamInfo::scAUDIO:
         resp->put_String(stream->TypeName());
         resp->put_String(stream->GetLanguage());
-        /*resp->put_U32(stream->GetChannels());
-        resp->put_U32(stream->GetSampleRate());
-        resp->put_U32(stream->GetBlockAlign());
-        resp->put_U32(stream->GetBitRate());
-        resp->put_U32(stream->GetBitsPerSample());*/
+        if(m_protocolVersion >= 5) {
+          resp->put_U32(stream->GetChannels());
+          resp->put_U32(stream->GetSampleRate());
+          resp->put_U32(stream->GetBlockAlign());
+          resp->put_U32(stream->GetBitRate());
+          resp->put_U32(stream->GetBitsPerSample());
+        }
         break;
 
       case cStreamInfo::scVIDEO:

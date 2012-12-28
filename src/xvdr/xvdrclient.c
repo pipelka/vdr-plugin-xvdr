@@ -294,7 +294,7 @@ void cXVDRClient::Action(void)
 int cXVDRClient::StartChannelStreaming(const cChannel *channel, uint32_t timeout, int32_t priority)
 {
   cMutexLock lock(&m_switchLock);
-  m_Streamer = new cLiveStreamer(priority, timeout);
+  m_Streamer = new cLiveStreamer(priority, timeout, m_protocolVersion);
   m_Streamer->SetLanguage(m_LanguageIndex, m_LangStreamType);
 
   return m_Streamer->StreamChannel(channel, m_socket);
@@ -750,6 +750,7 @@ bool cXVDRClient::process_Login() /* OPCODE 1 */
   struct tm* timeStruct = localtime(&timeNow);
   int timeOffset        = timeStruct->tm_gmtoff;
 
+  m_resp->setProtocolVersion(m_protocolVersion);
   m_resp->put_U32(timeNow);
   m_resp->put_S32(timeOffset);
   m_resp->put_String("VDR-XVDR Server");

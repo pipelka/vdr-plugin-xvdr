@@ -27,7 +27,7 @@
 #define XVDR_COMMAND_H
 
 /** Current XVDR Protocol Version number */
-#define XVDR_PROTOCOLVERSION          4
+#define XVDR_PROTOCOLVERSION          5
 
 
 /** Packet types */
@@ -104,7 +104,6 @@
 #define XVDR_STREAM_QUEUESTATUS  3
 #define XVDR_STREAM_MUXPKT       4
 #define XVDR_STREAM_SIGNALINFO   5
-#define XVDR_STREAM_CONTENTINFO  6
 
 /** Stream status codes */
 #define XVDR_STREAM_STATUS_SIGNALLOST     111
