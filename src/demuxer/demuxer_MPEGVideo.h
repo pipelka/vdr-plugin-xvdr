@@ -26,6 +26,7 @@
 #define XVDR_DEMUXER_MPEGVIDEO_H
 
 #include "demuxer_PES.h"
+#include <map>
 
 class cParserMPEG2Video : public cParserPES
 {
@@ -37,10 +38,15 @@ protected:
 
   void ParsePayload(unsigned char *data, int length);
 
+  void SendPayload(unsigned char* payload, int length);
+
 private:
 
   void ParseSequenceStart(unsigned char* data, int length);
 
+  void ParsePicture(unsigned char* data, int length);
+
+  int64_t m_pdiff;
 };
 
 #endif // XVDR_DEMUXER_MPEGVIDEO_H
