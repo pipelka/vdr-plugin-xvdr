@@ -133,7 +133,7 @@ void cParser::Parse(unsigned char *data, int datasize, bool pusi)
   int offset = FindAlignmentOffset(buffer, length, 0, framesize);
   if(offset != -1)
   {
-    INFOLOG("sync found at offset %i (streamtype: %i / %i bytes in buffer / framesize: %i bytes)", offset, m_demuxer->Type(), Available(), framesize);
+    INFOLOG("sync found at offset %i (streamtype: %s / %i bytes in buffer / framesize: %i bytes)", offset, m_demuxer->TypeName(), Available(), framesize);
     Del(offset);
   }
 
