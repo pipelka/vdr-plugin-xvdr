@@ -44,6 +44,10 @@ public:
 
   bool Pause(bool on = true);
 
+  bool IsPaused();
+
+  bool TimeShiftMode();
+
   static void SetTimeShiftDir(const cString& dir);
 
   static void SetBufferSize(uint64_t s);

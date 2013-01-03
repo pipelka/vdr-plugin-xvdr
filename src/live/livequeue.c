@@ -86,6 +86,18 @@ void cLiveQueue::Request()
   m_cond.Signal();
 }
 
+bool cLiveQueue::IsPaused()
+{
+  cMutexLock lock(&m_lock);
+  return m_pause;
+}
+
+bool cLiveQueue::TimeShiftMode()
+{
+  cMutexLock lock(&m_lock);
+  return (m_pause || (!m_pause && m_writefd != -1));
+}
+
 bool cLiveQueue::Add(MsgPacket* p)
 {
   cMutexLock lock(&m_lock);

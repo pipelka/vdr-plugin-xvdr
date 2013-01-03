@@ -60,7 +60,6 @@ private:
 
   void sendStreamPacket(sStreamPacket *pkt);
   void sendStreamChange();
-  void sendSignalInfo();
   void sendStatus(int status);
 
   cDevice          *m_Device;                       /*!> The receiving device the channel depents to */
@@ -92,12 +91,16 @@ public:
   virtual ~cLiveStreamer();
 
   int StreamChannel(const cChannel *channel, int sock);
+
   bool IsReady();
   bool IsStarting() { return m_startup; }
+  bool IsPaused();
+  bool TimeShiftMode();
+
   void SetLanguage(int lang, cStreamInfo::Type streamtype = cStreamInfo::stAC3);
   void Pause(bool on);
   void RequestPacket();
-
+  void RequestSignalInfo();
 };
 
 #endif  // XVDR_RECEIVER_H

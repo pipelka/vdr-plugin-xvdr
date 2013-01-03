@@ -134,9 +134,6 @@ void cLiveStreamer::Action(void)
   unsigned char *buf = NULL;
   m_startup = true;
 
-  cTimeMs last_info;
-  last_info.Set(0);
-
   while (Running())
   {
     size = 0;
@@ -194,12 +191,6 @@ void cLiveStreamer::Action(void)
       buf += TS_SIZE;
       size -= TS_SIZE;
       Del(TS_SIZE);
-    }
-
-    if(last_info.Elapsed() >= 5*1000 && IsReady())
-    {
-      last_info.Set(0);
-      sendSignalInfo();
     }
   }
 }
@@ -464,13 +455,23 @@ void cLiveStreamer::sendStatus(int status)
   m_Queue->Add(packet);
 }
 
-void cLiveStreamer::sendSignalInfo()
+void cLiveStreamer::RequestSignalInfo()
 {
+  // do not send (and pollute the client with) signal information
+  // if we are paused
+  if(IsPaused())
+    return;
+
   MsgPacket* resp = new MsgPacket(XVDR_STREAM_SIGNALINFO, XVDR_CHANNEL_STREAM);
 
   int DeviceNumber = m_Device->DeviceNumber() + 1;
-  int Strength = 0; //m_Device->SignalStrength();
-  int Quality = -1; //m_Device->SignalQuality();
+  int Strength = 0;
+  int Quality = 0;
+
+  if(!TimeShiftMode()) {
+    Strength = m_Device->SignalStrength();
+    Quality = m_Device->SignalQuality();
+  }
 
   resp->put_String(*cString::sprintf("%s #%d - %s", 
 #if VDRVERSNUM < 10728
@@ -491,9 +492,13 @@ void cLiveStreamer::sendSignalInfo()
   // 1 - NO CARRIER
   // 0 - NO SIGNAL
 
-  if(Quality == -1)
+  if(TimeShiftMode())
   {
-    resp->put_String("Unknown (Incompatible device)");
+    resp->put_String("TIMESHIFT");
+  }
+  else if(Quality == -1)
+  {
+    resp->put_String("UNKNOWN (Incompatible device)");
     Quality = 0;
   }
   else
@@ -504,12 +509,12 @@ void cLiveStreamer::sendSignalInfo()
 			(Quality > 2) ? "VITERBI" : "-",
 			(Quality > 3) ? "SYNC" : "-"));
 
-  resp->put_U32((Quality << 16 ) / 100); // TODO: remove need to scale
-  resp->put_U32((Strength << 16 ) / 100); // TODO: remove need to scale
+  resp->put_U32((Strength << 16 ) / 100);
+  resp->put_U32((Quality << 16 ) / 100);
   resp->put_U32(0);
   resp->put_U32(0);
 
-  DEBUGLOG("sendSignalInfo");
+  DEBUGLOG("RequestSignalInfo");
   m_Queue->Add(resp);
 }
 
@@ -596,6 +601,22 @@ bool cLiveStreamer::IsReady()
   m_ready = bAllParsed;
 
   return bAllParsed;
+}
+
+bool cLiveStreamer::IsPaused()
+{
+  if(m_Queue == NULL)
+    return false;
+
+  return m_Queue->IsPaused();
+}
+
+bool cLiveStreamer::TimeShiftMode()
+{
+  if(m_Queue == NULL)
+    return false;
+
+  return m_Queue->TimeShiftMode();
 }
 
 void cLiveStreamer::Pause(bool on) {

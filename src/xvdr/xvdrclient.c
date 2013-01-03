@@ -560,6 +560,9 @@ bool cXVDRClient::processRequest()
       result = processChannelStream_Pause();
       break;
 
+    case XVDR_CHANNELSTREAM_SIGNAL:
+      result = processChannelStream_Signal();
+      break;
 
     /** OPCODE 40 - 59: XVDR network functions for recording streaming */
     case XVDR_RECSTREAM_OPEN:
@@ -906,6 +909,15 @@ bool cXVDRClient::processChannelStream_Pause() /* OPCODE 23 */
   m_Streamer->Pause(on);
 
   return true;
+}
+
+bool cXVDRClient::processChannelStream_Signal() /* OPCODE 24 */
+{
+  if(m_Streamer == NULL)
+    return false;
+
+  m_Streamer->RequestSignalInfo();
+  return false;
 }
 
 /** OPCODE 40 - 59: XVDR network functions for recording streaming */
