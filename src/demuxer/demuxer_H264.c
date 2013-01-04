@@ -95,8 +95,12 @@ void cParserH264::ParsePayload(unsigned char* data, int length) {
   if(!spsfound)
     return;
 
-  int l = (length - o) > 512 ? 512 : (length - o);
-  uint8_t nal_data[512];
+  int e = FindStartCode(data, length, o, 0x00000001);
+  if (e == -1)
+    e = length;
+
+  int l = e - o;
+  uint8_t* nal_data = new uint8_t[l];
 
   int nal_len = nalUnescape(nal_data, data + o, l);
 
@@ -104,7 +108,10 @@ void cParserH264::ParsePayload(unsigned char* data, int length) {
   int height = 0;
   struct pixel_aspect_t pixelaspect = { 1, 1 };
 
-  if (!Parse_SPS(nal_data, nal_len, pixelaspect, width, height))
+  bool rc = Parse_SPS(nal_data, nal_len, pixelaspect, width, height);
+  delete[] nal_data;
+
+  if(!rc)
     return;
 
   double PAR = (double)pixelaspect.num/(double)pixelaspect.den;
