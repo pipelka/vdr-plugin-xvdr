@@ -45,6 +45,11 @@ bool cParserAC3::CheckAlignmentHeader(unsigned char* buffer, int& framesize) {
   if (fscod == 3 || frmsizcod > 37)
     return false;
 
+  int bsid = bs.readBits(5); // bsid
+
+  if(bsid > 8)
+    return false;
+
   framesize = AC3FrameSizeTable[frmsizcod][fscod] * 2;
   return true;
 }
@@ -59,6 +64,10 @@ void cParserAC3::ParsePayload(unsigned char* payload, int length) {
   int fscod = bs.readBits(2);
   int frmsizecod = bs.readBits(6);
   int bsid = bs.readBits(5); // bsid
+
+  if(bsid > 8)
+    return;
+
   bs.skipBits(3); // bitstream mode
   int acmod = bs.readBits(3);
 
@@ -78,9 +87,8 @@ void cParserAC3::ParsePayload(unsigned char* payload, int length) {
   }
   int lfeon = bs.readBits(1);
 
-  int srShift  = max(bsid, 8) - 8;
-  m_samplerate = AC3SampleRateTable[fscod] >> srShift;
-  m_bitrate    = (AC3BitrateTable[frmsizecod>>1] * 1000) >> srShift;
+  m_samplerate = AC3SampleRateTable[fscod];
+  m_bitrate    = (AC3BitrateTable[frmsizecod>>1] * 1000);
   m_channels   = AC3ChannelsTable[acmod] + lfeon;
 
   int framesize = AC3FrameSizeTable[frmsizecod][fscod] * 2;
