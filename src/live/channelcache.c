@@ -43,8 +43,6 @@ void cChannelCache::AddStream(const cStreamInfo& s) {
 }
 
 void cChannelCache::CreateDemuxers(cLiveStreamer* streamer) {
-  streamer->Detach();
-
   // remove old demuxers
   for (std::list<cTSDemuxer*>::iterator i = streamer->m_Demuxers.begin(); i != streamer->m_Demuxers.end(); i++)
     delete *i;
@@ -64,8 +62,6 @@ void cChannelCache::CreateDemuxers(cLiveStreamer* streamer) {
       streamer->AddPid(info.GetPID());
     }
   }
-
-  streamer->Attach();
 }
 
 bool cChannelCache::operator ==(const cChannelCache& c) const {
