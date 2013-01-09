@@ -59,7 +59,7 @@ public:
 
   cStreamInfo();
 
-  cStreamInfo(int pid, Type type, const char* lang = NULL);
+  cStreamInfo(int pid, Type type);
 
   bool operator ==(const cStreamInfo& rhs) const;
 
@@ -84,8 +84,6 @@ public:
   static const char* ContentName(const cStreamInfo::Content& content);
 
   void info() const;
-
-  inline bool IsParsed() { return m_parsed; }
 
 protected:
 

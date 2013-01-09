@@ -344,19 +344,25 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
     m_Streamer->m_FilterMutex.Lock();
 
     // create new stream demuxers
+    m_Streamer->Detach();
     cache.CreateDemuxers(m_Streamer);
+    m_Streamer->Attach();
 
-    m_Streamer->m_ready = false;
-    INFOLOG("Currently unknown new streams found, requesting stream change");
+    if(m_Streamer->IsReady())
+    {
+      m_Streamer->m_ready = false;
+      INFOLOG("Will cache new stream information when all streams are parsed");
+    }
+    else
+    {
+      INFOLOG("Currently unknown new streams found, requesting stream change");
+    }
 
     m_Streamer->RequestStreamChange();
 
     // write changed data back to the cache
     m_ChannelCache = cache;
     cChannelCache::AddToCache(CreateChannelUID(m_Channel), m_ChannelCache);
-
-    if(!m_Streamer->IsAttached())
-      m_Streamer->Attach();
 
     m_Streamer->m_FilterMutex.Unlock();
   }

@@ -26,10 +26,7 @@
 #define XVDR_CHANNELCACHEITEM_H
 
 #include <vdr/thread.h>
-#include <vdr/channels.h>
-
 #include "demuxer/demuxer.h"
-
 #include <list>
 #include <map>
 #include <fstream>
@@ -54,15 +51,11 @@ public:
 
   bool changed() const { return m_bChanged; }
 
-  bool IsParsed();
-
   static void LoadChannelCacheData();
 
   static void SaveChannelCacheData();
 
   static void AddToCache(uint32_t channeluid, const cChannelCache& channel);
-
-  static void AddToCache(const cChannel* channel);
 
   static cChannelCache GetFromCache(uint32_t channeluid);
 
