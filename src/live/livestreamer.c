@@ -142,7 +142,6 @@ void cLiveStreamer::Action(void)
     if (!IsAttached())
     {
       INFOLOG("returning from streamer thread, receiver is no more attached");
-      Clear();
       break;
     }
 
@@ -270,12 +269,12 @@ int cLiveStreamer::StreamChannel(const cChannel *channel, int sock)
   if(cache.size() != 0) {
     INFOLOG("Channel information found in cache");
     cache.CreateDemuxers(this);
-    Attach();
     RequestStreamChange();
   }
 
   DEBUGLOG("Starting PAT scanner");
   m_Device->AttachFilter(m_PatFilter);
+  Attach();
 
   INFOLOG("Successfully switched to channel %i - %s", channel->Number(), channel->Name());
   return XVDR_RET_OK;

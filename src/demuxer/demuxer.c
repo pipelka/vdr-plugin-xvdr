@@ -175,7 +175,7 @@ void cTSDemuxer::SetVideoInformation(int FpsScale, int FpsRate, int Height, int 
     return;
 
   // only register changed video information
-  if(Width == m_width && Height == m_height && Aspect == m_aspect)
+  if(Width == m_width && Height == m_height && Aspect == m_aspect && m_Streamer->IsReady())
     return;
 
   INFOLOG("--------------------------------------");
@@ -200,7 +200,8 @@ void cTSDemuxer::SetVideoInformation(int FpsScale, int FpsRate, int Height, int 
   m_aspect   = Aspect;
   m_parsed   = true;
 
-  m_Streamer->RequestStreamChange();
+  if(m_Streamer->IsReady())
+    m_Streamer->RequestStreamChange();
 }
 
 void cTSDemuxer::SetAudioInformation(int Channels, int SampleRate, int BitRate, int BitsPerSample, int BlockAlign)
@@ -224,7 +225,8 @@ void cTSDemuxer::SetAudioInformation(int Channels, int SampleRate, int BitRate, 
   m_bitspersample = BitsPerSample;
   m_parsed        = true;
 
-  m_Streamer->RequestStreamChange();
+  if(m_Streamer->IsReady())
+    m_Streamer->RequestStreamChange();
 }
 
 void cTSDemuxer::SetSubtitlingDescriptor(unsigned char SubtitlingType, uint16_t CompositionPageId, uint16_t AncillaryPageId)
