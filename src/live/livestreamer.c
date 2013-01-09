@@ -139,10 +139,14 @@ void cLiveStreamer::Action(void)
     size = 0;
     buf = Get(size);
 
-    if (!IsAttached())
     {
-      INFOLOG("returning from streamer thread, receiver is no more attached");
-      break;
+      cMutexLock lock(&m_FilterMutex);
+      if (!IsAttached())
+      {
+        INFOLOG("returning from streamer thread, receiver is no more attached");
+        Clear();
+        return;
+      }
     }
 
     if(!IsStarting() && (m_last_tick.Elapsed() > (uint64_t)(m_scanTimeout*1000)) && !m_SignalLost)
@@ -269,14 +273,17 @@ int cLiveStreamer::StreamChannel(const cChannel *channel, int sock)
   if(cache.size() != 0) {
     INFOLOG("Channel information found in cache");
     cache.CreateDemuxers(this);
+    Attach();
     RequestStreamChange();
   }
 
   DEBUGLOG("Starting PAT scanner");
   m_Device->AttachFilter(m_PatFilter);
-  Attach();
 
   INFOLOG("Successfully switched to channel %i - %s", channel->Number(), channel->Name());
+
+  Start();
+
   return XVDR_RET_OK;
 }
 
@@ -287,20 +294,6 @@ cTSDemuxer *cLiveStreamer::FindStreamDemuxer(int Pid)
       return (*i);
 
   return NULL;
-}
-
-void cLiveStreamer::Activate(bool On)
-{
-  if (On)
-  {
-    DEBUGLOG("VDR active, sending stream start message");
-    Start();
-  }
-  else
-  {
-    DEBUGLOG("VDR inactive, sending stream end message");
-    Cancel(5);
-  }
 }
 
 void cLiveStreamer::Attach(void)
@@ -591,10 +584,10 @@ bool cLiveStreamer::IsReady()
 
   for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++)
   {
-    if((*i)->IsParsed() && (*i)->GetContent() == cStreamInfo::scVIDEO) {
+    /*if((*i)->IsParsed() && (*i)->GetContent() == cStreamInfo::scVIDEO) {
       bAllParsed = true;
       break;
-    }
+    }*/
     if (!(*i)->IsParsed()) {
       DEBUGLOG("Stream with PID %i not parsed", (*i)->GetPID());
       bAllParsed = false;

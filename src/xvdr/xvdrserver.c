@@ -255,9 +255,9 @@ void cXVDRServer::Action(void)
     if (r == 0)
     {
       // remove disconnected clients
+      bool bChanged = false;
       for (ClientList::iterator i = m_clients.begin(); i != m_clients.end();)
       {
-        bool bChanged = false;
 
         if (!(*i)->Active())
         {
@@ -269,9 +269,10 @@ void cXVDRServer::Action(void)
         else {
           i++;
         }
-        if(bChanged) {
-          cChannelCache::SaveChannelCacheData();
-        }
+      }
+      // store channel cache
+      if(bChanged) {
+        cChannelCache::SaveChannelCacheData();
       }
 
       // trigger clients to reload the modified channel list

@@ -23,6 +23,7 @@
  */
 
 #include "config/config.h"
+#include "tools/hash.h"
 #include "channelcache.h"
 #include "livestreamer.h"
 
@@ -42,10 +43,26 @@ void cChannelCache::AddStream(const cStreamInfo& s) {
   m_bChanged = (old != s);
 }
 
+bool cChannelCache::IsParsed() {
+  if(empty())
+    return false;
+
+  for (iterator i = begin(); i != end(); i++)
+    if(!i->second.IsParsed())
+      return false;
+
+ return true;
+}
+
+
 void cChannelCache::CreateDemuxers(cLiveStreamer* streamer) {
+  cChannelCache old;
+
   // remove old demuxers
-  for (std::list<cTSDemuxer*>::iterator i = streamer->m_Demuxers.begin(); i != streamer->m_Demuxers.end(); i++)
+  for (std::list<cTSDemuxer*>::iterator i = streamer->m_Demuxers.begin(); i != streamer->m_Demuxers.end(); i++) {
+    old.AddStream(*(*i));
     delete *i;
+  }
 
   streamer->m_Demuxers.clear();
   streamer->SetPids(NULL);
@@ -53,13 +70,20 @@ void cChannelCache::CreateDemuxers(cLiveStreamer* streamer) {
   // create new stream demuxers
   for (iterator i = begin(); i != end(); i++)
   {
-    cStreamInfo& info = i->second;
-    cTSDemuxer* dmx = new cTSDemuxer(streamer, info);
+    cStreamInfo& infonew = i->second;
+    cStreamInfo& infoold = old[i->first];
+
+    // reuse previous stream information
+    if(infonew.GetPID() == infoold.GetPID() && infonew.GetType() == infoold.GetType()) {
+      infonew = infoold;
+    }
+
+    cTSDemuxer* dmx = new cTSDemuxer(streamer, infonew);
     if (dmx != NULL)
     {
       dmx->info();
       streamer->m_Demuxers.push_back(dmx);
-      streamer->AddPid(info.GetPID());
+      streamer->AddPid(infonew.GetPID());
     }
   }
 }
@@ -102,8 +126,65 @@ bool cChannelCache::contains(const cStreamInfo& s) const {
 
 void cChannelCache::AddToCache(uint32_t channeluid, const cChannelCache& channel) {
   Lock();
-  m_cache[channeluid] = channel;
+
+  if(channeluid != 0)
+    m_cache[channeluid] = channel;
+
   Unlock();
+}
+
+void cChannelCache::AddToCache(const cChannel* channel) {
+  cMutexLock lock(&m_access);
+
+  uint32_t uid = CreateChannelUID(channel);
+
+  // ignore invalid channels
+  if(uid == 0)
+    return;
+
+  std::map<uint32_t, cChannelCache>::iterator i = m_cache.find(uid);
+
+  // channel already in cache
+  if(i != m_cache.end())
+    return;
+
+  // create new cache item
+  cChannelCache item;
+
+  // add video stream
+  int vpid = channel->Vpid();
+  int vtype = channel->Vtype();
+
+  item.AddStream(cStreamInfo(vpid, vtype == 0x02 ? cStreamInfo::stMPEG2VIDEO : vtype == 0x1b ? cStreamInfo::stH264 : cStreamInfo::stNONE));
+
+  // add AC3 streams
+  for(int i=0; channel->Dpid(i) != 0; i++) {
+    item.AddStream(cStreamInfo(channel->Dpid(i), cStreamInfo::stAC3, channel->Dlang(i)));
+  }
+
+  // add audio streams
+  for(int i=0; channel->Apid(i) != 0; i++) {
+    int atype = channel->Atype(i);
+    item.AddStream(cStreamInfo(channel->Apid(i), 
+      atype == 0x04 ? cStreamInfo::stMPEG2AUDIO :
+      atype == 0x03 ? cStreamInfo::stMPEG2AUDIO :
+      atype == 0x0f ? cStreamInfo::stAAC :
+      atype == 0x11 ? cStreamInfo::stLATM :
+      cStreamInfo::stNONE,
+      channel->Alang(i)));
+  }
+
+  // add teletext stream
+  if(channel->Tpid() != 0) {
+    item.AddStream(cStreamInfo(channel->Tpid(), cStreamInfo::stTELETEXT));
+  }
+
+  // add subtitle streams
+  for(int i=0; channel->Spid(i) != 0; i++) {
+   item.AddStream(cStreamInfo(channel->Spid(i), cStreamInfo::stDVBSUB, channel->Slang(i)));
+  }
+
+  AddToCache(uid, item);
 }
 
 cChannelCache cChannelCache::GetFromCache(uint32_t channeluid) {
@@ -118,7 +199,6 @@ void cChannelCache::SaveChannelCacheData() {
   std::fstream out;
   cString filename = AddDirectory(XVDRServerConfig.ConfigDirectory, CHANNEL_CACHE_FILE".bak");
 
-
   out.open(filename, std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
 
   if(!out.is_open()) {
@@ -127,6 +207,7 @@ void cChannelCache::SaveChannelCacheData() {
 
   Lock();
 
+  out << "V2" << std::endl;
   out << m_cache.size() << std::endl;
 
   for(std::map<uint32_t, cChannelCache>::iterator i = m_cache.begin(); i != m_cache.end(); i++) {
@@ -142,6 +223,16 @@ void cChannelCache::SaveChannelCacheData() {
 }
 
 void cChannelCache::LoadChannelCacheData() {
+  m_cache.clear();
+
+  // preload cache with VDR channel entries
+  Channels.Lock(false);
+  for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel)) {
+    AddToCache(channel);
+  }
+  Channels.Unlock();
+
+  // load cache
   std::fstream in;
   cString filename = AddDirectory(XVDRServerConfig.ConfigDirectory, CHANNEL_CACHE_FILE);
 
@@ -152,7 +243,13 @@ void cChannelCache::LoadChannelCacheData() {
     return;
   }
 
-  m_cache.clear();
+  std::string version;
+  in >> version;
+
+  if(version != "V2") {
+    INFOLOG("old channel cache detected - skipped");
+    return;
+  }
 
   int c = 0;
   in >> c;
@@ -165,12 +262,13 @@ void cChannelCache::LoadChannelCacheData() {
 
   for(int i = 0; i < c; i++) {
     int uid = 0;
-    in  >> uid;
+    in >> uid;
 
     cChannelCache cache;
     in >> cache;
 
-    m_cache[uid] = cache;
+    if(uid != 0)
+      m_cache[uid] = cache;
   }
 }
 
@@ -197,4 +295,3 @@ std::fstream& operator>> (std::fstream& lhs, cChannelCache& rhs) {
   }
   return lhs;
 }
-

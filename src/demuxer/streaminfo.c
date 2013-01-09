@@ -39,12 +39,15 @@ cStreamInfo::cStreamInfo() {
   Initialize();
 }
 
-cStreamInfo::cStreamInfo(int pid, Type type) {
+cStreamInfo::cStreamInfo(int pid, Type type, const char* lang) {
   Initialize();
 
   m_pid = pid;
   m_type = type;
   m_parsed = false;
+
+  if(lang != NULL)
+    strncpy(m_language, lang, 4);
 
   SetContent();
 }
@@ -157,7 +160,7 @@ void cStreamInfo::info() const {
   else if (m_content == scNONE) snprintf(buffer, sizeof(buffer), "None");
   else snprintf(buffer, sizeof(buffer), "Unknown");
 
-  INFOLOG("Stream: %s PID: %i %s", TypeName(m_type), m_pid, buffer);
+  INFOLOG("Stream: %s PID: %i %s (parsed: %s)", TypeName(m_type), m_pid, buffer, (m_parsed ? "yes" : "no"));
 }
 
 std::fstream& operator<< (std::fstream& lhs, const cStreamInfo& rhs) {
@@ -168,12 +171,15 @@ std::fstream& operator<< (std::fstream& lhs, const cStreamInfo& rhs) {
   lhs << rhs.m_type << std::endl;
   lhs << rhs.m_content << std::endl;
   lhs << rhs.m_pid << std::endl;
+  lhs << rhs.m_parsed << std::endl;
+
+  const char* lang = (rhs.m_language[0] == 0 ? "XXX" : rhs.m_language);
 
   // write specific data
   switch(rhs.m_content) {
     case cStreamInfo::scAUDIO:
-      lhs << rhs.m_language << std::endl;
-      lhs << rhs.m_audiotype << std::endl;
+      lhs << lang << std::endl;
+      lhs << (int)rhs.m_audiotype << std::endl;
       lhs << rhs.m_channels << std::endl;
       lhs << rhs.m_samplerate << std::endl;
       lhs << rhs.m_bitrate << std::endl;
@@ -188,7 +194,7 @@ std::fstream& operator<< (std::fstream& lhs, const cStreamInfo& rhs) {
       lhs << (unsigned long long)(rhs.m_aspect * 1000000000) << std::endl;
       break;
     case cStreamInfo::scSUBTITLE:
-      lhs << rhs.m_language << std::endl;
+      lhs << lang << std::endl;
       lhs << rhs.m_subtitlingtype << std::endl;
       lhs << rhs.m_compositionpageid << std::endl;
       lhs << rhs.m_ancillarypageid << std::endl;
@@ -210,6 +216,8 @@ std::fstream& operator>> (std::fstream& lhs, cStreamInfo& rhs) {
   if(check != 0xFEFEFEFE)
     return lhs;
 
+  rhs.Initialize();
+
   // read general data
   int t = 0;
   lhs >> t;
@@ -220,12 +228,17 @@ std::fstream& operator>> (std::fstream& lhs, cStreamInfo& rhs) {
   rhs.m_content = static_cast<cStreamInfo::Content>(c);
 
   lhs >> rhs.m_pid;
+  lhs >> rhs.m_parsed;
 
   // read specific data
+  int at = 0;
+  std::string lang;
+
   switch(rhs.m_content) {
     case cStreamInfo::scAUDIO:
-      lhs >> rhs.m_language;
-      lhs >> rhs.m_audiotype;
+      lhs >> lang;
+      lhs >> at;
+      rhs.m_audiotype = at;
       lhs >> rhs.m_channels;
       lhs >> rhs.m_samplerate;
       lhs >> rhs.m_bitrate;
@@ -241,7 +254,7 @@ std::fstream& operator>> (std::fstream& lhs, cStreamInfo& rhs) {
       rhs.m_aspect = (double)a / 1000000000.0;
       break;
     case cStreamInfo::scSUBTITLE:
-      lhs >> rhs.m_language;
+      lhs >> lang;
       lhs >> rhs.m_subtitlingtype;
       lhs >> rhs.m_compositionpageid;
       lhs >> rhs.m_ancillarypageid;
@@ -252,7 +265,8 @@ std::fstream& operator>> (std::fstream& lhs, cStreamInfo& rhs) {
       break;
   }
 
-  rhs.m_parsed = true;
+  if(lang != "XXX")
+    strncpy(rhs.m_language, lang.c_str(), 4);
 
   return lhs;
 }
