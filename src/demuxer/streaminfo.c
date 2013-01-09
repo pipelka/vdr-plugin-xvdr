@@ -39,12 +39,15 @@ cStreamInfo::cStreamInfo() {
   Initialize();
 }
 
-cStreamInfo::cStreamInfo(int pid, Type type) {
+cStreamInfo::cStreamInfo(int pid, Type type, const char* lang) {
   Initialize();
 
   m_pid = pid;
   m_type = type;
   m_parsed = false;
+
+  if(lang != NULL)
+    strncpy(m_language, lang, 4);
 
   SetContent();
 }
