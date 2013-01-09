@@ -227,10 +227,3 @@ void cTSDemuxer::SetAudioInformation(int Channels, int SampleRate, int BitRate, 
   m_Streamer->RequestStreamChange();
 }
 
-void cTSDemuxer::SetSubtitlingDescriptor(unsigned char SubtitlingType, uint16_t CompositionPageId, uint16_t AncillaryPageId)
-{
-  m_subtitlingtype    = SubtitlingType;
-  m_compositionpageid = CompositionPageId;
-  m_ancillarypageid   = AncillaryPageId;
-  m_parsed            = true;
-}

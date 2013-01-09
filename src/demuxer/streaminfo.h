@@ -87,6 +87,8 @@ public:
 
   inline bool IsParsed() { return m_parsed; }
 
+  void SetSubtitlingDescriptor(unsigned char SubtitlingType, uint16_t CompositionPageId, uint16_t AncillaryPageId);
+
 protected:
 
   Content m_content;   // stream content (e.g. scVIDEO)

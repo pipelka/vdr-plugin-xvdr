@@ -92,7 +92,6 @@ public:
   uint32_t GetBitsPerSample() const { return m_bitspersample; }
 
   /* Subtitle related stream information */
-  void SetSubtitlingDescriptor(unsigned char SubtitlingType, uint16_t CompositionPageId, uint16_t AncillaryPageId);
   unsigned char SubtitlingType() const { return m_subtitlingtype; }
   uint16_t CompositionPageId() const { return m_compositionpageid; }
   uint16_t AncillaryPageId() const { return m_ancillarypageid; }
