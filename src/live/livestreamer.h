@@ -82,7 +82,6 @@ private:
 protected:
   void Action(void);
   void Receive(uchar *Data, int Length);
-  void Activate(bool On);
 
   void RequestStreamChange();
 
