@@ -163,6 +163,14 @@ void cStreamInfo::info() const {
   INFOLOG("Stream: %s PID: %i %s (parsed: %s)", TypeName(m_type), m_pid, buffer, (m_parsed ? "yes" : "no"));
 }
 
+void cStreamInfo::SetSubtitlingDescriptor(unsigned char SubtitlingType, uint16_t CompositionPageId, uint16_t AncillaryPageId)
+{
+  m_subtitlingtype    = SubtitlingType;
+  m_compositionpageid = CompositionPageId;
+  m_ancillarypageid   = AncillaryPageId;
+  m_parsed            = true;
+}
+
 std::fstream& operator<< (std::fstream& lhs, const cStreamInfo& rhs) {
   // write item sync
   lhs << (int)0xFEFEFEFE << std::endl;

@@ -181,7 +181,14 @@ void cChannelCache::AddToCache(const cChannel* channel) {
 
   // add subtitle streams
   for(int i=0; channel->Spid(i) != 0; i++) {
-   item.AddStream(cStreamInfo(channel->Spid(i), cStreamInfo::stDVBSUB, channel->Slang(i)));
+   cStreamInfo stream(channel->Spid(i), cStreamInfo::stDVBSUB, channel->Slang(i));
+
+   stream.SetSubtitlingDescriptor(
+     channel->SubtitlingType(i),
+     channel->CompositionPageId(i),
+     channel->AncillaryPageId(i));
+
+   item.AddStream(stream);
   }
 
   AddToCache(uid, item);
