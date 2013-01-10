@@ -42,6 +42,7 @@
 
 #include "xvdrserver.h"
 #include "xvdrclient.h"
+#include "xvdrchannels.h"
 #include "live/channelcache.h"
 #include "recordings/recordingscache.h"
 #include "net/os-config.h"
@@ -228,6 +229,7 @@ void cXVDRServer::Action(void)
   cTimeMs channelReloadTimer;
   cTimeMs channelCacheTimer;
   bool channelReloadTrigger = false;
+  uint64_t channelsHash = 0;
 
   SetPriority(19);
 
@@ -278,8 +280,10 @@ void cXVDRServer::Action(void)
       // trigger clients to reload the modified channel list
       if(m_clients.size() > 0)
       {
-        Channels.Lock(false);
-        if(Channels.Modified() != 0)
+        uint64_t hash = XVDRChannels.CheckUpdates();
+        XVDRChannels.Lock(false);
+
+        if(hash != channelsHash)
         {
           channelReloadTrigger = true;
           channelReloadTimer.Set(0);
@@ -292,7 +296,9 @@ void cXVDRServer::Action(void)
           channelReloadTrigger = false;
           INFOLOG("Done.");
         }
-        Channels.Unlock();
+
+        XVDRChannels.Unlock();
+        channelsHash = hash;
       }
 
       // reset inactivity timeout as long as there are clients connected

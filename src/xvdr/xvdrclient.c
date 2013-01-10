@@ -48,6 +48,7 @@
 #include "recordings/recplayer.h"
 #include "scanner/wirbelscanservice.h" /// copied from modified wirbelscan plugin
 #include "tools/hash.h"
+#include "xvdr/xvdrchannels.h"
 
 #include "xvdrcommand.h"
 #include "xvdrclient.h"
@@ -121,7 +122,7 @@ cString cXVDRClient::CreateLogoURL(cChannel* channel)
 
 void cXVDRClient::PutTimer(cTimer* timer, MsgPacket* p)
 {
-  Channels.Lock(false);
+  XVDRChannels.Lock(false);
 
   // check for conflicts
   DEBUGLOG("Checking conflicts for: %s", (const char*)timer->ToText(true));
@@ -206,7 +207,7 @@ void cXVDRClient::PutTimer(cTimer* timer, MsgPacket* p)
   else
     DEBUGLOG("No conflicts");
 
-  Channels.Unlock();
+  XVDRChannels.Unlock();
 
   p->put_U32(timer->Index()+1);
   p->put_U32(timer->Flags() | cflags);
@@ -858,7 +859,7 @@ bool cXVDRClient::processChannelStream_Open() /* OPCODE 20 */
 
   StopChannelStreaming();
 
-  Channels.Lock(false);
+  XVDRChannels.Lock(false);
   const cChannel *channel = NULL;
 
   // try to find channel by uid first
@@ -866,9 +867,9 @@ bool cXVDRClient::processChannelStream_Open() /* OPCODE 20 */
 
   // try channelnumber
   if (channel == NULL)
-    channel = Channels.GetByNumber(uid);
+    channel = XVDRChannels.Get()->GetByNumber(uid);
 
-  Channels.Unlock();
+  XVDRChannels.Unlock();
 
   if (channel == NULL) {
     ERRORLOG("Can't find channel %08x", uid);
@@ -1065,16 +1066,17 @@ bool cXVDRClient::processRecStream_GetIFrame() /* OPCODE 45 */
 
 int cXVDRClient::ChannelsCount()
 {
-  Channels.Lock(false);
+  XVDRChannels.Lock(false);
+  cChannels *channels = XVDRChannels.Get();
   int count = 0;
 
-  for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel))
+  for (cChannel *channel = channels->First(); channel; channel = channels->Next(channel))
   {
     if(IsChannelWanted(channel, false)) count++;
     if(IsChannelWanted(channel, true)) count++;
   }
 
-  Channels.Unlock();
+  XVDRChannels.Unlock();
   return count;
 }
 
@@ -1093,9 +1095,10 @@ bool cXVDRClient::processCHANNELS_GetChannels() /* OPCODE 63 */
   bool radio = m_req->get_U32();
 
   m_channelCount = ChannelsCount();
-  Channels.Lock(false);
+  XVDRChannels.Lock(false);
+  cChannels *channels = XVDRChannels.Get();
 
-  for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel))
+  for (cChannel *channel = channels->First(); channel; channel = channels->Next(channel))
   {
     if(!IsChannelWanted(channel, radio))
       continue;
@@ -1113,7 +1116,7 @@ bool cXVDRClient::processCHANNELS_GetChannels() /* OPCODE 63 */
       m_resp->put_String((const char*)CreateServiceReference(channel));
   }
 
-  Channels.Unlock();
+  XVDRChannels.Unlock();
 
   m_resp->compress(m_compressionLevel);
 
@@ -1124,7 +1127,7 @@ bool cXVDRClient::processCHANNELS_GroupsCount()
 {
   uint32_t type = m_req->get_U32();
 
-  Channels.Lock(false);
+  XVDRChannels.Lock(false);
 
   m_channelgroups[0].clear();
   m_channelgroups[1].clear();
@@ -1142,7 +1145,7 @@ bool cXVDRClient::processCHANNELS_GroupsCount()
       break;
   }
 
-  Channels.Unlock();
+  XVDRChannels.Unlock();
 
   uint32_t count = m_channelgroups[0].size() + m_channelgroups[1].size();
 
@@ -1182,9 +1185,10 @@ bool cXVDRClient::processCHANNELS_GetGroupMembers()
 
   m_channelCount = ChannelsCount();
 
-  Channels.Lock(false);
+  XVDRChannels.Lock(false);
+  cChannels *channels = XVDRChannels.Get();
 
-  for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel))
+  for (cChannel *channel = channels->First(); channel; channel = channels->Next(channel))
   {
 
     if(automatic && !channel->GroupSep())
@@ -1211,16 +1215,16 @@ bool cXVDRClient::processCHANNELS_GetGroupMembers()
     }
   }
 
-  Channels.Unlock();
-
+  XVDRChannels.Unlock();
   return true;
 }
 
 void cXVDRClient::CreateChannelGroups(bool automatic)
 {
   std::string groupname;
+  cChannels *channels = XVDRChannels.Get();
 
-  for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel))
+  for (cChannel *channel = channels->First(); channel; channel = channels->Next(channel))
   {
     bool isRadio = IsRadio(channel);
 
@@ -1336,10 +1340,12 @@ bool cXVDRClient::processTIMER_Add() /* OPCODE 83 */
   int stop = time->tm_hour * 100 + time->tm_min;
 
   cString buffer;
+  XVDRChannels.Lock(false);
   const cChannel* channel = FindChannelByUID(channelid);
   if(channel != NULL) {
     buffer = cString::sprintf("%u:%s:%s:%04d:%04d:%d:%d:%s:%s\n", flags, (const char*)channel->GetChannelID().ToString(), *cTimer::PrintDay(day, weekdays, true), start, stop, priority, lifetime, file, aux);
   }
+  XVDRChannels.Unlock();
 
   cTimer *timer = new cTimer;
   if (timer->Parse(buffer))
@@ -1463,10 +1469,13 @@ bool cXVDRClient::processTIMER_Update() /* OPCODE 85 */
   int stop = time->tm_hour * 100 + time->tm_min;
 
   cString buffer;
+  XVDRChannels.Lock(false);
   const cChannel* channel = FindChannelByUID(channelid);
 
   if(channel != NULL)
     buffer = cString::sprintf("%u:%s:%s:%04d:%04d:%d:%d:%s:%s\n", flags, (const char*)channel->GetChannelID().ToString(), *cTimer::PrintDay(day, weekdays, true), start, stop, priority, lifetime, file, aux);
+
+  XVDRChannels.Unlock();
 
   if (!t.Parse(buffer))
   {
@@ -1766,7 +1775,7 @@ bool cXVDRClient::processEPG_GetForChannel() /* OPCODE 120 */
   uint32_t startTime  = m_req->get_U32();
   uint32_t duration   = m_req->get_U32();
 
-  Channels.Lock(false);
+  XVDRChannels.Lock(false);
 
   const cChannel* channel = NULL;
 
@@ -1778,7 +1787,7 @@ bool cXVDRClient::processEPG_GetForChannel() /* OPCODE 120 */
   if (!channel)
   {
     m_resp->put_U32(0);
-    Channels.Unlock();
+    XVDRChannels.Unlock();
 
     ERRORLOG("written 0 because channel = NULL");
     return true;
@@ -1789,7 +1798,7 @@ bool cXVDRClient::processEPG_GetForChannel() /* OPCODE 120 */
   if (!Schedules)
   {
     m_resp->put_U32(0);
-    Channels.Unlock();
+    XVDRChannels.Unlock();
 
     DEBUGLOG("written 0 because Schedule!s! = NULL");
     return true;
@@ -1799,7 +1808,7 @@ bool cXVDRClient::processEPG_GetForChannel() /* OPCODE 120 */
   if (!Schedule)
   {
     m_resp->put_U32(0);
-    Channels.Unlock();
+    XVDRChannels.Unlock();
 
     DEBUGLOG("written 0 because Schedule = NULL");
     return true;
@@ -1861,7 +1870,7 @@ bool cXVDRClient::processEPG_GetForChannel() /* OPCODE 120 */
     atLeastOneEvent = true;
   }
 
-  Channels.Unlock();
+  XVDRChannels.Unlock();
   DEBUGLOG("Got all event data");
 
   if (!atLeastOneEvent)

@@ -25,6 +25,7 @@
 
 #include "config/config.h"
 #include "tools/hash.h"
+#include "xvdr/xvdrchannels.h"
 
 #include "livepatfilter.h"
 #include "livestreamer.h"
@@ -286,7 +287,9 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
     {
       if (!assoc.isNITPid())
       {
-        const cChannel *Channel =  Channels.GetByServiceID(Source(), Transponder(), assoc.getServiceId());
+    	XVDRChannels.Lock(false);
+        const cChannel *Channel =  XVDRChannels.Get()->GetByServiceID(Source(), Transponder(), assoc.getServiceId());
+
         if (Channel && (Channel == m_Channel))
         {
           int prevPmtPid = m_pmtPid;
@@ -298,9 +301,12 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
               Add(m_pmtPid, 0x02);
               m_pmtVersion = -1;
             }
+            XVDRChannels.Unlock();
             return;
           }
         }
+
+        XVDRChannels.Unlock();
       }
     }
   }

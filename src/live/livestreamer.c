@@ -584,10 +584,6 @@ bool cLiveStreamer::IsReady()
 
   for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++)
   {
-    /*if((*i)->IsParsed() && (*i)->GetContent() == cStreamInfo::scVIDEO) {
-      bAllParsed = true;
-      break;
-    }*/
     if (!(*i)->IsParsed()) {
       DEBUGLOG("Stream with PID %i not parsed", (*i)->GetPID());
       bAllParsed = false;
