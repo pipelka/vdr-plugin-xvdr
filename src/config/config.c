@@ -41,6 +41,7 @@ cXVDRServerConfig::cXVDRServerConfig()
   listen_port         = LISTEN_PORT;
   ConfigDirectory     = NULL;
   stream_timeout      = 3;
+  ReorderCmd          = NULL;
 }
 
 void cXVDRServerConfig::Load() {
@@ -65,6 +66,7 @@ bool cXVDRServerConfig::Parse(const char* Name, const char* Value)
   if     (!strcasecmp(Name, "TimeShiftDir")) cLiveQueue::SetTimeShiftDir(Value);
   else if(!strcasecmp(Name, "MaxTimeShiftSize")) cLiveQueue::SetBufferSize(strtoull(Value, NULL, 10));
   else if(!strcasecmp(Name, "PiconsURL")) PiconsURL = Value;
+  else if(!strcasecmp(Name, "ReorderCmd")) ReorderCmd = Value;
   else return false;
 
   return true;

@@ -86,6 +86,7 @@ public:
   uint16_t listen_port;         // Port of remote server
   uint16_t stream_timeout;      // timeout in seconds for stream data
   cString PiconsURL;
+  cString ReorderCmd;
 };
 
 // Global instance
