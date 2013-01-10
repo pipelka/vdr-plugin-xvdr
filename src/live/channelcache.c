@@ -23,6 +23,7 @@
  */
 
 #include "config/config.h"
+#include "xvdr/xvdrchannels.h"
 #include "tools/hash.h"
 #include "channelcache.h"
 #include "livestreamer.h"
@@ -233,11 +234,12 @@ void cChannelCache::LoadChannelCacheData() {
   m_cache.clear();
 
   // preload cache with VDR channel entries
-  Channels.Lock(false);
-  for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel)) {
+  XVDRChannels.Lock(false);
+  cChannels *channels = XVDRChannels.Get();
+  for (cChannel *channel = channels->First(); channel; channel = channels->Next(channel)) {
     AddToCache(channel);
   }
-  Channels.Unlock();
+  XVDRChannels.Unlock();
 
   // load cache
   std::fstream in;
