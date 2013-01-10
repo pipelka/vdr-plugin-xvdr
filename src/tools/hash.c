@@ -25,6 +25,7 @@
 
 #include <vdr/tools.h>
 #include <vdr/channels.h>
+#include "xvdr/xvdrchannels.h"
 
 #include "hash.h"
 
@@ -99,9 +100,11 @@ uint32_t CreateChannelUID(const cChannel* channel) {
 
 const cChannel* FindChannelByUID(uint32_t channelUID) {
   cChannel* result = NULL;
+  XVDRChannels.Lock(false);
+  cChannels *channels = XVDRChannels.Get();
 
   // maybe we need to use a lookup table
-  for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel)) {
+  for (cChannel *channel = channels->First(); channel; channel = channels->Next(channel)) {
     cString channelid = channel->GetChannelID().ToString();
     if(channelUID == CreateStringHash(channelid)) {
       result = channel;
@@ -109,5 +112,6 @@ const cChannel* FindChannelByUID(uint32_t channelUID) {
     }
   }
 
+  XVDRChannels.Unlock();
   return result;
 }

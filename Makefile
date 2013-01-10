@@ -74,7 +74,8 @@ OBJS = \
 	src/tools/hash.o \
 	src/xvdr/xvdr.o \
 	src/xvdr/xvdrclient.o \
-	src/xvdr/xvdrserver.o
+	src/xvdr/xvdrserver.o \
+	src/xvdr/xvdrchannels.o
 
 ### The main target:
 
