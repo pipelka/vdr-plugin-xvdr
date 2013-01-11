@@ -562,7 +562,7 @@ void cLiveStreamer::reorderStreams(int lang, cStreamInfo::Type type)
         w |= (stream->GetType() == type) ? STREAMTYPE_MASK : 0;
 
         // weight of audio type
-        w |= (4 - stream->GetAudioType()) & AUDIOTYPE_MASK;
+        w |= ((4 - stream->GetAudioType()) << 16) & AUDIOTYPE_MASK;
         break;
 
       case cStreamInfo::scSUBTITLE:
