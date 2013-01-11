@@ -517,7 +517,7 @@ void cLiveStreamer::reorderStreams(int lang, cStreamInfo::Type type)
   if (lang == -1 && type == cStreamInfo::stNONE)
     return;
 
-  std::map<int, cTSDemuxer*> weight;
+  std::map<uint32_t, cTSDemuxer*> weight;
 
   // compute weights
   int i = 0;
@@ -527,29 +527,55 @@ void cLiveStreamer::reorderStreams(int lang, cStreamInfo::Type type)
     if (stream == NULL)
       continue;
 
-    int w = i;
+    // 32bit weight:
+    // V0000000ASLTXXXXPPPPPPPPPPPPPPPP
+    //
+    // VIDEO (V):      0x80000000
+    // AUDIO (A):      0x00800000
+    // SUBTITLE (S):   0x00400000
+    // LANGUAGE (L):   0x00200000
+    // STREAMTYPE (T): 0x00100000 (only audio)
+    // AUDIOTYPE (X):  0x000F0000 (only audio)
+    // PID (P):        0x0000FFFF
 
-    // video streams rule
-    if(stream->GetContent() == cStreamInfo::scVIDEO)
-      w = 100000;
+#define VIDEO_MASK      0x80000000
+#define AUDIO_MASK      0x00800000
+#define SUBTITLE_MASK   0x00400000
+#define LANGUAGE_MASK   0x00200000
+#define STREAMTYPE_MASK 0x00100000
+#define AUDIOTYPE_MASK  0x000F0000
+#define PID_MASK        0x0000FFFF
 
-    // only for audio streams
-    if(stream->GetContent() != cStreamInfo::scAUDIO)
-    {
-      weight[w] = stream;
-      continue;
+    // last resort ordering, the PID
+    uint32_t w = 0xFFFF - (stream->GetPID() & PID_MASK);
+
+    // stream type weights
+    switch(stream->GetContent()) {
+      case cStreamInfo::scVIDEO:
+        w |= VIDEO_MASK;
+        break;
+
+      case cStreamInfo::scAUDIO:
+        w |= AUDIO_MASK;
+
+        // weight of audio stream type
+        w |= (stream->GetType() == type) ? STREAMTYPE_MASK : 0;
+
+        // weight of audio type
+        w |= (4 - stream->GetAudioType()) & AUDIOTYPE_MASK;
+        break;
+
+      case cStreamInfo::scSUBTITLE:
+        w |= SUBTITLE_MASK;
+        break;
+
+      default:
+        break;
     }
 
-    // weight of language (10000)
+    // weight of language
     int streamLangIndex = I18nLanguageIndex(stream->GetLanguage());
-    w += (streamLangIndex == lang) ? 10000 : 0;
-
-    // weight of streamtype (1000)
-    w += (stream->GetType() == type) ? 1000 : 0;
-
-    // weight of languagedescriptor (100)
-    int ldw = stream->GetAudioType() * 100;
-    w += 400 - ldw;
+    w |= (streamLangIndex == lang) ? LANGUAGE_MASK : 0;
 
     // summed weight
     weight[w] = stream;
@@ -558,10 +584,10 @@ void cLiveStreamer::reorderStreams(int lang, cStreamInfo::Type type)
   // reorder streams on weight
   int idx = 0;
   m_Demuxers.clear();
-  for(std::map<int, cTSDemuxer*>::reverse_iterator i = weight.rbegin(); i != weight.rend(); i++, idx++)
+  for(std::map<uint32_t, cTSDemuxer*>::reverse_iterator i = weight.rbegin(); i != weight.rend(); i++, idx++)
   {
     cTSDemuxer* stream = i->second;
-    DEBUGLOG("Stream : Type %i / %s Weight: %i", stream->GetType(), stream->GetLanguage(), i->first);
+    DEBUGLOG("Stream : Type %s / %s Weight: %08X", stream->TypeName(), stream->GetLanguage(), i->first);
     m_Demuxers.push_back(stream);
   }
 }
