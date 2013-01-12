@@ -52,8 +52,8 @@ int cParser::ParsePESHeader(uint8_t *buf, size_t len)
   int64_t pts = PesHasPts(buf) ? PesGetPts(buf) : DVD_NOPTS_VALUE;
   int64_t dts = PesHasDts(buf) ? PesGetDts(buf) : DVD_NOPTS_VALUE;
 
-  if (dts == DVD_NOPTS_VALUE)
-   dts = pts;
+  if (dts == DVD_NOPTS_VALUE && m_duration != 0 && m_curDTS != DVD_NOPTS_VALUE)
+    dts = PtsAdd(m_curDTS, m_duration);
 
   if(pts != 0) m_curDTS = dts;
   if(dts != 0) m_curPTS = pts;
