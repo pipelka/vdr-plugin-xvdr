@@ -23,7 +23,7 @@
  */
 
 #include "config/config.h"
-#include "bitstream.h"
+#include "vdr/tools.h"
 #include "demuxer_H264.h"
 
 // pixel aspect ratios
@@ -47,17 +47,17 @@ const struct cParserH264::pixel_aspect_t cParserH264::m_aspect_ratios[] = {
 
 
 // golomb decoding
-uint32_t read_golomb_ue(cBitstream* bs)
+uint32_t read_golomb_ue(cBitStream* bs)
 {
   int leadingZeroBits = -1;
 
   for (uint32_t b = 0; !b; ++leadingZeroBits)
-    b = bs->readBits(1);
+    b = bs->GetBits(1);
 
-  return ((1 << leadingZeroBits) - 1) + bs->readBits(leadingZeroBits);
+  return ((1 << leadingZeroBits) - 1) + bs->GetBits(leadingZeroBits);
 }
 
-int32_t read_golomb_se(cBitstream* bs)
+int32_t read_golomb_se(cBitStream* bs)
 {
   int32_t v = read_golomb_ue(bs);
   if(v == 0)
@@ -148,9 +148,9 @@ int cParserH264::nalUnescape(uint8_t *dst, const uint8_t *src, int len)
 bool cParserH264::Parse_SPS(uint8_t *buf, int len, struct pixel_aspect_t& pixelaspect, int& width, int& height)
 {
   bool seq_scaling_matrix_present = false;
-  cBitstream bs(buf, len * 8);
+  cBitStream bs(buf, len * 8);
 
-  int profile_idc = bs.readBits(8); // profile idc
+  int profile_idc = bs.GetBits(8); // profile idc
 
   // check for valid profile
   if( profile_idc != PROFILE_BASELINE &&
@@ -166,9 +166,9 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len, struct pixel_aspect_t& pixela
     return false;
   }
 
-  bs.skipBits(8); // constraint set flag 0-4, 4 bits reserved
+  bs.SkipBits(8); // constraint set flag 0-4, 4 bits reserved
 
-  bs.skipBits(8); // level idc
+  bs.SkipBits(8); // level idc
   read_golomb_ue(&bs); // sequence parameter set id
 
   // high profile ?
@@ -180,19 +180,19 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len, struct pixel_aspect_t& pixela
   {
     int chroma_format_idc = read_golomb_ue(&bs);
     if(chroma_format_idc == 3) // chroma_format_idc
-      bs.skipBits(1); // residual_colour_transform_flag
+      bs.SkipBits(1); // residual_colour_transform_flag
 
     read_golomb_ue(&bs); // bit_depth_luma - 8
     read_golomb_ue(&bs); // bit_depth_chroma - 8
-    bs.skipBits(1); // transform_bypass
+    bs.SkipBits(1); // transform_bypass
 
-    seq_scaling_matrix_present = bs.readBits1();
+    seq_scaling_matrix_present = bs.GetBit();
 
     if (seq_scaling_matrix_present) // seq_scaling_matrix_present
     {
       for (int i = 0; i < 8; i++)
       {
-        if (bs.readBits1()) // seq_scaling_list_present
+        if (bs.GetBit()) // seq_scaling_list_present
         {
           int last = 8, next = 8, size = (i<6) ? 16 : 64;
           for (int j = 0; j < size; j++) {
@@ -213,7 +213,7 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len, struct pixel_aspect_t& pixela
     read_golomb_ue(&bs); // log2_max_poc_lsb - 4
   else if (pic_order_cnt_type == 1)
   {
-    bs.skipBits(1); // delta_pic_order_always_zero
+    bs.SkipBits(1); // delta_pic_order_always_zero
     read_golomb_se(&bs); // offset_for_non_ref_pic
     read_golomb_se(&bs); // offset_for_top_to_bottom_field
 
@@ -228,22 +228,22 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len, struct pixel_aspect_t& pixela
   }
 
   read_golomb_ue(&bs); // ref_frames
-  bs.skipBits(1); // gaps_in_frame_num_allowed
+  bs.SkipBits(1); // gaps_in_frame_num_allowed
 
   width = read_golomb_ue(&bs) + 1;
   height = read_golomb_ue(&bs) + 1;
-  unsigned int frame_mbs_only = bs.readBits1();
+  unsigned int frame_mbs_only = bs.GetBit();
 
   width  *= 16;
   height *= 16 * (2 - frame_mbs_only);
 
   if (!frame_mbs_only)
-    bs.skipBits(1); // mb_adaptive_frame_field_flag
+    bs.SkipBits(1); // mb_adaptive_frame_field_flag
 
-  bs.skipBits(1); // direct_8x8_inference_flag
+  bs.SkipBits(1); // direct_8x8_inference_flag
 
   // frame_cropping_flag
-  if (bs.readBits1())
+  if (bs.GetBit())
   {
     uint32_t crop_left = read_golomb_ue(&bs);
     uint32_t crop_right = read_golomb_ue(&bs);
@@ -260,17 +260,17 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len, struct pixel_aspect_t& pixela
 
   // VUI parameters
   pixelaspect.num = 0;
-  if (bs.readBits1()) // vui_parameters_present flag
+  if (bs.GetBit()) // vui_parameters_present flag
   {
-    if (bs.readBits1()) // aspect_ratio_info_present
+    if (bs.GetBit()) // aspect_ratio_info_present
     {
-      uint32_t aspect_ratio_idc = bs.readBits(8);
+      uint32_t aspect_ratio_idc = bs.GetBits(8);
 
       // Extended_SAR
       if (aspect_ratio_idc == 255)
       {
-        pixelaspect.num = bs.readBits(16); // sar width
-        pixelaspect.den = bs.readBits(16); // sar height
+        pixelaspect.num = bs.GetBits(16); // sar width
+        pixelaspect.den = bs.GetBits(16); // sar height
       }
       else if (aspect_ratio_idc < sizeof(m_aspect_ratios)/sizeof(struct pixel_aspect_t))
           pixelaspect = m_aspect_ratios[aspect_ratio_idc];

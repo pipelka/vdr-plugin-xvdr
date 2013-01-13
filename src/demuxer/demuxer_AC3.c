@@ -24,7 +24,7 @@
  */
 
 #include "demuxer_AC3.h"
-#include "bitstream.h"
+#include "vdr/tools.h"
 #include "ac3common.h"
 
 cParserAC3::cParserAC3(cTSDemuxer *demuxer) : cParser(demuxer, 64 * 1024, 4096)
@@ -33,19 +33,19 @@ cParserAC3::cParserAC3(cTSDemuxer *demuxer) : cParser(demuxer, 64 * 1024, 4096)
 }
 
 bool cParserAC3::CheckAlignmentHeader(unsigned char* buffer, int& framesize) {
-  cBitstream bs(buffer, AC3_HEADER_SIZE * 8);
+  cBitStream bs(buffer, AC3_HEADER_SIZE * 8);
 
-  if (bs.readBits(16) != 0x0B77)
+  if (bs.GetBits(16) != 0x0B77)
     return false;
 
-  bs.skipBits(16);                // CRC
-  int fscod = bs.readBits(2);     // fscod
-  int frmsizcod = bs.readBits(6); // frmsizcod
+  bs.SkipBits(16);                // CRC
+  int fscod = bs.GetBits(2);     // fscod
+  int frmsizcod = bs.GetBits(6); // frmsizcod
 
   if (fscod == 3 || frmsizcod > 37)
     return false;
 
-  int bsid = bs.readBits(5); // bsid
+  int bsid = bs.GetBits(5); // bsid
 
   if(bsid > 8)
     return false;
@@ -55,37 +55,37 @@ bool cParserAC3::CheckAlignmentHeader(unsigned char* buffer, int& framesize) {
 }
 
 void cParserAC3::ParsePayload(unsigned char* payload, int length) {
-  cBitstream bs(payload, AC3_HEADER_SIZE * 8);
+  cBitStream bs(payload, AC3_HEADER_SIZE * 8);
 
-  if (bs.readBits(16) != 0x0B77)
+  if (bs.GetBits(16) != 0x0B77)
     return;
 
-  bs.skipBits(16); // CRC
-  int fscod = bs.readBits(2);
-  int frmsizecod = bs.readBits(6);
-  int bsid = bs.readBits(5); // bsid
+  bs.SkipBits(16); // CRC
+  int fscod = bs.GetBits(2);
+  int frmsizecod = bs.GetBits(6);
+  int bsid = bs.GetBits(5); // bsid
 
   if(bsid > 8)
     return;
 
-  bs.skipBits(3); // bitstream mode
-  int acmod = bs.readBits(3);
+  bs.SkipBits(3); // bitstream mode
+  int acmod = bs.GetBits(3);
 
   if (fscod == 3 || frmsizecod > 37)
     return;
 
   if (acmod == AC3_CHMODE_STEREO)
   {
-    bs.skipBits(2); // skip dsurmod
+    bs.SkipBits(2); // skip dsurmod
   }
   else
   {
     if ((acmod & 1) && acmod != AC3_CHMODE_MONO)
-      bs.skipBits(2);
+      bs.SkipBits(2);
     if (acmod & 4)
-      bs.skipBits(2);
+      bs.SkipBits(2);
   }
-  int lfeon = bs.readBits(1);
+  int lfeon = bs.GetBits(1);
 
   m_samplerate = AC3SampleRateTable[fscod];
   m_bitrate    = (AC3BitrateTable[frmsizecod>>1] * 1000);

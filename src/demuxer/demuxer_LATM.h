@@ -28,7 +28,7 @@
 
 #include "parser.h"
 
-class cBitstream;
+class cBitStream;
 
 class cParserLATM : public cParser
 {
@@ -44,9 +44,9 @@ protected:
 
   bool CheckAlignmentHeader(unsigned char* buffer, int& framesize);
 
-  void ReadStreamMuxConfig(cBitstream *bs);
+  void ReadStreamMuxConfig(cBitStream *bs);
 
-  void ReadAudioSpecificConfig(cBitstream *bs);
+  void ReadAudioSpecificConfig(cBitStream *bs);
 
 private:
 
