@@ -27,7 +27,7 @@
 #include <vdr/plugin.h>
 #include "xvdrserver.h"
 
-static const char *VERSION        = "0.9.7";
+static const char *VERSION        = "0.9.8";
 static const char *DESCRIPTION    = "XVDR Server";
 
 class cPluginXVDRServer : public cPlugin {
