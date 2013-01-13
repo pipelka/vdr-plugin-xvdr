@@ -47,6 +47,8 @@ private:
   void ParsePicture(unsigned char* data, int length);
 
   int64_t m_pdiff;
+
+  int64_t m_lastDTS;
 };
 
 #endif // XVDR_DEMUXER_MPEGVIDEO_H
