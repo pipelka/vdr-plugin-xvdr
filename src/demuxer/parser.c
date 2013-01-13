@@ -24,7 +24,7 @@
 
 #include "parser.h"
 #include "config/config.h"
-#include "bitstream.h"
+#include "vdr/tools.h"
 #include "pes.h"
 
 cParser::cParser(cTSDemuxer *demuxer, int buffersize, int packetsize) : cRingBufferLinear(buffersize, packetsize), m_demuxer(demuxer), m_startup(true)

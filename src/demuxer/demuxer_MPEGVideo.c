@@ -23,7 +23,7 @@
  */
 
 #include "demuxer_MPEGVideo.h"
-#include "bitstream.h"
+#include "vdr/tools.h"
 #include "pes.h"
 
 #define MPEG2_SEQUENCE_START 0x000001B3
@@ -40,11 +40,11 @@ static const double aspectratios[16] = {
 };
 
 static int GetFrameType(unsigned char* data, int length) {
-  cBitstream bs(data, length * 8);
-  bs.skipBits(32); // skip picture start code
-  bs.skipBits(10); // skip temporal reference
+  cBitStream bs(data, length * 8);
+  bs.SkipBits(32); // skip picture start code
+  bs.SkipBits(10); // skip temporal reference
 
-  return bs.readBits(3);
+  return bs.GetBits(3);
 }
 
 cParserMPEG2Video::cParserMPEG2Video(cTSDemuxer *demuxer) : cParserPES(demuxer, 512* 1024), m_pdiff(0), m_lastDTS(DVD_NOPTS_VALUE) {
@@ -122,19 +122,19 @@ void cParserMPEG2Video::SendPayload(unsigned char* payload, int length) {
 }
 
 void cParserMPEG2Video::ParseSequenceStart(unsigned char* data, int length) {
-  cBitstream bs(data, length * 8);
+  cBitStream bs(data, length * 8);
 
-  if (bs.length() < 32)
+  if (bs.Length() < 32)
     return;
 
-  int width  = bs.readBits(12);
-  int height = bs.readBits(12);
+  int width  = bs.GetBits(12);
+  int height = bs.GetBits(12);
 
   // display aspect ratio
-  double DAR = aspectratios[bs.readBits(4)];
+  double DAR = aspectratios[bs.GetBits(4)];
 
   // frame rate / duration
-  m_duration = framedurations[bs.readBits(4)];
+  m_duration = framedurations[bs.GetBits(4)];
 
   m_demuxer->SetVideoInformation(0,0, height, width, DAR, 1, 1);
 }

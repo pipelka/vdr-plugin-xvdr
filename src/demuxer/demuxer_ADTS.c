@@ -23,7 +23,7 @@
  */
 
 #include "demuxer_ADTS.h"
-#include "bitstream.h"
+#include "vdr/tools.h"
 #include "aaccommon.h"
 
 cParserADTS::cParserADTS(cTSDemuxer *demuxer) : cParser(demuxer, 64 * 1024, 8192)
@@ -33,33 +33,33 @@ cParserADTS::cParserADTS(cTSDemuxer *demuxer) : cParser(demuxer, 64 * 1024, 8192
 
 bool cParserADTS::ParseAudioHeader(uint8_t* buffer, int& channels, int& samplerate, int& framesize)
 {
-  cBitstream bs(buffer, m_headersize * 8);
+  cBitStream bs(buffer, m_headersize * 8);
 
   // sync
-  if(bs.readBits(12) != 0xFFF)
+  if(bs.GetBits(12) != 0xFFF)
     return false;
 
-  bs.skipBits(1); // MPEG Version (0 = MPEG4 / 1 = MPEG2)
+  bs.SkipBits(1); // MPEG Version (0 = MPEG4 / 1 = MPEG2)
 
   // layer if always 0
-  if(bs.readBits(2) != 0)
+  if(bs.GetBits(2) != 0)
     return false;
 
-  bs.skipBits(1); // Protection absent
-  bs.skipBits(2); // AOT
-  int samplerateindex = bs.readBits(4); // sample rate index
+  bs.SkipBits(1); // Protection absent
+  bs.SkipBits(2); // AOT
+  int samplerateindex = bs.GetBits(4); // sample rate index
   if(samplerateindex == 15)
     return false;
 
-  bs.skipBits(1);      // Private bit
+  bs.SkipBits(1);      // Private bit
 
-  int channelindex = bs.readBits(3); // channel index
+  int channelindex = bs.GetBits(3); // channel index
   if(channelindex > 7)
     return false;
 
-  bs.skipBits(4); // original, copy, copyright, ...
+  bs.SkipBits(4); // original, copy, copyright, ...
 
-  framesize = bs.readBits(13);
+  framesize = bs.GetBits(13);
 
   m_samplerate = aac_samplerates[samplerateindex];
   m_channels = aac_channels[channelindex];

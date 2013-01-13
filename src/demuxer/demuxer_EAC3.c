@@ -24,7 +24,7 @@
  */
 
 #include "demuxer_EAC3.h"
-#include "bitstream.h"
+#include "vdr/tools.h"
 #include "ac3common.h"
 
 static const uint8_t EAC3Blocks[4] = {
@@ -44,39 +44,39 @@ cParserEAC3::cParserEAC3(cTSDemuxer *demuxer) : cParser(demuxer, 64 * 1024, 4096
 }
 
 bool cParserEAC3::CheckAlignmentHeader(unsigned char* buffer, int& framesize) {
-  cBitstream bs(buffer, AC3_HEADER_SIZE * 8);
+  cBitStream bs(buffer, AC3_HEADER_SIZE * 8);
 
-  if (bs.readBits(16) != 0x0B77)
+  if (bs.GetBits(16) != 0x0B77)
     return false;
 
-  bs.skipBits(2);  // frametype
-  bs.skipBits(3);  // substream id
+  bs.SkipBits(2);  // frametype
+  bs.SkipBits(3);  // substream id
 
-  framesize = (bs.readBits(11) + 1) << 1;
+  framesize = (bs.GetBits(11) + 1) << 1;
   return true;
 }
 
 void cParserEAC3::ParsePayload(unsigned char* payload, int length) {
-  cBitstream bs(payload, AC3_HEADER_SIZE * 8);
+  cBitStream bs(payload, AC3_HEADER_SIZE * 8);
 
-  if (bs.readBits(16) != 0x0B77)
+  if (bs.GetBits(16) != 0x0B77)
     return;
 
-  int frametype = bs.readBits(2);
+  int frametype = bs.GetBits(2);
   if (frametype == EAC3_FRAME_TYPE_RESERVED)
     return;
 
-  bs.skipBits(3);
+  bs.SkipBits(3);
 
-  int framesize = (bs.readBits(11) + 1) << 1;
+  int framesize = (bs.GetBits(11) + 1) << 1;
   if (framesize < AC3_HEADER_SIZE)
    return;
 
   int numBlocks = 6;
-  int sr_code = bs.readBits(2);
+  int sr_code = bs.GetBits(2);
   if (sr_code == 3)
   {
-    int sr_code2 = bs.readBits(2);
+    int sr_code2 = bs.GetBits(2);
     if (sr_code2 == 3)
       return;
 
@@ -84,12 +84,12 @@ void cParserEAC3::ParsePayload(unsigned char* payload, int length) {
   }
   else
   {
-    numBlocks = EAC3Blocks[bs.readBits(2)];
+    numBlocks = EAC3Blocks[bs.GetBits(2)];
     m_samplerate = AC3SampleRateTable[sr_code];
   }
 
-  int channelMode = bs.readBits(3);
-  int lfeon = bs.readBits(1);
+  int channelMode = bs.GetBits(3);
+  int lfeon = bs.GetBits(1);
 
   m_bitrate  = (uint32_t)(8.0 * framesize * m_samplerate / (numBlocks * 256.0));
   m_channels = AC3ChannelsTable[channelMode] + lfeon;
