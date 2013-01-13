@@ -47,15 +47,24 @@ static int GetFrameType(unsigned char* data, int length) {
   return bs.readBits(3);
 }
 
-cParserMPEG2Video::cParserMPEG2Video(cTSDemuxer *demuxer) : cParserPES(demuxer, 512* 1024), m_pdiff(0) {
+cParserMPEG2Video::cParserMPEG2Video(cTSDemuxer *demuxer) : cParserPES(demuxer, 512* 1024), m_pdiff(0), m_lastDTS(DVD_NOPTS_VALUE) {
 }
 
 void cParserMPEG2Video::ParsePicture(unsigned char* data, int length) {
   int frametype = GetFrameType(data, length);
 
   // get I,P frames distance
-  if(frametype < 3 && m_curDTS != DVD_NOPTS_VALUE && m_curPTS != DVD_NOPTS_VALUE)
+  if(frametype < 3 && m_curDTS != DVD_NOPTS_VALUE && m_curPTS != DVD_NOPTS_VALUE) {
     m_pdiff = m_curPTS - m_curDTS;
+    m_lastDTS = m_curDTS;
+    return;
+  }
+
+  // extrapolate DTS
+  if(m_curDTS == DVD_NOPTS_VALUE && m_duration != 0) {
+    m_curDTS = PtsAdd(m_lastDTS, m_duration);
+    m_lastDTS = m_curDTS;
+  }
 
   // B frames have DTS = PTS
   if(frametype == 3 && m_curPTS == DVD_NOPTS_VALUE)
