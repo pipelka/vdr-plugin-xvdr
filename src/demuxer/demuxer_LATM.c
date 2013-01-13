@@ -49,11 +49,17 @@ cParserLATM::cParserLATM(cTSDemuxer *demuxer) : cParser(demuxer, 64 * 1024, 8192
 }
 
 bool cParserLATM::CheckAlignmentHeader(unsigned char* buffer, int& framesize) {
-  if(!(buffer[0] == 0x56 && (buffer[1] & 0xe0) == 0xe0))
-    return false;
+  cBitStream bs(buffer, 24 * 8);
 
-  framesize = (buffer[1] & 0x1f) << 8 | buffer[2];
+  // read sync
+  if(bs.GetBits(11) != 0x2B7) {
+    return false;
+  }
+
+  // read frame size
+  framesize = bs.GetBits(13);
   framesize += 3; // add header size
+
   return true;
 }
 
