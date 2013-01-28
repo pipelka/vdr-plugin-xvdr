@@ -80,43 +80,27 @@ cLiveStreamer::~cLiveStreamer()
 {
   DEBUGLOG("Started to delete live streamer");
 
-  // clear buffer
-  Clear();
-
   cTimeMs t;
-  Cancel(-1);
 
-  if (m_Device)
-  {
+  DEBUGLOG("Detaching");
+  if (m_Device) {
     Detach();
-
-    if (m_PatFilter)
-    {
-      DEBUGLOG("Detaching Live Filter");
-      m_Device->Detach(m_PatFilter);
-    }
-    else
-    {
-      DEBUGLOG("No live filter present");
-    }
-
-    if (m_PatFilter)
-    {
-      DEBUGLOG("Deleting Live Filter");
-      DELETENULL(m_PatFilter);
-    }
-
-    for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++)
-    {
-      if ((*i) != NULL)
-      {
-        DEBUGLOG("Deleting stream demuxer for pid=%i and type=%i", (*i)->GetPID(), (*i)->GetType());
-        delete (*i);
-      }
-    }
-    m_Demuxers.clear();
-
+    m_Device->Detach(m_PatFilter);
   }
+
+  delete m_PatFilter;
+
+  DEBUGLOG("Stopping streamer thread ...");
+  Cancel(5);
+  DEBUGLOG("Done.");
+
+  for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++) {
+    if ((*i) != NULL) {
+      DEBUGLOG("Deleting stream demuxer for pid=%i and type=%i", (*i)->GetPID(), (*i)->GetType());
+      delete (*i);
+    }
+  }
+  m_Demuxers.clear();
 
   delete m_Queue;
 
