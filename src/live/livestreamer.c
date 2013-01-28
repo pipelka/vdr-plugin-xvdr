@@ -497,10 +497,6 @@ void cLiveStreamer::RequestSignalInfo()
 
 void cLiveStreamer::reorderStreams(int lang, cStreamInfo::Type type)
 {
-  // do not reorder if there isn't any preferred language
-  if (lang == -1 && type == cStreamInfo::stNONE)
-    return;
-
   std::map<uint32_t, cTSDemuxer*> weight;
 
   // compute weights
