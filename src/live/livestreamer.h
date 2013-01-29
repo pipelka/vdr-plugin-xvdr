@@ -53,7 +53,7 @@ private:
   friend class cChannelCache;
 
   void Detach(void);
-  void Attach(void);
+  bool Attach(void);
   cTSDemuxer *FindStreamDemuxer(int Pid);
 
   void reorderStreams(int lang, cStreamInfo::Type type);

@@ -258,7 +258,10 @@ int cLiveStreamer::StreamChannel(const cChannel *channel, int sock)
   if(cache.size() != 0) {
     INFOLOG("Channel information found in cache");
     cache.CreateDemuxers(this);
-    Attach();
+    if(!Attach()) {
+      INFOLOG("Unable to attach receiver !");
+      return XVDR_RET_DATALOCKED;
+    }
     RequestStreamChange();
   }
 
@@ -281,20 +284,18 @@ cTSDemuxer *cLiveStreamer::FindStreamDemuxer(int Pid)
   return NULL;
 }
 
-void cLiveStreamer::Attach(void)
+bool cLiveStreamer::Attach(void)
 {
-  DEBUGLOG("%s", __FUNCTION__);
-  if (m_Device)
-  {
-    m_Device->AttachReceiver(this);
+  if (m_Device == NULL) {
+    return false;
   }
+
+  return m_Device->AttachReceiver(this);
 }
 
 void cLiveStreamer::Detach(void)
 {
-  DEBUGLOG("%s", __FUNCTION__);
-  if (m_Device)
-  {
+  if (m_Device) {
     m_Device->Detach(this);
   }
 }
