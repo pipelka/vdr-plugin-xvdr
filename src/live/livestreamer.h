@@ -61,6 +61,7 @@ private:
   void sendStreamPacket(sStreamPacket *pkt);
   void sendStreamChange();
   void sendStatus(int status);
+  void sendDetach();
 
   cDevice          *m_Device;                       /*!> The receiving device the channel depents to */
   cLivePatFilter   *m_PatFilter;                    /*!> Filter processor to get changed pid's */

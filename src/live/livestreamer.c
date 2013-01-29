@@ -82,6 +82,10 @@ cLiveStreamer::~cLiveStreamer()
 
   cTimeMs t;
 
+  DEBUGLOG("Stopping streamer thread ...");
+  Cancel(5);
+  DEBUGLOG("Done.");
+
   DEBUGLOG("Detaching");
   if (m_Device) {
     Detach();
@@ -89,10 +93,6 @@ cLiveStreamer::~cLiveStreamer()
   }
 
   delete m_PatFilter;
-
-  DEBUGLOG("Stopping streamer thread ...");
-  Cancel(5);
-  DEBUGLOG("Done.");
 
   for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++) {
     if ((*i) != NULL) {
@@ -129,6 +129,7 @@ void cLiveStreamer::Action(void)
       {
         INFOLOG("returning from streamer thread, receiver is no more attached");
         Clear();
+        sendDetach();
         return;
       }
     }
@@ -349,6 +350,12 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
 
   m_Queue->Add(packet);
   m_last_tick.Set(0);
+}
+
+void cLiveStreamer::sendDetach() {
+  INFOLOG("sending detach message");
+  MsgPacket* resp = new MsgPacket(XVDR_STREAM_DETACH, XVDR_CHANNEL_STREAM);
+  m_Queue->Add(resp);
 }
 
 void cLiveStreamer::sendStreamChange()
