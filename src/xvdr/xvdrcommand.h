@@ -93,11 +93,10 @@
 
 /* OPCODE 140 - 159: XVDR network functions for channel scanning */
 #define XVDR_SCAN_SUPPORTED        140
-#define XVDR_SCAN_GETCOUNTRIES     141
-#define XVDR_SCAN_GETSATELLITES    142
+#define XVDR_SCAN_GETSETUP         141
+#define XVDR_SCAN_SETSETUP         142
 #define XVDR_SCAN_START            143
 #define XVDR_SCAN_STOP             144
-
 
 /** Stream packet types (server -> client) */
 #define XVDR_STREAM_CHANGE       1
@@ -111,21 +110,13 @@
 #define XVDR_STREAM_STATUS_SIGNALLOST     111
 #define XVDR_STREAM_STATUS_SIGNALRESTORED 112
 
-/** Scan packet types (server -> client) */
-#define XVDR_SCANNER_PERCENTAGE  1
-#define XVDR_SCANNER_SIGNAL      2
-#define XVDR_SCANNER_DEVICE      3
-#define XVDR_SCANNER_TRANSPONDER 4
-#define XVDR_SCANNER_NEWCHANNEL  5
-#define XVDR_SCANNER_FINISHED    6
-#define XVDR_SCANNER_STATUS      7
-
 /** Status packet types (server -> client) */
 #define XVDR_STATUS_TIMERCHANGE      1
 #define XVDR_STATUS_RECORDING        2
 #define XVDR_STATUS_MESSAGE          3
 #define XVDR_STATUS_CHANNELCHANGE    4
 #define XVDR_STATUS_RECORDINGSCHANGE 5
+#define XVDR_STATUS_CHANNELSCAN      6
 
 /** Packet return codes */
 #define XVDR_RET_OK              0

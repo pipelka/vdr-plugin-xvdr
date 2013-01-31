@@ -46,7 +46,6 @@
 #include "net/socketlock.h"
 #include "recordings/recordingscache.h"
 #include "recordings/recplayer.h"
-#include "scanner/wirbelscanservice.h" /// copied from modified wirbelscan plugin
 #include "tools/hash.h"
 #include "xvdr/xvdrchannels.h"
 
@@ -234,8 +233,6 @@ cXVDRClient::cXVDRClient(int fd, unsigned int id)
   m_RecPlayer               = NULL;
   m_req                     = NULL;
   m_resp                    = NULL;
-  m_processSCAN_Response    = NULL;
-  m_processSCAN_Socket      = -1;
   m_compressionLevel        = 0;
   m_LanguageIndex           = -1;
   m_LangStreamType          = cStreamInfo::stMPEG2AUDIO;
@@ -272,21 +269,21 @@ void cXVDRClient::Action(void)
 
   SetPriority(10);
 
-  while (Running())
-  {
-    m_req = MsgPacket::read(m_socket, bClosed, 2000);
+  while (Running()) {
+    m_req = MsgPacket::read(m_socket, bClosed, 1000);
 
-    if(bClosed)
-    {
+    if(bClosed) {
       delete m_req;
       m_req = NULL;
       break;
     }
 
-    if(m_req != NULL)
-    {
+    if(m_req != NULL) {
       processRequest();
       delete m_req;
+    }
+    else if(m_scanner.IsScanning()) {
+      SendScannerStatus();
     }
   }
 
@@ -690,12 +687,12 @@ bool cXVDRClient::processRequest()
       result = processSCAN_ScanSupported();
       break;
 
-    case XVDR_SCAN_GETCOUNTRIES:
-      result = processSCAN_GetCountries();
+    case XVDR_SCAN_GETSETUP:
+      result = processSCAN_GetSetup();
       break;
 
-    case XVDR_SCAN_GETSATELLITES:
-      result = processSCAN_GetSatellites();
+    case XVDR_SCAN_SETSETUP:
+      result = processSCAN_SetSetup();
       break;
 
     case XVDR_SCAN_START:
@@ -1095,7 +1092,11 @@ bool cXVDRClient::processCHANNELS_GetChannels() /* OPCODE 63 */
   bool radio = m_req->get_U32();
 
   m_channelCount = ChannelsCount();
-  XVDRChannels.Lock(false);
+
+  if(!XVDRChannels.Lock(false)) {
+    return true;
+  }
+
   cChannels *channels = XVDRChannels.Get();
 
   for (cChannel *channel = channels->First(); channel; channel = channels->Next(channel))
@@ -1889,219 +1890,172 @@ bool cXVDRClient::processEPG_GetForChannel() /* OPCODE 120 */
 
 bool cXVDRClient::processSCAN_ScanSupported() /* OPCODE 140 */
 {
-  /** Note: Using "WirbelScanService-StopScan-v1.0" to detect
-            a present service interface in wirbelscan plugin,
-            it returns true if supported */
-  cPlugin *p = cPluginManager::GetPlugin("wirbelscan");
-  if (p && p->Service("WirbelScanService-StopScan-v1.0", NULL))
-    m_resp->put_U32(XVDR_RET_OK);
-  else
-    m_resp->put_U32(XVDR_RET_NOTSUPPORTED);
-
-  return true;
-}
-
-bool cXVDRClient::processSCAN_GetCountries() /* OPCODE 141 */
-{
-  if (!m_processSCAN_Response)
-  {
-    m_processSCAN_Response = m_resp;
-    cPlugin *p = cPluginManager::GetPlugin("wirbelscan");
-    if (p)
-    {
-      m_resp->put_U32(XVDR_RET_OK);
-      p->Service("WirbelScanService-GetCountries-v1.0", (void*) processSCAN_AddCountry);
-    }
-    else
-    {
-      m_resp->put_U32(XVDR_RET_NOTSUPPORTED);
-    }
-    m_processSCAN_Response = NULL;
-  }
-  else
-  {
-    m_resp->put_U32(XVDR_RET_DATALOCKED);
-  }
-
-  return true;
-}
-
-bool cXVDRClient::processSCAN_GetSatellites() /* OPCODE 142 */
-{
-  if (!m_processSCAN_Response)
-  {
-    m_processSCAN_Response = m_resp;
-    cPlugin *p = cPluginManager::GetPlugin("wirbelscan");
-    if (p)
-    {
-      m_resp->put_U32(XVDR_RET_OK);
-      p->Service("WirbelScanService-GetSatellites-v1.0", (void*) processSCAN_AddSatellite);
-    }
-    else
-    {
-      m_resp->put_U32(XVDR_RET_NOTSUPPORTED);
-    }
-    m_processSCAN_Response = NULL;
-  }
-  else
-  {
-    m_resp->put_U32(XVDR_RET_DATALOCKED);
-  }
-
-  return true;
-}
-
-bool cXVDRClient::processSCAN_Start() /* OPCODE 143 */
-{
-  WirbelScanService_DoScan_v1_0 svc;
-  svc.type              = (scantype_t)m_req->get_U32();
-  svc.scan_tv           = (bool)m_req->get_U8();
-  svc.scan_radio        = (bool)m_req->get_U8();
-  svc.scan_fta          = (bool)m_req->get_U8();
-  svc.scan_scrambled    = (bool)m_req->get_U8();
-  svc.scan_hd           = (bool)m_req->get_U8();
-  svc.CountryIndex      = (int)m_req->get_U32();
-  svc.DVBC_Inversion    = (int)m_req->get_U32();
-  svc.DVBC_Symbolrate   = (int)m_req->get_U32();
-  svc.DVBC_QAM          = (int)m_req->get_U32();
-  svc.DVBT_Inversion    = (int)m_req->get_U32();
-  svc.SatIndex          = (int)m_req->get_U32();
-  svc.ATSC_Type         = (int)m_req->get_U32();
-  svc.SetPercentage     = processSCAN_SetPercentage;
-  svc.SetSignalStrength = processSCAN_SetSignalStrength;
-  svc.SetDeviceInfo     = processSCAN_SetDeviceInfo;
-  svc.SetTransponder    = processSCAN_SetTransponder;
-  svc.NewChannel        = processSCAN_NewChannel;
-  svc.IsFinished        = processSCAN_IsFinished;
-  svc.SetStatus         = processSCAN_SetStatus;
-  m_processSCAN_Socket  = m_socket;
-
-  cPlugin *p = cPluginManager::GetPlugin("wirbelscan");
-  if (p)
-  {
-    if (p->Service("WirbelScanService-DoScan-v1.0", (void*) &svc))
-      m_resp->put_U32(XVDR_RET_OK);
-    else
-      m_resp->put_U32(XVDR_RET_ERROR);
-  }
-  else
-  {
-    m_resp->put_U32(XVDR_RET_NOTSUPPORTED);
-  }
-
-  return true;
-}
-
-bool cXVDRClient::processSCAN_Stop() /* OPCODE 144 */
-{
-  cPlugin *p = cPluginManager::GetPlugin("wirbelscan");
-  if (p)
-  {
-    p->Service("WirbelScanService-StopScan-v1.0", NULL);
+  if(m_scanner.Connect()) {
     m_resp->put_U32(XVDR_RET_OK);
   }
-  else
-  {
+  else {
     m_resp->put_U32(XVDR_RET_NOTSUPPORTED);
   }
+
   return true;
 }
 
-MsgPacket* cXVDRClient::m_processSCAN_Response = NULL;
-int cXVDRClient::m_processSCAN_Socket = -1;
-
-void cXVDRClient::processSCAN_AddCountry(int index, const char *isoName, const char *longName)
+bool cXVDRClient::processSCAN_GetSetup() /* OPCODE 141 */
 {
-  m_processSCAN_Response->put_U32(index);
-  m_processSCAN_Response->put_String(isoName);
-  m_processSCAN_Response->put_String(longName);
+  // get setup
+  WIRBELSCAN_SERVICE::cWirbelscanScanSetup setup;
+  if(!m_scanner.GetSetup(setup)) {
+    INFOLOG("Unable to get wirbelscan setup !");
+    m_resp->put_U32(XVDR_RET_NOTSUPPORTED);
+    return true;
+  }
+
+  // get satellites
+  cWirbelScan::List satellites;
+  if(!m_scanner.GetSat(satellites)) {
+    INFOLOG("Unable to get wirbelscan satellite list !");
+    m_resp->put_U32(XVDR_RET_NOTSUPPORTED);
+    return true;
+  }
+
+  // get coutries
+  cWirbelScan::List countries;
+  if(!m_scanner.GetCountry(countries)) {
+    INFOLOG("Unable to get wirbelscan country list !");
+    m_resp->put_U32(XVDR_RET_NOTSUPPORTED);
+    return true;
+  }
+
+  // assemble response packet
+  m_resp->put_U32(XVDR_RET_OK);
+
+  // add setup
+  m_resp->put_U16(setup.verbosity);
+  m_resp->put_U16(setup.logFile);
+  m_resp->put_U16(setup.DVB_Type);
+  m_resp->put_U16(setup.DVBT_Inversion);
+  m_resp->put_U16(setup.DVBC_Inversion);
+  m_resp->put_U16(setup.DVBC_Symbolrate);
+  m_resp->put_U16(setup.DVBC_QAM);
+  m_resp->put_U16(setup.CountryId);
+  m_resp->put_U16(setup.SatId);
+  m_resp->put_U32(setup.scanflags);
+  m_resp->put_U16(setup.ATSC_type);
+
+  cCharSetConv toUTF8("ISO-8859-1", "UTF-8");
+
+  // add satellites
+  m_resp->put_U16(satellites.size());
+  for(cWirbelScan::List::iterator i = satellites.begin(); i != satellites.end(); i++) {
+    m_resp->put_S32(i->id);
+    m_resp->put_String(toUTF8.Convert(i->short_name));
+    m_resp->put_String(toUTF8.Convert(i->full_name));
+  }
+
+  // add countries
+  m_resp->put_U16(countries.size());
+  for(cWirbelScan::List::iterator i = countries.begin(); i != countries.end(); i++) {
+    m_resp->put_S32(i->id);
+    m_resp->put_String(toUTF8.Convert(i->short_name));
+    m_resp->put_String(toUTF8.Convert(i->full_name));
+  }
+
+  m_resp->compress(m_compressionLevel);
+  return true;
 }
 
-void cXVDRClient::processSCAN_AddSatellite(int index, const char *shortName, const char *longName)
+bool cXVDRClient::processSCAN_SetSetup() /* OPCODE 141 */
 {
-  m_processSCAN_Response->put_U32(index);
-  m_processSCAN_Response->put_String(shortName);
-  m_processSCAN_Response->put_String(longName);
+  WIRBELSCAN_SERVICE::cWirbelscanScanSetup setup;
+
+  // read setup
+  setup.verbosity = m_req->get_U16();
+  setup.logFile = m_req->get_U16();
+  setup.DVB_Type = m_req->get_U16();
+  setup.DVBT_Inversion = m_req->get_U16();
+  setup.DVBC_Inversion = m_req->get_U16();
+  setup.DVBC_Symbolrate = m_req->get_U16();
+  setup.DVBC_QAM = m_req->get_U16();
+  setup.CountryId = m_req->get_U16();
+  setup.SatId = m_req->get_U16();
+  setup.scanflags = m_req->get_U32();
+  setup.ATSC_type = m_req->get_U16();
+
+  INFOLOG("Logfile: %i", setup.logFile);
+
+  // set setup
+  if(!m_scanner.SetSetup(setup)) {
+    INFOLOG("Unable to set wirbelscan setup !");
+    m_resp->put_U32(XVDR_RET_NOTSUPPORTED);
+    return true;
+  }
+
+  // store setup
+  WIRBELSCAN_SERVICE::cWirbelscanCmd cmd;
+  cmd.cmd = WIRBELSCAN_SERVICE::CmdStore;
+
+  if(!m_scanner.DoCmd(cmd)) {
+    INFOLOG("Unable to store wirbelscan setup !");
+    m_resp->put_U32(XVDR_RET_NOTSUPPORTED);
+    return true;
+  }
+
+  INFOLOG("new wirbelscan setup stored.");
+
+  m_resp->put_U32(XVDR_RET_OK);
+  return true;
 }
 
-void cXVDRClient::processSCAN_SetPercentage(int percent)
-{
-  cSocketLock locks(m_processSCAN_Socket);
-  MsgPacket* resp = new MsgPacket(XVDR_SCANNER_PERCENTAGE, XVDR_CHANNEL_SCAN);
-  resp->put_U32(percent);
+bool cXVDRClient::processSCAN_Start() {
+  WIRBELSCAN_SERVICE::cWirbelscanCmd cmd;
+  cmd.cmd = WIRBELSCAN_SERVICE::CmdStartScan;
 
-  resp->write(m_processSCAN_Socket, 3000);
-  delete resp;
+  if(!m_scanner.DoCmd(cmd)) {
+    INFOLOG("Unable to start channel scanner !");
+    m_resp->put_U32(XVDR_RET_NOTSUPPORTED);
+    return true;
+  }
+
+  INFOLOG("channel scanner started ...");
+
+  m_resp->put_U32(XVDR_RET_OK);
+  return true;
 }
 
-void cXVDRClient::processSCAN_SetSignalStrength(int strength, bool locked)
-{
-  cSocketLock locks(m_processSCAN_Socket);
-  MsgPacket*resp = new MsgPacket(XVDR_SCANNER_SIGNAL, XVDR_CHANNEL_SCAN);
+bool cXVDRClient::processSCAN_Stop() {
+  WIRBELSCAN_SERVICE::cWirbelscanCmd cmd;
+  cmd.cmd = WIRBELSCAN_SERVICE::CmdStopScan;
 
-  strength *= 100;
-  strength /= 0xFFFF;
+  if(!m_scanner.DoCmd(cmd)) {
+    INFOLOG("Unable to stop channel scanner !");
+    m_resp->put_U32(XVDR_RET_NOTSUPPORTED);
+    return true;
+  }
 
-  resp->put_U32(strength);
-  resp->put_U32(locked);
+  INFOLOG("channel scanner stopped.");
 
-  resp->write(m_processSCAN_Socket, 3000);
-  delete resp;
+  m_resp->put_U32(XVDR_RET_OK);
+  return true;
 }
 
-void cXVDRClient::processSCAN_SetDeviceInfo(const char *Info)
-{
-  cSocketLock locks(m_processSCAN_Socket);
-  MsgPacket* resp = new MsgPacket(XVDR_SCANNER_DEVICE, XVDR_CHANNEL_SCAN);
+void cXVDRClient::SendScannerStatus() {
+  WIRBELSCAN_SERVICE::cWirbelscanStatus status;
+  if(!m_scanner.GetStatus(status)) {
+    return;
+  }
 
-  resp->put_String(Info);
+  MsgPacket* resp = new MsgPacket(XVDR_STATUS_CHANNELSCAN, XVDR_CHANNEL_STATUS);
+  resp->setProtocolVersion(XVDR_PROTOCOLVERSION);
 
-  resp->write(m_processSCAN_Socket, 3000);
-  delete resp;
-}
+  resp->put_U8((uint8_t)status.status);
+  resp->put_U16(status.progress);
+  resp->put_U16(status.strength);
+  resp->put_U16(status.numChannels);
+  resp->put_U16(status.newChannels);
+  resp->put_String(status.curr_device);
+  resp->put_String(status.transponder);
 
-void cXVDRClient::processSCAN_SetTransponder(const char *Info)
-{
-  cSocketLock locks(m_processSCAN_Socket);
-  MsgPacket* resp = new MsgPacket(XVDR_SCANNER_TRANSPONDER, XVDR_CHANNEL_SCAN);
-
-  resp->put_String(Info);
-
-  resp->write(m_processSCAN_Socket, 3000);
-  delete resp;
-}
-
-void cXVDRClient::processSCAN_NewChannel(const char *Name, bool isRadio, bool isEncrypted, bool isHD)
-{
-  cSocketLock locks(m_processSCAN_Socket);
-  MsgPacket* resp = new MsgPacket(XVDR_SCANNER_NEWCHANNEL, XVDR_CHANNEL_SCAN);
-
-  resp->put_U32(isRadio);
-  resp->put_U32(isEncrypted);
-  resp->put_U32(isHD);
-  resp->put_String(Name);
-
-  resp->write(m_processSCAN_Socket, 3000);
-  delete resp;
-}
-
-void cXVDRClient::processSCAN_IsFinished()
-{
-  cSocketLock locks(m_processSCAN_Socket);
-  MsgPacket* resp = new MsgPacket(XVDR_SCANNER_FINISHED, XVDR_CHANNEL_SCAN);
-
-  resp->write(m_processSCAN_Socket, 3000);
-  delete resp;
-  m_processSCAN_Socket = -1;
-}
-
-void cXVDRClient::processSCAN_SetStatus(int status)
-{
-  cSocketLock locks(m_processSCAN_Socket);
-  MsgPacket* resp = new MsgPacket(XVDR_SCANNER_STATUS, XVDR_CHANNEL_SCAN);
-
-  resp->put_U32(status);
-
-  resp->write(m_processSCAN_Socket, 3000);
+  m_resp->compress(m_compressionLevel);
+  resp->write(m_socket, m_timeout);
   delete resp;
 }
