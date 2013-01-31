@@ -36,6 +36,7 @@
 #include <vdr/status.h>
 
 #include "demuxer/streaminfo.h"
+#include "scanner/wirbelscan.h"
 
 class cChannel;
 class cDevice;
@@ -71,6 +72,7 @@ private:
   bool              m_filterlanguage;
   int               m_channelCount;
   int               m_timeout;
+  cWirbelScan       m_scanner;
 
 protected:
 
@@ -165,25 +167,12 @@ private:
   bool processEPG_GetForChannel();
 
   bool processSCAN_ScanSupported();
-  bool processSCAN_GetCountries();
-  bool processSCAN_GetSatellites();
+  bool processSCAN_GetSetup();
+  bool processSCAN_SetSetup();
   bool processSCAN_Start();
   bool processSCAN_Stop();
 
-  /** Static callback functions to interact with wirbelscan plugin over
-      the plugin service interface */
-  static void processSCAN_AddCountry(int index, const char *isoName, const char *longName);
-  static void processSCAN_AddSatellite(int index, const char *shortName, const char *longName);
-  static void processSCAN_SetPercentage(int percent);
-  static void processSCAN_SetSignalStrength(int strength, bool locked);
-  static void processSCAN_SetDeviceInfo(const char *Info);
-  static void processSCAN_SetTransponder(const char *Info);
-  static void processSCAN_NewChannel(const char *Name, bool isRadio, bool isEncrypted, bool isHD);
-  static void processSCAN_IsFinished();
-  static void processSCAN_SetStatus(int status);
-  static MsgPacket* m_processSCAN_Response;
-  static int m_processSCAN_Socket;
-
+  void SendScannerStatus();
 };
 
 #endif // XVDR_CLIENT_H

@@ -81,6 +81,7 @@ OBJS = \
 	src/net/socketlock.o \
 	src/recordings/recordingscache.o \
 	src/recordings/recplayer.o \
+	src/scanner/wirbelscan.o \
 	src/tools/hash.o \
 	src/xvdr/xvdr.o \
 	src/xvdr/xvdrclient.o \
