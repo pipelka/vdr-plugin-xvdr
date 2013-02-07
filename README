@@ -1,4 +1,4 @@
-XVDR for the Video Disk Recorder (VDR).
+XVDR Plugin for the Video Disk Recorder (VDR).
 
 Written by:                  Alexander Pipelka, Alwin Esch
 
@@ -18,3 +18,9 @@ Description:
 
 VDR plugin to handle XBMC clients.
 The vdr-plugin-xvdr is able to handle serveral XBMC clients connecting via the XVDR addon.
+
+Requirements:
+-------------
+
+For channel scanning you need to install the "wirbelscan" plugin:
+http://wirbel.htpc-forum.de/wirbelscan/index2.html
