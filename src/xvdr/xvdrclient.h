@@ -171,6 +171,7 @@ private:
   bool processSCAN_SetSetup();
   bool processSCAN_Start();
   bool processSCAN_Stop();
+  bool processSCAN_GetStatus();
 
   void SendScannerStatus();
 };

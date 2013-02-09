@@ -97,6 +97,7 @@
 #define XVDR_SCAN_SETSETUP         142
 #define XVDR_SCAN_START            143
 #define XVDR_SCAN_STOP             144
+#define XVDR_SCAN_GETSTATUS        145
 
 /** Stream packet types (server -> client) */
 #define XVDR_STREAM_CHANGE       1

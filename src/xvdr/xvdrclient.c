@@ -703,6 +703,10 @@ bool cXVDRClient::processRequest()
       result = processSCAN_Stop();
       break;
 
+    case XVDR_SCAN_GETSTATUS:
+      result = processSCAN_GetStatus();
+      break;
+
     default:
       break;
   }
@@ -2038,6 +2042,27 @@ bool cXVDRClient::processSCAN_Stop() {
   return true;
 }
 
+bool cXVDRClient::processSCAN_GetStatus() {
+  WIRBELSCAN_SERVICE::cWirbelscanStatus status;
+  if(!m_scanner.GetStatus(status)) {
+    m_resp->put_U32(XVDR_RET_NOTSUPPORTED);
+    return true;
+  }
+
+  m_resp->put_U32(XVDR_RET_OK);
+
+  m_resp->put_U8((uint8_t)status.status);
+  m_resp->put_U16(status.progress);
+  m_resp->put_U16(status.strength);
+  m_resp->put_U16(status.numChannels);
+  m_resp->put_U16(status.newChannels);
+  m_resp->put_String(status.curr_device);
+  m_resp->put_String(status.transponder);
+
+  m_resp->compress(m_compressionLevel);
+  return true;
+}
+
 void cXVDRClient::SendScannerStatus() {
   WIRBELSCAN_SERVICE::cWirbelscanStatus status;
   if(!m_scanner.GetStatus(status)) {
@@ -2055,7 +2080,7 @@ void cXVDRClient::SendScannerStatus() {
   resp->put_String(status.curr_device);
   resp->put_String(status.transponder);
 
-  m_resp->compress(m_compressionLevel);
+  resp->compress(m_compressionLevel);
   resp->write(m_socket, m_timeout);
   delete resp;
 }
