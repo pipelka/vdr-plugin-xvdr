@@ -34,6 +34,12 @@ static const unsigned int framedurations[16] = {
   0, 3753, 3750, 3600, 3003, 3000, 1800, 1501, 1500, 0, 0, 0, 0, 0, 0, 0
 };
 
+// frame rates
+static const unsigned int framerates[16][2] = {
+  {0, 0}, {24000, 1001}, {24, 1}, {25, 1}, {30000, 1001}, {30, 1}, {50, 1}, {60000, 1001}, {60, 1},
+  {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}
+};
+
 // aspect ratios
 static const double aspectratios[16] = {
   0, 1.0, 1.333333333, 1.777777778, 2.21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -134,7 +140,8 @@ void cParserMPEG2Video::ParseSequenceStart(unsigned char* data, int length) {
   double DAR = aspectratios[bs.GetBits(4)];
 
   // frame rate / duration
-  m_duration = framedurations[bs.GetBits(4)];
+  int index = bs.GetBits(4);
+  m_duration = framedurations[index];
 
-  m_demuxer->SetVideoInformation(0,0, height, width, DAR, 1, 1);
+  m_demuxer->SetVideoInformation(framerates[index][1], framerates[index][0], height, width, DAR, 1, 1);
 }
