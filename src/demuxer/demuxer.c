@@ -191,6 +191,10 @@ void cTSDemuxer::SetVideoInformation(int FpsScale, int FpsRate, int Height, int 
   else 
     INFOLOG("Display Aspect Ratio: %.2f", Aspect);
 
+  if(FpsScale != 0 && FpsRate != 0) {
+    INFOLOG("Frames per second: %.2lf", (double)FpsRate / (double)FpsScale);
+  }
+
   INFOLOG("--------------------------------------");
 
   m_fpsscale = FpsScale;
