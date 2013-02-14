@@ -287,8 +287,10 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
     {
       if (!assoc.isNITPid())
       {
-        const cChannel *Channel = cFilter::Channel();
-        if (Channel && (Channel->GetChannelID() == m_Channel->GetChannelID()))
+    	XVDRChannels.Lock(false);
+        const cChannel *Channel =  XVDRChannels.Get()->GetByServiceID(Source(), Transponder(), assoc.getServiceId());
+
+        if (Channel && (Channel == m_Channel))
         {
           int prevPmtPid = m_pmtPid;
           if (0 != (m_pmtPid = assoc.getPid()))
@@ -299,9 +301,12 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
               Add(m_pmtPid, 0x02);
               m_pmtVersion = -1;
             }
+            XVDRChannels.Unlock();
             return;
           }
         }
+
+        XVDRChannels.Unlock();
       }
     }
   }
