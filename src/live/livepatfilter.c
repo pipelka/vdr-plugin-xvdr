@@ -23,6 +23,7 @@
  *
  */
 
+#include "vdr/config.h"
 #include "config/config.h"
 #include "tools/hash.h"
 #include "xvdr/xvdrchannels.h"
@@ -226,13 +227,22 @@ bool cLivePatFilter::GetStreamInfo(SI::PMT::Stream& stream, cStreamInfo& info)
       break;
 
     default:
+#if VDRVERSNUM >= 10728
+      // ATSC A/53 AUDIO
+      if (stream.getStreamType() == 0x81 && Setup.StandardCompliance == STANDARD_ANSISCTE) {
+        info.m_type = cStreamInfo::stAC3;
+        GetLanguage(stream, info.m_language, info.m_audiotype);
+        DEBUGLOG("PMT scanner: adding PID %d %s (%s)\n", stream.getPid(), "AC3", info.m_language);
+        return true;
+      }
+      else
+#endif
       /* This following section handles all the cases where the audio track
        * info is stored in PMT user info with stream id >= 0x81
        * we check the registration format identifier to see if it
        * holds "AC-3"
        */
-      if (stream.getStreamType() >= 0x81)
-      {
+      if (stream.getStreamType() >= 0x81) {
         bool found = false;
         for (SI::Loop::Iterator it; (d = stream.streamDescriptors.getNext(it)); )
         {
