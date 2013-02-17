@@ -205,7 +205,7 @@ cChannelCache cChannelCache::GetFromCache(uint32_t channeluid) {
 
 void cChannelCache::SaveChannelCacheData() {
   std::fstream out;
-  cString filename = AddDirectory(XVDRServerConfig.ConfigDirectory, CHANNEL_CACHE_FILE".bak");
+  cString filename = AddDirectory(XVDRServerConfig.CacheDirectory, CHANNEL_CACHE_FILE".bak");
 
   out.open(filename, std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
 
@@ -225,7 +225,7 @@ void cChannelCache::SaveChannelCacheData() {
 
   Unlock();
 
-  cString filenamenew = AddDirectory(XVDRServerConfig.ConfigDirectory, CHANNEL_CACHE_FILE);
+  cString filenamenew = AddDirectory(XVDRServerConfig.CacheDirectory, CHANNEL_CACHE_FILE);
 
   rename(filename, filenamenew);
 }
@@ -243,7 +243,7 @@ void cChannelCache::LoadChannelCacheData() {
 
   // load cache
   std::fstream in;
-  cString filename = AddDirectory(XVDRServerConfig.ConfigDirectory, CHANNEL_CACHE_FILE);
+  cString filename = AddDirectory(XVDRServerConfig.CacheDirectory, CHANNEL_CACHE_FILE);
 
   in.open(filename, std::ios_base::in | std::ios_base::binary);
 
