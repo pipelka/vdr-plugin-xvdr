@@ -31,7 +31,6 @@
 cRecordingsCache::cRecordingsCache() : m_changed(false)
 {
   // initialize cache
-  Recordings.Load();
   for (cRecording *recording = Recordings.First(); recording; recording = Recordings.Next(recording))
     Register(recording);
 }

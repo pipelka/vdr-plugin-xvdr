@@ -1515,7 +1515,6 @@ bool cXVDRClient::processRECORDINGS_GetDiskSpace() /* OPCODE 100 */
 
 bool cXVDRClient::processRECORDINGS_GetCount() /* OPCODE 101 */
 {
-  Recordings.Load();
   m_resp->put_U32(Recordings.Count());
 
   return true;
