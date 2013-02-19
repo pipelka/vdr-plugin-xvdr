@@ -26,12 +26,13 @@ TMPDIR ?= /tmp
 
 ### The compiler options:
 
-export CFLAGS   = $(call PKGCFG,cflags)
-export CXXFLAGS = $(call PKGCFG,cxxflags)
+export CFLAGS   = $(call PKGCFG,cflags) -fPIC
+export CXXFLAGS = $(call PKGCFG,cxxflags) -fPIC
+
 
 ### The version number of VDR's plugin API:
-
-APIVERSION = $(call PKGCFG,apiversion)
+export APIVERSION = $(shell cat $(VDRDIR)/config.h | grep VDRVERSION | grep define | cut -f4 -d' ' | sed s/\"//g)
+#$(info APIVERSION = $(APIVERSION))
 
 ### Allow user defined options to overwrite defaults:
 
@@ -44,11 +45,11 @@ PACKAGE = vdr-$(ARCHIVE)
 
 ### The name of the shared object file:
 
-SOFILE = libvdr-$(PLUGIN).so
+SOFILE = libvdr-$(PLUGIN).so.$(APIVERSION)
 
 ### Includes and Defines (add further entries here):
 
-INCLUDES += -I./src
+INCLUDES += -I./src -I$(VDRDIR)
 
 ifdef DEBUG
 INCLUDES += -DDEBUG
