@@ -1,6 +1,10 @@
-vdr-plugin-xvdr (0.9.5-1) unstable; urgency=low
+vdr-plugin-xvdr (0.9.5.1-1) unstable; urgency=low
 
+  [ Alexander Pipelka ]
   * version 0.9.5
+
+  [ Dusan Zatkovsky ]
+  * debian wheezy, version 0.9.5.1
 
  -- Alexander Pipelka <pipelka@shuttle>  Mon, 31 Oct 2011 22:11:07 +0100
 
