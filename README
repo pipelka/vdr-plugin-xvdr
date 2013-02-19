@@ -24,3 +24,9 @@ Requirements:
 
 For channel scanning you need to install the "wirbelscan" plugin:
 http://wirbel.htpc-forum.de/wirbelscan/index2.html
+
+For older VDR versions (< 1.7.34):
+----------------------------------
+
+Please checkout the "master-pre-vdr-1.7.34" branch. Only this branch compiles cleanly
+on older VDR versions. The main branch "master" only works for current VDR versions.
