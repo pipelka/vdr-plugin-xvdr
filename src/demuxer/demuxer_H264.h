@@ -48,6 +48,9 @@ private:
 
   int nalUnescape(uint8_t *dst, const uint8_t *src, int len);
 
+  int m_scale;
+
+  int m_rate;
 };
 
 
