@@ -153,8 +153,13 @@ void cStreamInfo::info() const {
   char buffer[100];
   buffer[0] = 0;
 
+  int scale = m_fpsscale;
+  if(scale == 0) {
+    scale = 1;
+  }
+
   if(m_content == scAUDIO) snprintf(buffer, sizeof(buffer), "%i Hz, %i channels, Lang: %s", m_samplerate, m_channels, m_language);
-  else if (m_content == scVIDEO) snprintf(buffer, sizeof(buffer), "%ix%i DAR: %.2f", m_width, m_height , m_aspect);
+  else if (m_content == scVIDEO) snprintf(buffer, sizeof(buffer), "%ix%i DAR: %.2f FPS: %.3f", m_width, m_height , m_aspect, (double)m_fpsrate / (double)scale);
   else if (m_content == scSUBTITLE) snprintf(buffer, sizeof(buffer), "Lang: %s", m_language);
   else if (m_content == scTELETEXT) snprintf(buffer, sizeof(buffer), "TXT");
   else if (m_content == scNONE) snprintf(buffer, sizeof(buffer), "None");

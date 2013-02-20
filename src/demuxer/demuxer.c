@@ -175,7 +175,7 @@ void cTSDemuxer::SetVideoInformation(int FpsScale, int FpsRate, int Height, int 
     return;
 
   // only register changed video information
-  if(Width == m_width && Height == m_height && Aspect == m_aspect)
+  if(Width == m_width && Height == m_height && Aspect == m_aspect && FpsScale == m_fpsscale && FpsRate == m_fpsrate)
     return;
 
   INFOLOG("--------------------------------------");
