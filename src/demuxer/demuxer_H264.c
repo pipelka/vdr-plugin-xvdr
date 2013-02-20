@@ -72,6 +72,8 @@ int32_t read_golomb_se(cBitStream* bs)
 
 cParserH264::cParserH264(cTSDemuxer *demuxer) : cParserPES(demuxer, 512 * 1024)
 {
+  m_scale = 0;
+  m_rate = 0;
 }
 
 void cParserH264::ParsePayload(unsigned char* data, int length) {
@@ -117,7 +119,7 @@ void cParserH264::ParsePayload(unsigned char* data, int length) {
   double PAR = (double)pixelaspect.num/(double)pixelaspect.den;
   double DAR = (PAR * width) / height;
 
-  m_demuxer->SetVideoInformation(0,0, height, width, DAR, pixelaspect.num, pixelaspect.den);
+  m_demuxer->SetVideoInformation(m_scale, m_rate, height, width, DAR, pixelaspect.num, pixelaspect.den);
 }
 
 int cParserH264::nalUnescape(uint8_t *dst, const uint8_t *src, int len)
@@ -267,13 +269,47 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len, struct pixel_aspect_t& pixela
       uint32_t aspect_ratio_idc = bs.GetBits(8);
 
       // Extended_SAR
-      if (aspect_ratio_idc == 255)
-      {
+      if (aspect_ratio_idc == 255) {
         pixelaspect.num = bs.GetBits(16); // sar width
         pixelaspect.den = bs.GetBits(16); // sar height
       }
       else if (aspect_ratio_idc < sizeof(m_aspect_ratios)/sizeof(struct pixel_aspect_t))
           pixelaspect = m_aspect_ratios[aspect_ratio_idc];
+    }
+    // overscan info
+    if(bs.GetBit()) {
+      bs.SkipBits(1); // overscan appropriate flag
+    }
+    // video signal type present
+    if(bs.GetBit()) {
+      bs.SkipBits(3); // video format
+      bs.SkipBits(1); // video full range flag
+      // color description present
+      if(bs.GetBit()) {
+        bs.SkipBits(8); // color primaries
+        bs.SkipBits(8); // transfer characteristics
+        bs.SkipBits(8); // matrix coefficients
+      }
+    }
+    // chroma loc info present
+    if(bs.GetBit()) {
+      read_golomb_ue(&bs); // type top field
+      read_golomb_ue(&bs); // type bottom field
+    }
+    // timing info present
+    if(bs.GetBit()) {
+      // get timing
+
+      uint32_t num_units_in_tick = bs.GetBits(32);
+      uint32_t time_scale = bs.GetBits(32);
+
+      // fixed frame rate flag
+      if(bs.GetBit()) {
+        num_units_in_tick *= 2;
+        m_duration = (90000 * num_units_in_tick) / time_scale;
+        m_rate = time_scale;
+        m_scale = num_units_in_tick;
+      }
     }
   }
 
