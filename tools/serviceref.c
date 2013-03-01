@@ -120,6 +120,9 @@ std::string CreateServiceReference(char* source, int frequency, char* vpid, int 
 	else if(source[0] == 'T') {
 		hash = 0xEEEE0000 | ((frequency / 1000000) & 0xFFFF);
 	}
+	else if(source[0] == 'A') {
+		hash = 0xDDDD0000 | ((frequency / 1000) & 0xFFFF);
+	}
 
 	int type = 1;
 
