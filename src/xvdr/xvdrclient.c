@@ -101,7 +101,7 @@ cString cXVDRClient::CreateServiceReference(cChannel* channel)
     hash = 0xDDDD0000;
 
   cString serviceref = cString::sprintf("1_0_%i_%X_%X_%X_%X_0_0_0",
-                                  (channel->Vpid() == 0) ? 2 : (channel->Vtype() == 27) ? 19 : 1,
+                                  IsRadio(channel) ? 2 : (channel->Vtype() == 27) ? 19 : 1,
                                   channel->Sid(),
                                   channel->Tid(),
                                   channel->Nid(),

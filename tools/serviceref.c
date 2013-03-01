@@ -91,7 +91,7 @@ int CodeFromString(const char* s) {
 	return stNone;
 }
 
-std::string CreateServiceReference(char* source, int frequency, char* vpid, int sid, int nid, int tid) {
+std::string CreateServiceReference(char* source, int frequency, char* vpid, char* apid, int sid, int nid, int tid) {
 	uint32_t hash;
 
 	// usually (on Enigma) the frequency is part of the namespace
@@ -126,7 +126,7 @@ std::string CreateServiceReference(char* source, int frequency, char* vpid, int 
 
 	int type = 1;
 
-	if(strcmp(vpid, "0") == 0 || strcmp(vpid, "1") == 0) {
+	if((strcmp(vpid, "0") == 0 || strcmp(vpid, "1") == 0) && strcmp(apid, "0") != 0) {
 		type = 2;
 	}
 	else {
@@ -231,7 +231,7 @@ int main(int argc, char* argv[]) {
 			continue;
 		}
 
-		std::cout << name << " - " << CreateServiceReference(source, freq, vpid, sid, nid, tid) << std::endl;
+		std::cout << name << " - " << CreateServiceReference(source, freq, vpid, apid, sid, nid, tid) << std::endl;
 
 		free(name);
 		free(parameters);
