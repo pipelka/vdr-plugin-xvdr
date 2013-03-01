@@ -23,6 +23,8 @@
  *
  */
 
+#include <unistd.h>
+
 #include "vdr/config.h"
 #include "config/config.h"
 #include "tools/hash.h"
@@ -372,8 +374,18 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
     m_ChannelCache = cache;
     cChannelCache::AddToCache(CreateChannelUID(m_Channel), m_ChannelCache);
 
-    if(!m_Streamer->IsAttached())
-      m_Streamer->Attach();
+    // try to attach receiver
+    int c = 0;
+    for(; c < 3 && !m_Streamer->Attach(); c++) {
+      INFOLOG("Unable to attach receiver, retrying ...");
+      usleep(100 * 1000);
+    }
+
+    // unable to attach receiver
+    if(c == 3) {
+      ERRORLOG("failed to attach receiver, sending detach ...");
+      m_Streamer->sendDetach();
+    }
 
     m_Streamer->m_FilterMutex.Unlock();
   }
