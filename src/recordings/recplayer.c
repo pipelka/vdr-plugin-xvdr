@@ -142,13 +142,21 @@ bool cRecPlayer::openFile(int index)
   fileNameFromIndex(index);
   INFOLOG("openFile called for index %i string:%s", index, m_fileName);
 
+  // first try to open with NOATIME flag
   m_file = open(m_fileName, O_RDONLY | O_NOATIME);
-  if (m_file == -1)
-  {
+
+  // fallback if FS doesn't support NOATIME
+  if (m_file == -1) {
+    m_file = open(m_fileName, O_RDONLY);
+  }
+
+  // failed to open file
+  if (m_file == -1) {
     INFOLOG("file failed to open");
     m_fileOpen = -1;
     return false;
   }
+
   m_fileOpen = index;
   return true;
 }
