@@ -582,18 +582,6 @@ bool cXVDRClient::processRequest()
       result = processRecStream_Update();
       break;
 
-    case XVDR_RECSTREAM_POSTOFRAME:
-      result = processRecStream_PositionFromFrameNumber();
-      break;
-
-    case XVDR_RECSTREAM_FRAMETOPOS:
-      result = processRecStream_FrameNumberFromPosition();
-      break;
-
-    case XVDR_RECSTREAM_GETIFRAME:
-      result = processRecStream_GetIFrame();
-      break;
-
 
     /** OPCODE 60 - 79: XVDR network functions for channel access */
     case XVDR_CHANNELS_GETCOUNT:
@@ -942,7 +930,7 @@ bool cXVDRClient::processRecStream_Open() /* OPCODE 40 */
     m_RecPlayer = new cRecPlayer(recording);
 
     m_resp->put_U32(XVDR_RET_OK);
-    m_resp->put_U32(m_RecPlayer->getLengthFrames());
+    m_resp->put_U32(0);
     m_resp->put_U64(m_RecPlayer->getLengthBytes());
 
 #if VDRVERSNUM < 10703
@@ -979,7 +967,7 @@ bool cXVDRClient::processRecStream_Update() /* OPCODE 46 */
     return false;
 
   m_RecPlayer->update();
-  m_resp->put_U32(m_RecPlayer->getLengthFrames());
+  m_resp->put_U32(0);
   m_resp->put_U64(m_RecPlayer->getLengthBytes());
 
   return true;
@@ -1008,59 +996,6 @@ bool cXVDRClient::processRecStream_GetBlock() /* OPCODE 42 */
   // smaller chunk ?
   if(amountReceived < amount)
     m_resp->unreserve(amount - amountReceived);
-
-  return true;
-}
-
-bool cXVDRClient::processRecStream_PositionFromFrameNumber() /* OPCODE 43 */
-{
-  uint64_t retval       = 0;
-  uint32_t frameNumber  = m_req->get_U32();
-
-  if (m_RecPlayer)
-    retval = m_RecPlayer->positionFromFrameNumber(frameNumber);
-
-  m_resp->put_U64(retval);
-
-  return true;
-}
-
-bool cXVDRClient::processRecStream_FrameNumberFromPosition() /* OPCODE 44 */
-{
-  uint32_t retval   = 0;
-  uint64_t position = m_req->get_U64();
-
-  if (m_RecPlayer)
-    retval = m_RecPlayer->frameNumberFromPosition(position);
-
-  m_resp->put_U32(retval);
-
-  return true;
-}
-
-bool cXVDRClient::processRecStream_GetIFrame() /* OPCODE 45 */
-{
-  bool success            = false;
-  uint32_t frameNumber    = m_req->get_U32();
-  uint32_t direction      = m_req->get_U32();
-  uint64_t rfilePosition  = 0;
-  uint32_t rframeNumber   = 0;
-  uint32_t rframeLength   = 0;
-
-  if (m_RecPlayer)
-    success = m_RecPlayer->getNextIFrame(frameNumber, direction, &rfilePosition, &rframeNumber, &rframeLength);
-
-  // returns file position, frame number, length
-  if (success)
-  {
-    m_resp->put_U64(rfilePosition);
-    m_resp->put_U32(rframeNumber);
-    m_resp->put_U32(rframeLength);
-  }
-  else
-  {
-    m_resp->put_U32(0);
-  }
 
   return true;
 }

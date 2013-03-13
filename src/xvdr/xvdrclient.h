@@ -134,9 +134,6 @@ private:
   bool processRecStream_Close();
   bool processRecStream_GetBlock();
   bool processRecStream_Update();
-  bool processRecStream_PositionFromFrameNumber();
-  bool processRecStream_FrameNumberFromPosition();
-  bool processRecStream_GetIFrame();
 
   bool processCHANNELS_GroupsCount();
   bool processCHANNELS_ChannelsCount();

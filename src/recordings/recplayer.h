@@ -32,8 +32,8 @@
 #define XVDR_RECPLAYER_H
 
 #include <stdio.h>
-#include <vdr/recording.h>
 #include <vdr/tools.h>
+#include <vdr/recording.h>
 
 class cSegment
 {
@@ -42,41 +42,50 @@ class cSegment
     uint64_t end;
 };
 
-class cRecPlayer
-{
+class cRecPlayer {
 public:
+
   cRecPlayer(cRecording* rec);
+
   ~cRecPlayer();
+
   uint64_t getLengthBytes();
-  uint32_t getLengthFrames();
+
   int getBlock(unsigned char* buffer, uint64_t position, int amount);
 
   bool openFile(int index);
+
   void closeFile();
 
   void scan();
+
   void update();
 
-  uint64_t positionFromFrameNumber(uint32_t frameNumber);
-  uint32_t frameNumberFromPosition(uint64_t position);
-  bool getNextIFrame(uint32_t frameNumber, uint32_t direction, uint64_t* rfilePosition, uint32_t* rframeNumber, uint32_t* rframeLength);
-
 private:
+
   void cleanup();
+
   char* fileNameFromIndex(int index);
+
   void checkBufferSize(int s);
 
-  char        m_fileName[512];
-  cIndexFile *m_indexFile;
-  int         m_file;
-  int         m_fileOpen;
+  bool m_pesrecording;
+
+  char m_fileName[512];
+
+  int m_file;
+
+  int m_fileOpen;
+
   cVector<cSegment*> m_segments;
-  uint64_t    m_totalLength;
-  uint32_t    m_totalFrames;
-  char       *m_recordingFilename;
-  bool        m_pesrecording;
-  cTimeMs     m_rescanTime;
-  uint32_t    m_rescanInterval;
+
+  uint64_t m_totalLength;
+
+  char* m_recordingFilename;
+
+  cTimeMs m_rescanTime;
+
+  uint32_t m_rescanInterval;
 };
 
 #endif // XVDR_RECPLAYER_H
