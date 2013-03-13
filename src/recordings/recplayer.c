@@ -1,9 +1,8 @@
 /*
  *      vdr-plugin-xvdr - XVDR server plugin for VDR
  *
- *      Copyright (C) 2004-2005 Chris Tallon
  *      Copyright (C) 2010 Alwin Esch (Team XBMC)
- *      Copyright (C) 2010, 2011 Alexander Pipelka
+ *      Copyright (C) 2010-2013 Alexander Pipelka
  *
  *      https://github.com/pipelka/vdr-plugin-xvdr
  *
@@ -50,11 +49,8 @@ cRecPlayer::cRecPlayer(cRecording* rec)
   // FIXME find out max file path / name lengths
 #if VDRVERSNUM < 10703
   m_pesrecording = true;
-  m_indexFile = new cIndexFile(m_recordingFilename, false);
 #else
   m_pesrecording = rec->IsPesRecording();
-  if(m_pesrecording) INFOLOG("recording '%s' is a PES recording", m_recordingFilename);
-  m_indexFile = new cIndexFile(m_recordingFilename, false, m_pesrecording);
 #endif
 
   scan();
@@ -82,13 +78,11 @@ void cRecPlayer::scan()
   closeFile();
 
   m_totalLength = 0;
-  m_fileOpen    = -1;
-  m_totalFrames = 0;
+  m_fileOpen = -1;
 
   cleanup();
 
-  for(int i = 0; ; i++) // i think we only need one possible loop
-  {
+  for(int i = 0; ; i++) {
     fileNameFromIndex(i);
 
     if(stat(m_fileName, &s) == -1) {
@@ -104,9 +98,6 @@ void cRecPlayer::scan()
     m_totalLength += s.st_size;
     INFOLOG("File %i found, size: %llu, totalLength now %llu", i, s.st_size, m_totalLength);
   }
-
-  m_totalFrames = m_indexFile->Last();
-  INFOLOG("total frames: %u", m_totalFrames);
 }
 
 void cRecPlayer::update()
@@ -117,10 +108,6 @@ void cRecPlayer::update()
 
   DEBUGLOG("%s", __FUNCTION__);
   m_rescanTime.Set(0);
-
-  // no change ?
-  if(m_totalFrames == (uint32_t)m_indexFile->Last())
-    return;
 
   scan();
 }
@@ -177,11 +164,6 @@ void cRecPlayer::closeFile()
 uint64_t cRecPlayer::getLengthBytes()
 {
   return m_totalLength;
-}
-
-uint32_t cRecPlayer::getLengthFrames()
-{
-  return m_totalFrames;
 }
 
 int cRecPlayer::getBlock(unsigned char* buffer, uint64_t position, int amount)
@@ -243,87 +225,4 @@ int cRecPlayer::getBlock(unsigned char* buffer, uint64_t position, int amount)
   }
 
   return bytes_read;
-}
-
-uint64_t cRecPlayer::positionFromFrameNumber(uint32_t frameNumber)
-{
-  if (!m_indexFile) return 0;
-#if VDRVERSNUM < 10703
-  unsigned char retFileNumber;
-  int retFileOffset;
-  unsigned char retPicType;
-#else
-  uint16_t retFileNumber;
-  off_t retFileOffset;
-  bool retPicType;
-#endif
-  int retLength;
-
-
-  if (!m_indexFile->Get((int)frameNumber, &retFileNumber, &retFileOffset, &retPicType, &retLength))
-    return 0;
-
-  if (retFileNumber >= m_segments.Size()) 
-    return 0;
-
-  uint64_t position = m_segments[retFileNumber]->start + retFileOffset;
-  return position;
-}
-
-uint32_t cRecPlayer::frameNumberFromPosition(uint64_t position)
-{
-  if (!m_indexFile) return 0;
-
-  if (position >= m_totalLength)
-  {
-    DEBUGLOG("Client asked for data starting past end of recording!");
-    return m_totalFrames;
-  }
-
-  int segmentNumber = -1;
-  for(int i = 0; i < m_segments.Size(); i++)
-  {
-    if ((position >= m_segments[i]->start) && (position < m_segments[i]->end)) {
-      segmentNumber = i;
-      break;
-    }
-  }
-
-  if(segmentNumber == -1) {
-    return m_totalFrames;
-  }
-
-  uint32_t askposition = position - m_segments[segmentNumber]->start;
-  return m_indexFile->Get((int)segmentNumber, askposition);
-}
-
-
-bool cRecPlayer::getNextIFrame(uint32_t frameNumber, uint32_t direction, uint64_t* rfilePosition, uint32_t* rframeNumber, uint32_t* rframeLength)
-{
-  // 0 = backwards
-  // 1 = forwards
-
-  if (!m_indexFile) return false;
-
-#if VDRVERSNUM < 10703
-  unsigned char waste1;
-  int waste2;
-#else
-  uint16_t waste1;
-  off_t waste2;
-#endif
-
-  int iframeLength;
-  int indexReturnFrameNumber;
-
-  indexReturnFrameNumber = (uint32_t)m_indexFile->GetNextIFrame(frameNumber, (direction==1 ? true : false), &waste1, &waste2, &iframeLength);
-  DEBUGLOG("GNIF input framenumber:%u, direction=%u, output:framenumber=%i, framelength=%i", frameNumber, direction, indexReturnFrameNumber, iframeLength);
-
-  if (indexReturnFrameNumber == -1) return false;
-
-  *rfilePosition = positionFromFrameNumber(indexReturnFrameNumber);
-  *rframeNumber = (uint32_t)indexReturnFrameNumber;
-  *rframeLength = (uint32_t)iframeLength;
-
-  return true;
 }
