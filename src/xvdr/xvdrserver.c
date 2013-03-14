@@ -228,7 +228,10 @@ void cXVDRServer::Action(void)
   struct timeval tv;
   cTimeMs channelReloadTimer;
   cTimeMs channelCacheTimer;
+  cTimeMs recordingReloadTimer;
+
   bool channelReloadTrigger = false;
+  bool recordingReloadTrigger = false;
   uint64_t channelsHash = 0;
 
   SetPriority(19);
@@ -312,17 +315,25 @@ void cXVDRServer::Action(void)
         channelCacheTimer.Set(0);
       }
 
-      // update recordings
+      // check for recording changes
       Recordings.StateChanged(recState);
       if(recState != recStateOld || cRecordingsCache::GetInstance().Changed())
       {
+        recordingReloadTrigger = true;
+        recordingReloadTimer.Set(2000);
         INFOLOG("Recordings state changed (%i)", recState);
+        recStateOld = recState;
+      }
+
+      // update recordings
+      if(recordingReloadTrigger && recordingReloadTimer.TimedOut()) {
         INFOLOG("Requesting clients to reload recordings list");
 
-        recStateOld = recState;
-
-        for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++)
+        for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++) {
           (*i)->RecordingsChange();
+        }
+
+        recordingReloadTrigger = false;
       }
 
       // no connect request -> continue waiting
