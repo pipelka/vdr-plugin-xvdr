@@ -317,7 +317,7 @@ void cXVDRServer::Action(void)
 
       // check for recording changes
       Recordings.StateChanged(recState);
-      if(recState != recStateOld || cRecordingsCache::GetInstance().Changed())
+      if(recState != recStateOld)
       {
         recordingReloadTrigger = true;
         recordingReloadTimer.Set(2000);
@@ -326,11 +326,21 @@ void cXVDRServer::Action(void)
       }
 
       // update recordings
-      if(recordingReloadTrigger && recordingReloadTimer.TimedOut()) {
-        INFOLOG("Requesting clients to reload recordings list");
+      if((recordingReloadTrigger && recordingReloadTimer.TimedOut()) || cRecordingsCache::GetInstance().Changed()) {
 
-        for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++) {
-          (*i)->RecordingsChange();
+        // start gc if reload was triggered
+        if(!cRecordingsCache::GetInstance().Changed()) {
+          INFOLOG("Starting garbage collection in recordings cache");
+          cRecordingsCache::GetInstance().gc();
+        }
+
+        // request clients to reload recordings
+        if(!m_clients.empty()) {
+          INFOLOG("Requesting clients to reload recordings list");
+
+          for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++) {
+            (*i)->RecordingsChange();
+          }
         }
 
         recordingReloadTrigger = false;

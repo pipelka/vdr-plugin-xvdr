@@ -61,9 +61,13 @@ public:
 
   bool Changed();
 
+  void gc();
+
 protected:
 
-  void SetChanged();
+  void Update();
+
+  uint32_t RegisterNoLock(cRecording* recording);
 
 private:
 

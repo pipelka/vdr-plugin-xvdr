@@ -28,11 +28,17 @@
 #include "recordingscache.h"
 #include "tools/hash.h"
 
-cRecordingsCache::cRecordingsCache() : m_changed(false)
-{
+cRecordingsCache::cRecordingsCache() : m_changed(false) {
+  cMutexLock lock(&m_mutex);
+
   // initialize cache
-  for (cRecording *recording = Recordings.First(); recording; recording = Recordings.Next(recording))
-    Register(recording);
+  Update();
+}
+
+void cRecordingsCache::Update() {
+  for (cRecording *recording = Recordings.First(); recording; recording = Recordings.Next(recording)) {
+    RegisterNoLock(recording);
+  }
 }
 
 cRecordingsCache::~cRecordingsCache() {
@@ -46,15 +52,14 @@ cRecordingsCache& cRecordingsCache::GetInstance() {
 uint32_t cRecordingsCache::Register(cRecording* recording) {
   cMutexLock lock(&m_mutex);
 
+  return RegisterNoLock(recording);
+}
+
+uint32_t cRecordingsCache::RegisterNoLock(cRecording* recording) {
   cString filename = recording->FileName();
   uint32_t uid = CreateStringHash(filename);
 
-  if(m_recordings.find(uid) == m_recordings.end())
-  {
-    DEBUGLOG("%s - uid: %08x '%s'", __FUNCTION__, uid, (const char*)filename);
-    m_recordings[uid].filename = filename;
-  }
-
+  m_recordings[uid].filename = filename;
   return uid;
 }
 
@@ -68,6 +73,12 @@ cRecording* cRecordingsCache::Lookup(uint32_t uid) {
   }
 
   cString filename = m_recordings[uid].filename;
+
+  if(isempty(filename)) {
+    DEBUGLOG("%s - empty filename for uid: %08x !", __FUNCTION__, uid);
+    return NULL;
+  }
+
   DEBUGLOG("%s - filename: %s", __FUNCTION__, (const char*)filename);
 
   cRecording* r = Recordings.GetByName(filename);
@@ -141,10 +152,6 @@ void cRecordingsCache::LoadResumeData()
 
   while(fscanf(f, "%08x = %llu, %i", &uid, &pos, &count) != EOF)
   {
-    // skip unknown entries
-    if(m_recordings.find(uid) == m_recordings.end())
-      continue;
-
     m_recordings[uid].lastplayedposition = pos;
     m_recordings[uid].playcount = count;
 
@@ -190,7 +197,17 @@ bool cRecordingsCache::Changed() {
   return rc;
 }
 
-void cRecordingsCache::SetChanged() {
+void cRecordingsCache::gc() {
   cMutexLock lock(&m_mutex);
-  m_changed = true;
+
+  std::map<uint32_t, struct RecEntry>::iterator i;
+
+  Update();
+
+  for(i = m_recordings.begin(); i != m_recordings.end(); i++) {
+    if(!isempty(i->second.filename) && Recordings.GetByName(i->second.filename) == NULL) {
+      INFOLOG("removing outdated recording (%08x) '%s' from cache", i->first, (const char*)i->second.filename);
+      m_recordings.erase(i->first);
+    }
+  }
 }
