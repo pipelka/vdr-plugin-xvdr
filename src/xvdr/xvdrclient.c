@@ -260,6 +260,11 @@ cXVDRClient::~cXVDRClient()
 
   // close connection
   close(m_socket);
+
+
+  // remove recplayer
+  delete m_RecPlayer;
+
   DEBUGLOG("done");
 }
 
