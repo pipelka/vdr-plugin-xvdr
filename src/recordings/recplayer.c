@@ -41,10 +41,11 @@
 
 cRecPlayer::cRecPlayer(cRecording* rec)
 {
-  m_file          = -1;
-  m_fileOpen      = -1;
-  m_rescanInterval    = 2000; // 2000 ms rescan interval
+  m_file = -1;
+  m_fileOpen = -1;
+  m_rescanInterval = 2000; // 2000 ms rescan interval
   m_recordingFilename = strdup(rec->FileName());
+  m_totalLength = 0;
 
   // FIXME find out max file path / name lengths
 #if VDRVERSNUM < 10703
@@ -74,11 +75,8 @@ void cRecPlayer::cleanup() {
 void cRecPlayer::scan()
 {
   struct stat s;
-
-  closeFile();
-
+  uint64_t len = m_totalLength;
   m_totalLength = 0;
-  m_fileOpen = -1;
 
   cleanup();
 
@@ -96,7 +94,10 @@ void cRecPlayer::scan()
     m_segments.Append(segment);
 
     m_totalLength += s.st_size;
-    INFOLOG("File %i found, size: %llu, totalLength now %llu", i, s.st_size, m_totalLength);
+  }
+
+  if(len != m_totalLength) {
+    INFOLOG("recording scan: %llu bytes", m_totalLength);
   }
 }
 
@@ -127,7 +128,7 @@ bool cRecPlayer::openFile(int index)
   closeFile();
 
   fileNameFromIndex(index);
-  INFOLOG("openFile called for index %i string:%s", index, m_fileName);
+  INFOLOG("openFile called for index %i (%s)", index, m_fileName);
 
   // first try to open with NOATIME flag
   m_file = open(m_fileName, O_RDONLY | O_NOATIME);
