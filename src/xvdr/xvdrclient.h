@@ -159,6 +159,7 @@ private:
   bool processRECORDINGS_SetPlayCount();
   bool processRECORDINGS_SetPosition();
   bool processRECORDINGS_GetPosition();
+  bool processRECORDINGS_GetMarks();
 
   bool processEPG_GetForChannel();
 

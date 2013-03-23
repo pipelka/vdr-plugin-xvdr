@@ -665,6 +665,10 @@ bool cXVDRClient::processRequest()
       result = processRECORDINGS_GetPosition();
       break;
 
+    case XVDR_RECORDINGS_GETMARKS:
+      result = processRECORDINGS_GetMarks();
+      break;
+
 
     /** OPCODE 120 - 139: XVDR network functions for epg access and manipulating */
     case XVDR_EPG_GETFORCHANNEL:
@@ -1704,6 +1708,53 @@ bool cXVDRClient::processRECORDINGS_GetPosition()
   uint64_t position = cRecordingsCache::GetInstance().GetLastPlayedPosition(uid);
 
   m_resp->put_U64(position);
+  return true;
+}
+
+bool cXVDRClient::processRECORDINGS_GetMarks() {
+#if VDRVERSNUM < 10732
+  m_resp->put_U32(XVDR_RET_NOTSUPPORTED);
+  return true;
+#endif
+
+  const char* recid = m_req->get_String();
+  uint32_t uid = recid2uid(recid);
+
+  cRecording* recording = cRecordingsCache::GetInstance().Lookup(uid);
+
+  if (recording == NULL) {
+    ERRORLOG("GetMarks: recording not found !");
+    m_resp->put_U32(XVDR_RET_DATAUNKNOWN);
+    return true;
+  }
+
+  cMarks marks;
+  if(!marks.Load(recording->FileName(), recording->FramesPerSecond(), recording->IsPesRecording())) {
+    INFOLOG("no marks found for: '%s'", recording->FileName());
+    m_resp->put_U32(XVDR_RET_NOTSUPPORTED);
+    return true;
+  }
+
+  m_resp->put_U32(XVDR_RET_OK);
+
+  m_resp->put_U64(recording->FramesPerSecond() * 10000);
+
+#if VDRVERSNUM >= 10732
+
+  cMark* end = NULL;
+  cMark* begin = NULL;
+
+  while((begin = marks.GetNextBegin(end)) != NULL) {
+    end = marks.GetNextEnd(begin);
+    if(end != NULL) {
+      m_resp->put_String("SCENE");
+      m_resp->put_U64(begin->Position());
+      m_resp->put_U64(end->Position());
+      m_resp->put_String(begin->ToText());
+    }
+  }
+#endif
+
   return true;
 }
 
