@@ -78,6 +78,7 @@ OBJS = \
 	src/recordings/recplayer.o \
 	src/scanner/wirbelscan.o \
 	src/tools/hash.o \
+	src/xvdr/timerconflicts.o \
 	src/xvdr/xvdr.o \
 	src/xvdr/xvdrclient.o \
 	src/xvdr/xvdrserver.o \
