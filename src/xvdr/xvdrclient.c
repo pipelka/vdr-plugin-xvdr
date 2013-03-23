@@ -221,7 +221,6 @@ void cXVDRClient::PutTimer(cTimer* timer, MsgPacket* p)
 }
 
 cMutex cXVDRClient::m_timerLock;
-cMutex cXVDRClient::m_switchLock;
 
 cXVDRClient::cXVDRClient(int fd, unsigned int id)
 {
@@ -299,7 +298,6 @@ void cXVDRClient::Action(void)
 
 int cXVDRClient::StartChannelStreaming(const cChannel *channel, uint32_t timeout, int32_t priority)
 {
-  cMutexLock lock(&m_switchLock);
   m_Streamer = new cLiveStreamer(priority, timeout, m_protocolVersion);
   m_Streamer->SetLanguage(m_LanguageIndex, m_LangStreamType);
 
@@ -308,7 +306,6 @@ int cXVDRClient::StartChannelStreaming(const cChannel *channel, uint32_t timeout
 
 void cXVDRClient::StopChannelStreaming()
 {
-  cMutexLock lock(&m_switchLock);
   delete m_Streamer;
   m_Streamer = NULL;
   m_isStreaming = false;

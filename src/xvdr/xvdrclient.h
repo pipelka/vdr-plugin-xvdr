@@ -63,7 +63,6 @@ private:
   uint32_t          m_protocolVersion;
   cMutex            m_msgLock;
   static cMutex     m_timerLock;
-  static cMutex     m_switchLock;
   int               m_compressionLevel;
   int               m_LanguageIndex;
   cStreamInfo::Type m_LangStreamType;
