@@ -142,7 +142,6 @@ cXVDRClient::cXVDRClient(int fd, unsigned int id)
   m_Id                      = id;
   m_loggedIn                = false;
   m_Streamer                = NULL;
-  m_isStreaming             = false;
   m_StatusInterfaceEnabled  = false;
   m_RecPlayer               = NULL;
   m_req                     = NULL;
@@ -223,7 +222,6 @@ void cXVDRClient::StopChannelStreaming()
 {
   delete m_Streamer;
   m_Streamer = NULL;
-  m_isStreaming = false;
 }
 
 void cXVDRClient::TimerChange(const cTimer *Timer, eTimerChange Change)
@@ -896,12 +894,6 @@ bool cXVDRClient::processRecStream_Update() /* OPCODE 46 */
 
 bool cXVDRClient::processRecStream_GetBlock() /* OPCODE 42 */
 {
-  if (m_isStreaming)
-  {
-    ERRORLOG("Get block called during live streaming");
-    return false;
-  }
-
   if (!m_RecPlayer)
   {
     ERRORLOG("Get block called when no recording open");
