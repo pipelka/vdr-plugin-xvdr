@@ -55,7 +55,6 @@ private:
   bool              m_loggedIn;
   bool              m_StatusInterfaceEnabled;
   cLiveStreamer    *m_Streamer;
-  bool              m_isStreaming;
   cRecPlayer       *m_RecPlayer;
   MsgPacket        *m_req;
   MsgPacket        *m_resp;
