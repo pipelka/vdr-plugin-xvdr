@@ -117,6 +117,12 @@ void cParserMPEG2Video::ParsePayload(unsigned char* data, int length) {
 
   // check for picture start codes
   int s = FindStartCode(data, length, 0, MPEG2_PICTURE_START);
+
+  // abort if there isn't any picture information
+  if(s == -1) {
+    return;
+  }
+
   int e = FindStartCode(data, length, s + 4, MPEG2_PICTURE_START);
   o = s;
   s = 0;
