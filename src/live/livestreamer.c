@@ -349,6 +349,9 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
     packet->put_U32(pkt->duration);
   }
 
+  // write frame type into unused header field clientid
+  packet->setClientID((uint16_t)pkt->frametype);
+
   // write payload into stream packet
   packet->put_U32(pkt->size);
   packet->put_Blob(pkt->data, pkt->size);

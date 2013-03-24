@@ -44,7 +44,11 @@ private:
 
   static const struct pixel_aspect_t m_aspect_ratios[];
 
+  uint8_t* ExtractNAL(uint8_t* packet, int length, int nal_offset, int& nal_len);
+
   bool Parse_SPS(uint8_t *buf, int len, struct pixel_aspect_t& pixel_aspect, int& width, int& height);
+
+  void Parse_SLH(uint8_t *buf, int len);
 
   int nalUnescape(uint8_t *dst, const uint8_t *src, int len);
 

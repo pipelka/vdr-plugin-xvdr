@@ -39,8 +39,10 @@ struct sStreamPacket
   sStreamPacket() {
     type = cStreamInfo::stNONE;
     content = cStreamInfo::scNONE;
+    frametype = cStreamInfo::ftUNKNOWN;
   }
 
+  cStreamInfo::FrameType frametype;
   cStreamInfo::Type type;
   cStreamInfo::Content content;
 

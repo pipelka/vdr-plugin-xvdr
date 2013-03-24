@@ -60,6 +60,7 @@ protected:
   int m_channels;
   int m_duration;
   int m_headersize;
+  cStreamInfo::FrameType m_frametype;
 
   bool m_startup;
 
