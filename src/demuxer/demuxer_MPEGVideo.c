@@ -53,17 +53,34 @@ static int GetFrameType(unsigned char* data, int length) {
   return bs.GetBits(3);
 }
 
+static cStreamInfo::FrameType ConvertFrameType(int frametype) {
+  switch (frametype) {
+    case 1:
+      return cStreamInfo::ftIFRAME;
+    case 2:
+      return cStreamInfo::ftPFRAME;
+    case 3:
+      return cStreamInfo::ftBFRAME;
+    case 4:
+      return cStreamInfo::ftDFRAME;
+    default:
+      break;
+  }
+
+  return cStreamInfo::ftUNKNOWN;
+}
+
 cParserMPEG2Video::cParserMPEG2Video(cTSDemuxer *demuxer) : cParserPES(demuxer, 512* 1024), m_pdiff(0), m_lastDTS(DVD_NOPTS_VALUE) {
 }
 
-void cParserMPEG2Video::ParsePicture(unsigned char* data, int length) {
+cStreamInfo::FrameType cParserMPEG2Video::ParsePicture(unsigned char* data, int length) {
   int frametype = GetFrameType(data, length);
 
   // get I,P frames distance
   if(frametype < 3 && m_curDTS != DVD_NOPTS_VALUE && m_curPTS != DVD_NOPTS_VALUE) {
     m_pdiff = m_curPTS - m_curDTS;
     m_lastDTS = m_curDTS;
-    return;
+    return ConvertFrameType(frametype);
   }
 
   // extrapolate DTS
@@ -79,6 +96,8 @@ void cParserMPEG2Video::ParsePicture(unsigned char* data, int length) {
   // extrapolate PTS of I/P frame
   if(frametype < 3 && m_curPTS == DVD_NOPTS_VALUE)
     m_curPTS = PtsAdd(m_curDTS, m_pdiff);
+
+  return ConvertFrameType(frametype);
 }
 
 void cParserMPEG2Video::ParsePayload(unsigned char* data, int length) {
@@ -106,7 +125,7 @@ void cParserMPEG2Video::ParsePayload(unsigned char* data, int length) {
   while(e != -1) {
 
     // parse and send payload data
-    ParsePicture(data + o, e - o);
+    m_frametype = ParsePicture(data + o, e - o);
     cParser::SendPayload(data + s, e - s);
 
     // get next picture offsets
@@ -120,7 +139,7 @@ void cParserMPEG2Video::ParsePayload(unsigned char* data, int length) {
   }
 
   // append last part
-  ParsePicture(data + o, length - o);
+  m_frametype = ParsePicture(data + o, length - o);
   cParser::SendPayload(data + s, length - s);
 }
 

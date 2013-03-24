@@ -26,6 +26,7 @@
 #define XVDR_DEMUXER_MPEGVIDEO_H
 
 #include "demuxer_PES.h"
+#include "streaminfo.h"
 #include <map>
 
 class cParserMPEG2Video : public cParserPES
@@ -44,7 +45,7 @@ private:
 
   void ParseSequenceStart(unsigned char* data, int length);
 
-  void ParsePicture(unsigned char* data, int length);
+  cStreamInfo::FrameType ParsePicture(unsigned char* data, int length);
 
   int64_t m_pdiff;
 

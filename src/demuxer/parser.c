@@ -34,6 +34,7 @@ cParser::cParser(cTSDemuxer *demuxer, int buffersize, int packetsize) : cRingBuf
   m_channels = 0;
   m_duration = 0;
   m_headersize = 0;
+  m_frametype = cStreamInfo::ftUNKNOWN;
 
   m_curPTS = DVD_NOPTS_VALUE;
   m_curDTS = DVD_NOPTS_VALUE;
@@ -64,11 +65,12 @@ int cParser::ParsePESHeader(uint8_t *buf, size_t len)
 void cParser::SendPayload(unsigned char* payload, int length)
 {
   sStreamPacket pkt;
-  pkt.data     = payload;
-  pkt.size     = length;
-  pkt.duration = m_duration;
-  pkt.dts      = m_curDTS;
-  pkt.pts      = m_curPTS;
+  pkt.data      = payload;
+  pkt.size      = length;
+  pkt.duration  = m_duration;
+  pkt.dts       = m_curDTS;
+  pkt.pts       = m_curPTS;
+  pkt.frametype = m_frametype;
 
   m_demuxer->SendPacket(&pkt);
 }

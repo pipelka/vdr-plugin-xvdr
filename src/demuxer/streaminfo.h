@@ -55,6 +55,14 @@ public:
     stTELETEXT,
   };
 
+  enum FrameType{
+    ftUNKNOWN,
+    ftIFRAME,
+    ftPFRAME,
+    ftBFRAME,
+    ftDFRAME
+  };
+
 public:
 
   cStreamInfo();

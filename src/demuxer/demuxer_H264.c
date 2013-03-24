@@ -43,8 +43,8 @@ const struct cParserH264::pixel_aspect_t cParserH264::m_aspect_ratios[] = {
 #define PROFILE_CAVLC444   44
 
 // NAL SPS ID
+#define NAL_SLH 0x01
 #define NAL_SPS 0x07
-
 
 // golomb decoding
 uint32_t read_golomb_ue(cBitStream* bs)
@@ -76,35 +76,49 @@ cParserH264::cParserH264(cTSDemuxer *demuxer) : cParserPES(demuxer, 512 * 1024)
   m_rate = 0;
 }
 
+uint8_t* cParserH264::ExtractNAL(uint8_t* packet, int length, int nal_offset, int& nal_len) {
+  int e = FindStartCode(packet, length, nal_offset, 0x00000001);
+  if (e == -1) {
+    e = length;
+  }
+
+  int l = e - nal_offset;
+  uint8_t* nal_data = new uint8_t[l];
+  nal_len = nalUnescape(nal_data, packet + nal_offset, l);
+
+  return nal_data;
+}
+
 void cParserH264::ParsePayload(unsigned char* data, int length) {
   int o = 0;
-  bool spsfound = false;
+  int sps_start = -1;
+  int nal_len = 0;
 
-  // iterate through all NAL units (and look for SPS)
+  // iterate through all NAL units
   while((o = FindStartCode(data, length, o, 0x00000001)) >= 0) {
     o += 4;
     if(o >= length)
       return;
 
-    // NAL_SPS found ?
-    if((data[o] & 0x1F) == NAL_SPS && length - o > 1) {
+    // NAL_SLH
+    if((data[o] & 0x1F) == NAL_SLH && length - o > 1) {
       o++;
-      spsfound = true;
-      break;
+      uint8_t* nal_data = ExtractNAL(data, length, o, nal_len);
+      Parse_SLH(nal_data, nal_len);
+      delete[] nal_data;
+    }
+
+    // NAL_SPS
+    else if((data[o] & 0x1F) == NAL_SPS && length - o > 1) {
+      o++;
+      sps_start = o;
     }
   }
 
-  if(!spsfound)
+  if(sps_start == -1)
     return;
 
-  int e = FindStartCode(data, length, o, 0x00000001);
-  if (e == -1)
-    e = length;
-
-  int l = e - o;
-  uint8_t* nal_data = new uint8_t[l];
-
-  int nal_len = nalUnescape(nal_data, data + o, l);
+  uint8_t* nal_data = ExtractNAL(data, length, sps_start, nal_len);
 
   int width = 0;
   int height = 0;
@@ -145,6 +159,34 @@ int cParserH264::nalUnescape(uint8_t *dst, const uint8_t *src, int len)
   }
 
   return d;
+}
+
+void cParserH264::Parse_SLH(uint8_t *buf, int len) {
+  cBitStream bs(buf, len*8);
+
+  read_golomb_ue(&bs); // first_mb_in_slice
+  int type = read_golomb_ue(&bs);;
+
+  if(type > 4) {
+    type -= 5;
+  }
+
+  switch(type) {
+    case 0:
+      m_frametype = cStreamInfo::ftPFRAME;
+      break;
+    case 1:
+      m_frametype = cStreamInfo::ftBFRAME;
+      break;
+    case 2:
+      m_frametype = cStreamInfo::ftIFRAME;
+      break;
+    default:
+      m_frametype = cStreamInfo::ftUNKNOWN;
+      break;
+  }
+
+  return;
 }
 
 bool cParserH264::Parse_SPS(uint8_t *buf, int len, struct pixel_aspect_t& pixelaspect, int& width, int& height)
