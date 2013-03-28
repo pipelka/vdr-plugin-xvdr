@@ -310,10 +310,6 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
   // Send stream information as the first packet on startup
   if (IsStarting() && bReady)
   {
-    // start streaming with a video or audio packet
-    if(pkt->content != cStreamInfo::scVIDEO)
-      return;
-
     INFOLOG("streaming of channel started");
     m_last_tick.Set(0);
     m_requestStreamChange = true;
