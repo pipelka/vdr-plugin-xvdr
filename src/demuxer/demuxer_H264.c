@@ -156,7 +156,7 @@ int cParserH264::nalUnescape(uint8_t *dst, const uint8_t *src, int len)
 {
   int s = 0, d = 0;
 
-  while (s < len)
+  while (s < len - 1)
   {
     if (!src[s] && !src[s + 1])
     {
