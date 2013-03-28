@@ -91,6 +91,10 @@ uint8_t* cParserH264::ExtractNAL(uint8_t* packet, int length, int nal_offset, in
   uint8_t* nal_data = new uint8_t[l];
   nal_len = nalUnescape(nal_data, packet + nal_offset, l);
 
+  if(nal_len + nal_offset > length) {
+    ERRORLOG("nal overrun: nal len: %i, offset: %i, packet length: %i", nal_len, nal_offset, length);
+  }
+
   return nal_data;
 }
 
@@ -156,21 +160,14 @@ int cParserH264::nalUnescape(uint8_t *dst, const uint8_t *src, int len)
 {
   int s = 0, d = 0;
 
-  while (s < len)
-  {
-    if (!src[s] && !src[s + 1])
-    {
-      // hit 00 00 xx
-      dst[d] = dst[d + 1] = 0;
-      s += 2;
-      d += 2;
-      if (src[s] == 3)
-      {
-        s++; // 00 00 03 xx --> 00 00 xx
-        if (s >= len)
-          return d;
+  while (s < len) {
+    if(s >= 2 && s < len - 1) {
+      // hit 00 00 03 ?
+      if(src[s - 2] == 0 && src[s - 1] == 0 && src[s] == 3) {
+        s++; // skip 03
       }
     }
+
     dst[d++] = src[s++];
   }
 
