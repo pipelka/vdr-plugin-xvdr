@@ -83,6 +83,11 @@ uint8_t* cParserH264::ExtractNAL(uint8_t* packet, int length, int nal_offset, in
   }
 
   int l = e - nal_offset;
+
+  if(l <= 0) {
+    return NULL;
+  }
+
   uint8_t* nal_data = new uint8_t[l];
   nal_len = nalUnescape(nal_data, packet + nal_offset, l);
 
@@ -94,6 +99,10 @@ void cParserH264::ParsePayload(unsigned char* data, int length) {
   int sps_start = -1;
   int nal_len = 0;
 
+  if(length < 4) {
+    return;
+  }
+
   // iterate through all NAL units
   while((o = FindStartCode(data, length, o, 0x00000001)) >= 0) {
     o += 4;
@@ -104,8 +113,11 @@ void cParserH264::ParsePayload(unsigned char* data, int length) {
     if((data[o] & 0x1F) == NAL_SLH && length - o > 1) {
       o++;
       uint8_t* nal_data = ExtractNAL(data, length, o, nal_len);
-      Parse_SLH(nal_data, nal_len);
-      delete[] nal_data;
+
+      if(nal_data != NULL) {
+        Parse_SLH(nal_data, nal_len);
+        delete[] nal_data;
+      }
     }
 
     // NAL_SPS
@@ -119,6 +131,10 @@ void cParserH264::ParsePayload(unsigned char* data, int length) {
     return;
 
   uint8_t* nal_data = ExtractNAL(data, length, sps_start, nal_len);
+
+  if(nal_data == NULL) {
+    return;
+  }
 
   int width = 0;
   int height = 0;
