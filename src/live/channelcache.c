@@ -38,6 +38,15 @@ void cChannelCache::AddStream(const cStreamInfo& s) {
   if(s.GetPID() == 0 || s.GetType() == cStreamInfo::stNONE)
     return;
 
+  // allow only one video stream
+  if(s.GetContent() == cStreamInfo::scVIDEO) {
+    for(iterator i = begin(); i != end(); i++) {
+      if(i->second.GetContent() == cStreamInfo::scVIDEO && i->second.GetPID() != s.GetPID()) {
+        return;
+      }
+    }
+  }
+
   cStreamInfo old = (*this)[s.GetPID()];
   (*this)[s.GetPID()] = s;
 
