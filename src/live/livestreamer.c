@@ -310,6 +310,11 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
   // Send stream information as the first packet on startup
   if (IsStarting() && bReady)
   {
+    // wait for first I-Frame
+    if(pkt->frametype != cStreamInfo::ftIFRAME) {
+      return;
+    }
+
     INFOLOG("streaming of channel started");
     m_last_tick.Set(0);
     m_requestStreamChange = true;
