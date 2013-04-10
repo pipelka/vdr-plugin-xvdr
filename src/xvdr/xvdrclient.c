@@ -226,7 +226,8 @@ void cXVDRClient::StopChannelStreaming()
 
 void cXVDRClient::TimerChange(const cTimer *Timer, eTimerChange Change)
 {
-  if(Change != tcAdd && Change != tcDel)
+  // do not handle timer modifications and deletions
+  if(Change == tcMod || Change == tcDel)
     return;
 
   TimerChange();
