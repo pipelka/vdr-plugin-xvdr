@@ -66,6 +66,7 @@ cLiveStreamer::cLiveStreamer(int priority, uint32_t timeout, uint32_t protocolVe
   m_uid             = 0;
   m_ready           = false;
   m_protocolVersion = protocolVersion;
+  m_waitforiframe   = false;
 
   m_requestStreamChange = false;
 
@@ -184,7 +185,7 @@ void cLiveStreamer::Action(void)
   }
 }
 
-int cLiveStreamer::StreamChannel(const cChannel *channel, int sock)
+int cLiveStreamer::StreamChannel(const cChannel *channel, int sock, bool waitforiframe)
 {
   if (channel == NULL)
   {
@@ -193,6 +194,11 @@ int cLiveStreamer::StreamChannel(const cChannel *channel, int sock)
   }
 
   m_uid = CreateChannelUID(channel);
+  m_waitforiframe = waitforiframe;
+
+  if(m_waitforiframe) {
+    INFOLOG("Will wait for first I-Frame ...");
+  }
 
   // check if any device is able to decrypt the channel - code taken from VDR
   int NumUsableSlots = 0;
@@ -310,6 +316,11 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
   // Send stream information as the first packet on startup
   if (IsStarting() && bReady)
   {
+    // wait for first I-Frame (if enabled)
+    if(m_waitforiframe && pkt->frametype != cStreamInfo::ftIFRAME) {
+      return;
+    }
+
     INFOLOG("streaming of channel started");
     m_last_tick.Set(0);
     m_requestStreamChange = true;
