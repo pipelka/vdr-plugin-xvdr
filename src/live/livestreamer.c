@@ -55,7 +55,6 @@ cLiveStreamer::cLiveStreamer(int priority, uint32_t timeout, uint32_t protocolVe
  , cReceiver(NULL, priority)
  , m_scanTimeout(timeout)
 {
-  m_Priority        = priority;
   m_Device          = NULL;
   m_Queue           = NULL;
   m_PatFilter       = NULL;
@@ -220,11 +219,11 @@ int cLiveStreamer::StreamChannel(const cChannel *channel, int sock, bool waitfor
   }
 
   // get device for this channel
-  m_Device = cDevice::GetDevice(channel, m_Priority, true);
+  m_Device = cDevice::GetDevice(channel, LIVEPRIORITY, true);
 
   // try a bit harder if we can't find a device
   if(m_Device == NULL)
-    m_Device = cDevice::GetDevice(channel, m_Priority, false);
+    m_Device = cDevice::GetDevice(channel, LIVEPRIORITY, false);
 
   INFOLOG("--------------------------------------");
   INFOLOG("Channel streaming request: %i - %s", channel->Number(), channel->Name());

@@ -65,7 +65,6 @@ private:
 
   cDevice          *m_Device;                       /*!> The receiving device the channel depents to */
   cLivePatFilter   *m_PatFilter;                    /*!> Filter processor to get changed pid's */
-  int               m_Priority;                     /*!> The priority over other streamers */
   std::list<cTSDemuxer*> m_Demuxers;
   bool              m_startup;
   bool              m_requestStreamChange;
