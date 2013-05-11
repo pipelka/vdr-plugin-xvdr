@@ -636,9 +636,9 @@ bool cXVDRClient::processRequest()
 
 bool cXVDRClient::process_Login() /* OPCODE 1 */
 {
-  m_protocolVersion      = m_req->getProtocolVersion();
-  m_compressionLevel     = m_req->get_U8();
-  const char *clientName = m_req->get_String();
+  m_protocolVersion = m_req->getProtocolVersion();
+  m_compressionLevel = m_req->get_U8();
+  m_clientName = m_req->get_String();
   const char *language   = NULL;
 
   // get preferred language
@@ -651,11 +651,11 @@ bool cXVDRClient::process_Login() /* OPCODE 1 */
 
   if (m_protocolVersion > XVDR_PROTOCOLVERSION || m_protocolVersion < 4)
   {
-    ERRORLOG("Client '%s' has unsupported protocol version '%u', terminating client", clientName, m_protocolVersion);
+    ERRORLOG("Client '%s' has unsupported protocol version '%u', terminating client", m_clientName.c_str(), m_protocolVersion);
     return false;
   }
 
-  INFOLOG("Welcome client '%s' with protocol version '%u'", clientName, m_protocolVersion);
+  INFOLOG("Welcome client '%s' with protocol version '%u'", m_clientName.c_str(), m_protocolVersion);
 
   if(!m_LanguageIndex != -1) {
     INFOLOG("Preferred language: %s / type: %i", I18nLanguageCode(m_LanguageIndex), (int)m_LangStreamType);

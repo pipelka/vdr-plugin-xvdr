@@ -71,6 +71,7 @@ private:
   int               m_channelCount;
   int               m_timeout;
   cWirbelScan       m_scanner;
+  std::string       m_clientName;
 
 protected:
 
@@ -92,6 +93,8 @@ public:
   void TimerChange();
 
   unsigned int GetID() { return m_Id; }
+
+  const std::string& GetClientName() { return m_clientName; }
 
 protected:
 
