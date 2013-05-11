@@ -42,7 +42,6 @@
 #include "config/config.h"
 #include "live/livestreamer.h"
 #include "net/msgpacket.h"
-#include "net/socketlock.h"
 #include "recordings/recordingscache.h"
 #include "recordings/recplayer.h"
 #include "tools/hash.h"
@@ -168,15 +167,21 @@ cXVDRClient::~cXVDRClient()
   shutdown(m_socket, SHUT_RDWR); 
   Cancel(10);
 
-  // remove socket lock
-  cSocketLock::erase(m_socket);
-
   // close connection
   close(m_socket);
 
-
   // remove recplayer
   delete m_RecPlayer;
+
+  // delete messagequeue
+  {
+    cMutexLock lock(&m_queueLock);
+    while(!m_queue.empty()) {
+      MsgPacket* p = m_queue.front();
+      m_queue.pop();
+      delete p;
+    }
+  }
 
   DEBUGLOG("done");
 }
@@ -188,6 +193,23 @@ void cXVDRClient::Action(void)
   SetPriority(10);
 
   while (Running()) {
+
+    // send pending messages
+    {
+      cMutexLock lock(&m_queueLock);
+
+      while(!m_queue.empty()) {
+        MsgPacket* p = m_queue.front();
+
+        if(!p->write(m_socket, m_timeout)) {
+          break;
+        }
+
+        m_queue.pop();
+        delete p;
+      }
+    }
+
     m_req = MsgPacket::read(m_socket, bClosed, 1000);
 
     if(bClosed) {
@@ -240,10 +262,8 @@ void cXVDRClient::TimerChange()
   if (m_StatusInterfaceEnabled)
   {
     INFOLOG("Sending timer change request to client #%i ...", m_Id);
-    cSocketLock locks(m_socket);
     MsgPacket* resp = new MsgPacket(XVDR_STATUS_TIMERCHANGE, XVDR_CHANNEL_STATUS);
-    resp->write(m_socket, m_timeout);
-    delete resp;
+    QueueMessage(resp);
   }
 }
 
@@ -266,10 +286,8 @@ void cXVDRClient::ChannelChange()
   else
     INFOLOG("Client %i : %i channels, %i available - sending request", m_Id, m_channelCount, count);
 
-  cSocketLock locks(m_socket);
   MsgPacket* resp = new MsgPacket(XVDR_STATUS_CHANNELCHANGE, XVDR_CHANNEL_STATUS);
-  resp->write(m_socket, m_timeout);
-  delete resp;
+  QueueMessage(resp);
 }
 
 void cXVDRClient::RecordingsChange()
@@ -279,10 +297,8 @@ void cXVDRClient::RecordingsChange()
   if (!m_StatusInterfaceEnabled)
     return;
 
-  cSocketLock locks(m_socket);
   MsgPacket* resp = new MsgPacket(XVDR_STATUS_RECORDINGSCHANGE, XVDR_CHANNEL_STATUS);
-  resp->write(m_socket, m_timeout);
-  delete resp;
+  QueueMessage(resp);
 }
 
 void cXVDRClient::Recording(const cDevice *Device, const char *Name, const char *FileName, bool On)
@@ -291,7 +307,6 @@ void cXVDRClient::Recording(const cDevice *Device, const char *Name, const char 
 
   if (m_StatusInterfaceEnabled)
   {
-    cSocketLock locks(m_socket);
     MsgPacket* resp = new MsgPacket(XVDR_STATUS_RECORDING, XVDR_CHANNEL_STATUS);
 
     resp->put_U32(Device->CardIndex());
@@ -306,8 +321,7 @@ void cXVDRClient::Recording(const cDevice *Device, const char *Name, const char 
     else
       resp->put_String("");
 
-    resp->write(m_socket, m_timeout);
-    delete resp;
+    QueueMessage(resp);
   }
 }
 
@@ -339,14 +353,12 @@ void cXVDRClient::OsdStatusMessage(const char *Message)
     else if (strcasecmp(Message, trVDR("Cutter already running - Add to cutting queue?")) == 0) return;
     else if (strcasecmp(Message, trVDR("No index-file found. Creating may take minutes. Create one?")) == 0) return;
 
-    cSocketLock locks(m_socket);
     MsgPacket* resp = new MsgPacket(XVDR_STATUS_MESSAGE, XVDR_CHANNEL_STATUS);
 
     resp->put_U32(0);
     resp->put_String(Message);
 
-    resp->write(m_socket, m_timeout);
-    delete resp;
+    QueueMessage(resp);
   }
 }
 
@@ -621,11 +633,9 @@ bool cXVDRClient::processRequest()
 
   if(result)
   {
-    cSocketLock locks(m_socket);
-    m_resp->write(m_socket, m_timeout);
+    QueueMessage(m_resp);
   }
 
-  delete m_resp;
   m_resp = NULL;
 
   return result;
@@ -1981,6 +1991,11 @@ void cXVDRClient::SendScannerStatus() {
   resp->put_String(status.transponder);
 
   resp->compress(m_compressionLevel);
-  resp->write(m_socket, m_timeout);
-  delete resp;
+
+  QueueMessage(resp);
+}
+
+void cXVDRClient::QueueMessage(MsgPacket* p) {
+  cMutexLock lock(&m_queueLock);
+  m_queue.push(p);
 }

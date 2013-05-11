@@ -29,6 +29,7 @@
 #include <map>
 #include <list>
 #include <string>
+#include <queue>
 
 #include <vdr/thread.h>
 #include <vdr/tools.h>
@@ -73,6 +74,9 @@ private:
   cWirbelScan       m_scanner;
   std::string       m_clientName;
 
+  std::queue<MsgPacket*> m_queue;
+  cMutex                 m_queueLock;
+
 protected:
 
   bool processRequest();
@@ -82,6 +86,8 @@ protected:
   virtual void TimerChange(const cTimer *Timer, eTimerChange Change);
   virtual void Recording(const cDevice *Device, const char *Name, const char *FileName, bool On);
   virtual void OsdStatusMessage(const char *Message);
+
+  void QueueMessage(MsgPacket* p);
 
 public:
 
