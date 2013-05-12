@@ -26,6 +26,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/socket.h>
+#include <unistd.h>
+#include <sys/types.h>
 #include <map>
 #include <string>
 
@@ -190,7 +192,10 @@ void cXVDRClient::Action(void)
 {
   bool bClosed(false);
 
-  SetPriority(10);
+  // only root may change the priority
+  if(geteuid() == 0) {
+    SetPriority(10);
+  }
 
   while (Running()) {
 
@@ -765,7 +770,11 @@ bool cXVDRClient::process_ChannelFilter()
 bool cXVDRClient::processChannelStream_Open() /* OPCODE 20 */
 {
   cMutexLock lock(&m_timerLock);
-  SetPriority(-15);
+
+  // only root may change the priority
+  if(geteuid() == 0) {
+    SetPriority(-15);
+  }
 
   uint32_t uid = m_req->get_U32();
   int32_t priority = 50;
@@ -853,7 +862,11 @@ bool cXVDRClient::processChannelStream_Signal() /* OPCODE 24 */
 bool cXVDRClient::processRecStream_Open() /* OPCODE 40 */
 {
   cRecording *recording = NULL;
-  SetPriority(-15);
+
+  // only root may change the priority
+  if(geteuid() == 0) {
+    SetPriority(-15);
+  }
 
   const char* recid = m_req->get_String();
   unsigned int uid = recid2uid(recid);
