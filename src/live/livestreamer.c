@@ -258,17 +258,32 @@ int cLiveStreamer::StreamChannel(const cChannel *channel, int sock, bool waitfor
   m_PatFilter = new cLivePatFilter(this, channel);
 
   // get cached demuxer data
-  DEBUGLOG("Creating demuxers");
   cChannelCache cache = cChannelCache::GetFromCache(m_uid);
-  if(cache.size() != 0) {
-    INFOLOG("Channel information found in cache");
-    cache.CreateDemuxers(this);
-    if(!Attach()) {
-      INFOLOG("Unable to attach receiver !");
-      return XVDR_RET_DATALOCKED;
-    }
-    RequestStreamChange();
+
+  // channel not found in cache -> add it from vdr
+  if(cache.size() == 0) {
+    INFOLOG("adding channel to cache");
+    cChannelCache::AddToCache(channel);
+    cache = cChannelCache::GetFromCache(m_uid);
   }
+
+  // channel already in cache
+  else {
+    INFOLOG("Channel information found in cache");
+  }
+
+  // recheck cache item
+  if(cache.size() != 0) {
+    INFOLOG("Creating demuxers");
+    cache.CreateDemuxers(this);
+  }
+
+  if(!Attach()) {
+    INFOLOG("Unable to attach receiver !");
+    return XVDR_RET_DATALOCKED;
+  }
+
+  RequestStreamChange();
 
   DEBUGLOG("Starting PAT scanner");
   m_Device->AttachFilter(m_PatFilter);

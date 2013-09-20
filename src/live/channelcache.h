@@ -66,6 +66,8 @@ public:
 
   static cChannelCache GetFromCache(uint32_t channeluid);
 
+  static void gc();
+
 private:
 
   static void Lock() { m_access.Lock(); }

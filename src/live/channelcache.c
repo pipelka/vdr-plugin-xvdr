@@ -154,9 +154,12 @@ void cChannelCache::AddToCache(const cChannel* channel) {
 
   std::map<uint32_t, cChannelCache>::iterator i = m_cache.find(uid);
 
-  // channel already in cache
-  if(i != m_cache.end())
-    return;
+  // valid channel already in cache
+  if(i != m_cache.end()) {
+    if(i->second.size() != 0) {
+      return;
+    }
+  }
 
   // create new cache item
   cChannelCache item;
@@ -205,7 +208,16 @@ void cChannelCache::AddToCache(const cChannel* channel) {
 }
 
 cChannelCache cChannelCache::GetFromCache(uint32_t channeluid) {
+  static cChannelCache empty;
+
   Lock();
+
+  std::map<uint32_t, cChannelCache>::iterator i = m_cache.find(channeluid);
+  if(i == m_cache.end()) {
+    Unlock();
+    return empty;
+  }
+
   cChannelCache result = m_cache[channeluid];
   Unlock();
 
@@ -239,16 +251,47 @@ void cChannelCache::SaveChannelCacheData() {
   rename(filename, filenamenew);
 }
 
-void cChannelCache::LoadChannelCacheData() {
-  m_cache.clear();
+void cChannelCache::gc() {
+  cMutexLock lock(&m_access);
+  std::map<uint32_t, cChannelCache> m_newcache;
 
-  // preload cache with VDR channel entries
+  INFOLOG("channel cache garbage collection ...");
+  INFOLOG("before: %i channels in cache", m_cache.size());
+
+  // remove orphaned cache entries
   XVDRChannels.Lock(false);
   cChannels *channels = XVDRChannels.Get();
+
   for (cChannel *channel = channels->First(); channel; channel = channels->Next(channel)) {
-    AddToCache(channel);
+    uint32_t uid = CreateChannelUID(channel);
+
+    // ignore invalid channels
+    if(uid == 0)
+      continue;
+
+    // lookup channel in current cache
+    std::map<uint32_t, cChannelCache>::iterator i = m_cache.find(uid);
+    if(i == m_cache.end())
+      continue;
+
+    // add to new cache if it exists
+    m_newcache[uid] = i->second;
   }
   XVDRChannels.Unlock();
+
+  // regenerate cache
+  m_cache.clear();
+  std::map<uint32_t, cChannelCache>::iterator i;
+
+  for(i = m_newcache.begin(); i != m_newcache.end(); i++) {
+    m_cache[i->first] = i->second;
+  }
+
+  INFOLOG("after: %i channels in cache", m_cache.size());
+}
+
+void cChannelCache::LoadChannelCacheData() {
+  m_cache.clear();
 
   // load cache
   std::fstream in;
@@ -288,6 +331,8 @@ void cChannelCache::LoadChannelCacheData() {
     if(uid != 0)
       m_cache[uid] = cache;
   }
+
+  gc();
 }
 
 
