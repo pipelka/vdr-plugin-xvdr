@@ -84,6 +84,11 @@ cString cXVDRClient::CreateServiceReference(cChannel* channel)
   if(cSource::IsSat(channel->Source()))
   {
     hash = channel->Source() & cSource::st_Pos;
+
+#if VDRVERSNUM >= 20101
+    hash = -hash;
+#endif
+
     if(hash > 0x00007FFF)
       hash |= 0xFFFF0000;
 
