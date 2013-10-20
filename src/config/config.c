@@ -45,7 +45,11 @@ cXVDRServerConfig::cXVDRServerConfig()
 }
 
 void cXVDRServerConfig::Load() {
+#if VDRVERSNUM >= 20102
+  cLiveQueue::SetTimeShiftDir(cVideoDirectory::Name());
+#else
   cLiveQueue::SetTimeShiftDir(VideoDirectory);
+#endif
   cRecordingsCache::GetInstance().LoadResumeData();
 
   if(!cConfig<cSetupLine>::Load(AddDirectory(ConfigDirectory, GENERAL_CONFIG_FILE), true, false))
