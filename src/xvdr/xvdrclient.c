@@ -1385,7 +1385,11 @@ bool cXVDRClient::processTIMER_Update() /* OPCODE 85 */
 bool cXVDRClient::processRECORDINGS_GetDiskSpace() /* OPCODE 100 */
 {
   int FreeMB;
+#if VDRVERSNUM >= 20102
+  int Percent = cVideoDirectory::VideoDiskSpace(&FreeMB);
+#else
   int Percent = VideoDiskSpace(&FreeMB);
+#endif
   int Total   = (FreeMB / (100 - Percent)) * 100;
 
   m_resp->put_U32(Total);
