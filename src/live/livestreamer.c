@@ -527,6 +527,21 @@ void cLiveStreamer::RequestSignalInfo()
   resp->put_U32(0);
   resp->put_U32(0);
 
+  // get provider & service information
+  const cChannel* channel = FindChannelByUID(m_uid);
+  if(channel != NULL) {
+    // put in provider name
+    resp->put_String(channel->Provider());
+
+    // what the heck should be the service name ?
+    // using PortalName for now
+    resp->put_String(channel->PortalName());
+  }
+  else {
+    resp->put_String("");
+    resp->put_String("");
+  }
+
   DEBUGLOG("RequestSignalInfo");
   m_Queue->Add(resp);
 }
