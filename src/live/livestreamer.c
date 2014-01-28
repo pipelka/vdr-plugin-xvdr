@@ -695,3 +695,17 @@ void cLiveStreamer::Receive(uchar *Data, int Length)
   if (p != Length)
     ReportOverflow(Length - p);
 }
+
+void cLiveStreamer::ChannelChange(const cChannel* channel) {
+  if(CreateChannelUID(channel) != m_uid) {
+    return;
+  }
+
+  m_FilterMutex.Lock();
+
+  Detach();
+  m_Device = cDevice::GetDevice(channel, LIVEPRIORITY, true);
+  Attach();
+
+  m_FilterMutex.Unlock();
+}

@@ -265,6 +265,14 @@ void cXVDRClient::TimerChange(const cTimer *Timer, eTimerChange Change)
   TimerChange();
 }
 
+void cXVDRClient::ChannelChange(const cChannel *Channel) {
+  if(m_Streamer == NULL) {
+    return;
+  }
+
+  m_Streamer->ChannelChange(Channel);
+}
+
 void cXVDRClient::TimerChange()
 {
   cMutexLock lock(&m_msgLock);

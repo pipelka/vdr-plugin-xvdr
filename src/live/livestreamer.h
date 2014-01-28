@@ -101,6 +101,8 @@ public:
   void Pause(bool on);
   void RequestPacket();
   void RequestSignalInfo();
+
+  void ChannelChange(const cChannel* Channel);
 };
 
 #endif  // XVDR_RECEIVER_H

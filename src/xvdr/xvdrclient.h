@@ -84,6 +84,7 @@ protected:
   virtual void Action(void);
 
   virtual void TimerChange(const cTimer *Timer, eTimerChange Change);
+  virtual void ChannelChange(const cChannel *Channel);
   virtual void Recording(const cDevice *Device, const char *Name, const char *FileName, bool On);
   virtual void OsdStatusMessage(const char *Message);
 
