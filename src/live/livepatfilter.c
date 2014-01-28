@@ -57,16 +57,21 @@ static const char * const psStreamTypes[] = {
         "",
 };
 
-cLivePatFilter::cLivePatFilter(cLiveStreamer *Streamer, const cChannel *Channel)
+cLivePatFilter::cLivePatFilter(cLiveStreamer *Streamer)
 {
   DEBUGLOG("cStreamdevPatFilter(\"%s\")", Channel->Name());
-  m_Channel     = Channel;
+  m_Channel     = NULL;
   m_Streamer    = Streamer;
   m_pmtPid      = 0;
   m_pmtSid      = 0;
   m_pmtVersion  = -1;
   Set(0x00, 0x00);  // PAT
 
+}
+
+void cLivePatFilter::SetChannel(const cChannel *Channel) {
+  cMutexLock lock(&m_Mutex);
+  m_Channel = Channel;
 }
 
 void cLivePatFilter::GetLanguage(SI::PMT::Stream& stream, char *langs, uint8_t& type)
@@ -288,6 +293,13 @@ bool cLivePatFilter::GetStreamInfo(SI::PMT::Stream& stream, cStreamInfo& info)
 
 void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Length)
 {
+  {
+    cMutexLock lock(&m_Mutex);
+    if(m_Channel == NULL) {
+      return;
+    }
+  }
+
   if (Pid == 0x00 && Tid == 0x00)
   {
     SI::PAT pat(Data, false);
@@ -299,7 +311,8 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
     {
       if (!assoc.isNITPid())
       {
-    	XVDRChannels.Lock(false);
+        cMutexLock lock(&m_Mutex);
+    	  XVDRChannels.Lock(false);
         const cChannel *Channel =  XVDRChannels.Get()->GetByServiceID(Source(), Transponder(), assoc.getServiceId());
 
         if (Channel && (Channel == m_Channel))
@@ -340,8 +353,10 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
     m_pmtVersion = pmt.getVersionNumber();
 
     // get cached channel data
-    if(m_ChannelCache.size() == 0)
+    if(m_ChannelCache.size() == 0) {
+      cMutexLock lock(&m_Mutex);
       m_ChannelCache = cChannelCache::GetFromCache(CreateChannelUID(m_Channel));
+    }
 
     // get all streams and check if there are new (currently unknown) streams
     SI::PMT::Stream stream;
@@ -362,7 +377,10 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
     m_Streamer->m_FilterMutex.Lock();
 
     // create new stream demuxers
-    m_Streamer->Detach();
+    if(m_Streamer->IsAttached()) {
+      m_Streamer->Detach();
+    }
+
     cache.CreateDemuxers(m_Streamer);
 
     m_Streamer->m_ready = false;
@@ -372,20 +390,12 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
 
     // write changed data back to the cache
     m_ChannelCache = cache;
-    cChannelCache::AddToCache(CreateChannelUID(m_Channel), m_ChannelCache);
-
-    // try to attach receiver
-    int c = 0;
-    for(; c < 3 && !m_Streamer->Attach(); c++) {
-      INFOLOG("Unable to attach receiver, retrying ...");
-      usleep(100 * 1000);
+    {
+      cMutexLock lock(&m_Mutex);
+      cChannelCache::AddToCache(CreateChannelUID(m_Channel), m_ChannelCache);
     }
 
-    // unable to attach receiver
-    if(c == 3) {
-      ERRORLOG("failed to attach receiver, sending detach ...");
-      m_Streamer->sendDetach();
-    }
+    m_Streamer->Attach();
 
     m_Streamer->m_FilterMutex.Unlock();
   }

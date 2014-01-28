@@ -72,6 +72,7 @@ private:
   cTimeMs           m_last_tick;
   bool              m_SignalLost;
   cMutex            m_FilterMutex;
+  cMutex            m_DeviceMutex;
   int               m_LanguageIndex;
   cStreamInfo::Type m_LangStreamType;
   cLiveQueue*       m_Queue;
@@ -79,6 +80,7 @@ private:
   bool              m_ready;
   uint32_t          m_protocolVersion;
   bool              m_waitforiframe;
+  int               m_sock;
 
 protected:
   void Action(void);
@@ -86,11 +88,11 @@ protected:
 
   void RequestStreamChange();
 
-public:
-  cLiveStreamer(int priority, uint32_t timeout = 0, uint32_t protocolVersion = XVDR_PROTOCOLVERSION);
-  virtual ~cLiveStreamer();
+  int SwitchChannel(const cChannel *channel);
 
-  int StreamChannel(const cChannel *channel, int sock, bool waitforiframe = false);
+public:
+  cLiveStreamer(int sock, const cChannel *channel, int priority);
+  virtual ~cLiveStreamer();
 
   bool IsReady();
   bool IsStarting() { return m_startup; }
@@ -98,9 +100,15 @@ public:
   bool TimeShiftMode();
 
   void SetLanguage(int lang, cStreamInfo::Type streamtype = cStreamInfo::stAC3);
+  void SetTimeout(uint32_t timeout);
+  void SetProtocolVersion(uint32_t protocolVersion);
+  void SetWaitForIFrame(bool waitforiframe);
+
   void Pause(bool on);
   void RequestPacket();
   void RequestSignalInfo();
+
+  void ChannelChange(const cChannel* Channel);
 };
 
 #endif  // XVDR_RECEIVER_H

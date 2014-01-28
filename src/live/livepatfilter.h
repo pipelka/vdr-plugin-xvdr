@@ -44,13 +44,15 @@ private:
   const cChannel *m_Channel;
   cLiveStreamer  *m_Streamer;
   cChannelCache   m_ChannelCache;
+  cMutex          m_Mutex;
 
   bool GetStreamInfo(SI::PMT::Stream& stream, cStreamInfo& info);
   void GetLanguage(SI::PMT::Stream& stream, char *langs, uint8_t& type);
   virtual void Process(u_short Pid, u_char Tid, const u_char *Data, int Length);
 
 public:
-  cLivePatFilter(cLiveStreamer *Streamer, const cChannel *Channel);
+  cLivePatFilter(cLiveStreamer *Streamer);
+  void SetChannel(const cChannel *Channel);
 };
 
 #endif // XVDR_LIVEPATFILTER_H
