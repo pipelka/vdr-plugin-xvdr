@@ -704,8 +704,13 @@ void cLiveStreamer::ChannelChange(const cChannel* channel) {
   m_FilterMutex.Lock();
 
   Detach();
+  m_Device->Detach(m_PatFilter);
+
   m_Device = cDevice::GetDevice(channel, LIVEPRIORITY, true);
+  m_Device->SwitchChannel(channel, false);
+
   Attach();
+  m_Device->AttachFilter(m_PatFilter);
 
   m_FilterMutex.Unlock();
 }
