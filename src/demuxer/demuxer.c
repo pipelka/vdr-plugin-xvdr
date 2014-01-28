@@ -129,7 +129,6 @@ bool cTSDemuxer::ProcessTSPacket(unsigned char *data)
     return false;
 
   if (TsIsScrambled(data)) {
-    INFOLOG("scrambled packet");
     return false;
   }
 

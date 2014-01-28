@@ -54,11 +54,11 @@ public:
 
   static void RemoveTimeShiftFiles();
 
+  void Cleanup();
+
 protected:
 
   void Action();
-
-  void Cleanup();
 
   void CloseTimeShift();
 

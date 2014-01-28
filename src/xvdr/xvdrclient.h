@@ -62,6 +62,7 @@ private:
   cCharSetConv      m_toUTF8;
   uint32_t          m_protocolVersion;
   cMutex            m_msgLock;
+  cMutex            m_streamerLock;
   static cMutex     m_timerLock;
   int               m_compressionLevel;
   int               m_LanguageIndex;
@@ -84,6 +85,7 @@ protected:
   virtual void Action(void);
 
   virtual void TimerChange(const cTimer *Timer, eTimerChange Change);
+  virtual void ChannelChange(const cChannel *Channel);
   virtual void Recording(const cDevice *Device, const char *Name, const char *FileName, bool On);
   virtual void OsdStatusMessage(const char *Message);
 

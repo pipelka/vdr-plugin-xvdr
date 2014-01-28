@@ -49,31 +49,37 @@
 #include "livequeue.h"
 #include "channelcache.h"
 
-cLiveStreamer::cLiveStreamer(int priority, uint32_t timeout, uint32_t protocolVersion)
+cLiveStreamer::cLiveStreamer(int sock, const cChannel *channel, int priority)
  : cThread("cLiveStreamer stream processor")
  , cRingBufferLinear(MEGABYTE(10), TS_SIZE * 2, true)
  , cReceiver(NULL, priority)
- , m_scanTimeout(timeout)
+ , m_scanTimeout(10)
+ , m_sock(sock)
 {
   m_Device          = NULL;
   m_Queue           = NULL;
-  m_PatFilter       = NULL;
   m_startup         = true;
   m_SignalLost      = false;
   m_LangStreamType  = cStreamInfo::stMPEG2AUDIO;
   m_LanguageIndex   = -1;
-  m_uid             = 0;
+  m_uid             = CreateChannelUID(channel);
   m_ready           = false;
-  m_protocolVersion = protocolVersion;
+  m_protocolVersion = XVDR_PROTOCOLVERSION;
   m_waitforiframe   = false;
+  m_PatFilter       = NULL;
+
 
   m_requestStreamChange = false;
-
 
   if(m_scanTimeout == 0)
     m_scanTimeout = XVDRServerConfig.stream_timeout;
 
+  // create send queue
+  m_Queue = new cLiveQueue(m_sock);
+  m_Queue->Start();
+
   SetTimeouts(0, 10);
+  Start();
 }
 
 cLiveStreamer::~cLiveStreamer()
@@ -86,13 +92,19 @@ cLiveStreamer::~cLiveStreamer()
   Cancel(5);
   DEBUGLOG("Done.");
 
+  cMutexLock lock(&m_FilterMutex);
+
   DEBUGLOG("Detaching");
-  if (m_Device) {
-    Detach();
+
+  if(m_PatFilter != NULL && m_Device != NULL) {
     m_Device->Detach(m_PatFilter);
+    delete m_PatFilter;
+    m_PatFilter = NULL;
   }
 
-  delete m_PatFilter;
+  if (IsAttached()) {
+    Detach();
+  }
 
   for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++) {
     if ((*i) != NULL) {
@@ -104,7 +116,26 @@ cLiveStreamer::~cLiveStreamer()
 
   delete m_Queue;
 
+  m_uid = 0;
+
+  {
+    cMutexLock lock(&m_DeviceMutex);
+    m_Device = NULL;
+  }
+
   DEBUGLOG("Finished to delete live streamer (took %llu ms)", t.Elapsed());
+}
+
+void cLiveStreamer::SetTimeout(uint32_t timeout) {
+  m_scanTimeout = timeout;
+}
+
+void cLiveStreamer::SetProtocolVersion(uint32_t protocolVersion) {
+  m_protocolVersion = protocolVersion;
+}
+
+void cLiveStreamer::SetWaitForIFrame(bool waitforiframe) {
+  m_waitforiframe = waitforiframe;
 }
 
 void cLiveStreamer::RequestStreamChange()
@@ -118,6 +149,8 @@ void cLiveStreamer::Action(void)
   unsigned char *buf = NULL;
   m_startup = true;
 
+  INFOLOG("streamer thread started.");
+
   while (Running())
   {
     size = 0;
@@ -125,12 +158,11 @@ void cLiveStreamer::Action(void)
 
     {
       cMutexLock lock(&m_FilterMutex);
-      if (!IsAttached())
-      {
-        INFOLOG("returning from streamer thread, receiver is no more attached");
-        Clear();
-        sendDetach();
-        return;
+      if (!IsAttached()) {
+        const cChannel* channel = FindChannelByUID(m_uid);
+        if(SwitchChannel(channel) != XVDR_RET_OK) {
+          cCondWait::SleepMs(10);
+        }
       }
     }
 
@@ -157,7 +189,6 @@ void cLiveStreamer::Action(void)
     }
     Del(used);
 
-
     while (size >= TS_SIZE)
     {
       if(!Running())
@@ -182,21 +213,24 @@ void cLiveStreamer::Action(void)
       Del(TS_SIZE);
     }
   }
+
+  INFOLOG("streamer thread ended.");
 }
 
-int cLiveStreamer::StreamChannel(const cChannel *channel, int sock, bool waitforiframe)
+int cLiveStreamer::SwitchChannel(const cChannel *channel)
 {
-  if (channel == NULL)
-  {
-    ERRORLOG("Starting streaming of channel without valid channel");
+  if (channel == NULL) {
     return XVDR_RET_ERROR;
   }
 
-  m_uid = CreateChannelUID(channel);
-  m_waitforiframe = waitforiframe;
+  if(m_PatFilter != NULL && m_Device != NULL) {
+    m_Device->Detach(m_PatFilter);
+    delete m_PatFilter;
+    m_PatFilter = NULL;
+  }
 
-  if(m_waitforiframe) {
-    INFOLOG("Will wait for first I-Frame ...");
+  if(IsAttached()) {
+    Detach();
   }
 
   // check if any device is able to decrypt the channel - code taken from VDR
@@ -219,11 +253,10 @@ int cLiveStreamer::StreamChannel(const cChannel *channel, int sock, bool waitfor
   }
 
   // get device for this channel
-  m_Device = cDevice::GetDevice(channel, LIVEPRIORITY, true);
-
-  // try a bit harder if we can't find a device
-  if(m_Device == NULL)
+  {
+    cMutexLock lock(&m_DeviceMutex);
     m_Device = cDevice::GetDevice(channel, LIVEPRIORITY, false);
+  }
 
   INFOLOG("--------------------------------------");
   INFOLOG("Channel streaming request: %i - %s", channel->Number(), channel->Name());
@@ -248,15 +281,6 @@ int cLiveStreamer::StreamChannel(const cChannel *channel, int sock, bool waitfor
     return XVDR_RET_ERROR;
   }
 
-  // create send queue
-  if (m_Queue == NULL)
-  {
-    m_Queue = new cLiveQueue(sock);
-    m_Queue->Start();
-  }
-
-  m_PatFilter = new cLivePatFilter(this, channel);
-
   // get cached demuxer data
   cChannelCache cache = cChannelCache::GetFromCache(m_uid);
 
@@ -278,20 +302,31 @@ int cLiveStreamer::StreamChannel(const cChannel *channel, int sock, bool waitfor
     cache.CreateDemuxers(this);
   }
 
+  RequestStreamChange();
+
+  INFOLOG("Successfully switched to channel %i - %s", channel->Number(), channel->Name());
+
+  if(m_waitforiframe) {
+    INFOLOG("Will wait for first I-Frame ...");
+  }
+
+  // clear cached data
+  Clear();
+  m_Queue->Cleanup();
+
+  m_uid = CreateChannelUID(channel);
+
   if(!Attach()) {
     INFOLOG("Unable to attach receiver !");
     return XVDR_RET_DATALOCKED;
   }
 
-  RequestStreamChange();
-
-  DEBUGLOG("Starting PAT scanner");
+  INFOLOG("Starting PAT scanner");
+  m_PatFilter = new cLivePatFilter(this);
+  m_PatFilter->SetChannel(channel);
   m_Device->AttachFilter(m_PatFilter);
 
-  INFOLOG("Successfully switched to channel %i - %s", channel->Number(), channel->Name());
-
-  Start();
-
+  INFOLOG("done switching.");
   return XVDR_RET_OK;
 }
 
@@ -470,6 +505,12 @@ void cLiveStreamer::sendStatus(int status)
 
 void cLiveStreamer::RequestSignalInfo()
 {
+  cMutexLock lock(&m_DeviceMutex);
+
+  if(!Running() || m_Device == NULL) {
+    return;
+  }
+
   // do not send (and pollute the client with) signal information
   // if we are paused
   if(IsPaused())
@@ -694,4 +735,16 @@ void cLiveStreamer::Receive(uchar *Data, int Length)
 
   if (p != Length)
     ReportOverflow(Length - p);
+}
+
+void cLiveStreamer::ChannelChange(const cChannel* channel) {
+  cMutexLock lock(&m_FilterMutex);
+
+  if(CreateChannelUID(channel) != m_uid || !Running()) {
+    return;
+  }
+
+  INFOLOG("ChannelChange()");
+
+  SwitchChannel(channel);
 }
