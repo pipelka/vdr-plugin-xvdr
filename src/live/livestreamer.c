@@ -78,7 +78,6 @@ cLiveStreamer::cLiveStreamer(int priority, uint32_t timeout, uint32_t protocolVe
 
 cLiveStreamer::~cLiveStreamer()
 {
-  cMutexLock lock(&m_FilterMutex);
   DEBUGLOG("Started to delete live streamer");
 
   cTimeMs t;
@@ -86,6 +85,8 @@ cLiveStreamer::~cLiveStreamer()
   DEBUGLOG("Stopping streamer thread ...");
   Cancel(5);
   DEBUGLOG("Done.");
+
+  cMutexLock lock(&m_FilterMutex);
 
   DEBUGLOG("Detaching");
   if (m_Device) {
