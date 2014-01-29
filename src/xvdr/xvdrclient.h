@@ -62,6 +62,7 @@ private:
   cCharSetConv      m_toUTF8;
   uint32_t          m_protocolVersion;
   cMutex            m_msgLock;
+  cMutex            m_streamerLock;
   static cMutex     m_timerLock;
   int               m_compressionLevel;
   int               m_LanguageIndex;

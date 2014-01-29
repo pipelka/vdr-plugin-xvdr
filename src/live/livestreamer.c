@@ -78,6 +78,7 @@ cLiveStreamer::cLiveStreamer(int priority, uint32_t timeout, uint32_t protocolVe
 
 cLiveStreamer::~cLiveStreamer()
 {
+  cMutexLock lock(&m_FilterMutex);
   DEBUGLOG("Started to delete live streamer");
 
   cTimeMs t;
@@ -93,6 +94,7 @@ cLiveStreamer::~cLiveStreamer()
   }
 
   delete m_PatFilter;
+  m_PatFilter = NULL;
 
   for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++) {
     if ((*i) != NULL) {
@@ -103,6 +105,7 @@ cLiveStreamer::~cLiveStreamer()
   m_Demuxers.clear();
 
   delete m_Queue;
+  m_uid = 0;
 
   DEBUGLOG("Finished to delete live streamer (took %llu ms)", t.Elapsed());
 }
@@ -186,6 +189,8 @@ void cLiveStreamer::Action(void)
 
 int cLiveStreamer::StreamChannel(const cChannel *channel, int sock, bool waitforiframe)
 {
+  cMutexLock lock(&m_FilterMutex);
+
   if (channel == NULL)
   {
     ERRORLOG("Starting streaming of channel without valid channel");
@@ -697,20 +702,35 @@ void cLiveStreamer::Receive(uchar *Data, int Length)
 }
 
 void cLiveStreamer::ChannelChange(const cChannel* channel) {
+  cMutexLock lock(&m_FilterMutex);
+
   if(CreateChannelUID(channel) != m_uid) {
     return;
   }
 
-  m_FilterMutex.Lock();
+  if(m_Device == NULL) {
+    return;
+  }
 
   Detach();
-  m_Device->Detach(m_PatFilter);
+
+  if(m_PatFilter != NULL) {
+    m_Device->Detach(m_PatFilter);
+  }
 
   m_Device = cDevice::GetDevice(channel, LIVEPRIORITY, true);
-  m_Device->SwitchChannel(channel, false);
+  if(m_Device == NULL) {
+    return;
+  }
+
+  if (!m_Device->SwitchChannel(channel, false)) {
+    ERRORLOG("error retuning to channel %i - %s", channel->Number(), channel->Name());
+    return;
+  }
 
   Attach();
-  m_Device->AttachFilter(m_PatFilter);
 
-  m_FilterMutex.Unlock();
+  if(m_PatFilter != NULL) {
+    m_Device->AttachFilter(m_PatFilter);
+  }
 }

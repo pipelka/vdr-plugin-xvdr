@@ -244,6 +244,8 @@ void cXVDRClient::Action(void)
 
 int cXVDRClient::StartChannelStreaming(const cChannel *channel, uint32_t timeout, int32_t priority, bool waitforiframe)
 {
+  cMutexLock lock(&m_streamerLock);
+
   m_Streamer = new cLiveStreamer(priority, timeout, m_protocolVersion);
   m_Streamer->SetLanguage(m_LanguageIndex, m_LangStreamType);
 
@@ -252,6 +254,8 @@ int cXVDRClient::StartChannelStreaming(const cChannel *channel, uint32_t timeout
 
 void cXVDRClient::StopChannelStreaming()
 {
+  cMutexLock lock(&m_streamerLock);
+
   delete m_Streamer;
   m_Streamer = NULL;
 }
@@ -266,6 +270,8 @@ void cXVDRClient::TimerChange(const cTimer *Timer, eTimerChange Change)
 }
 
 void cXVDRClient::ChannelChange(const cChannel *Channel) {
+  cMutexLock lock(&m_streamerLock);
+
   if(m_Streamer == NULL) {
     return;
   }
