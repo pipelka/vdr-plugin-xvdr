@@ -106,7 +106,13 @@ cLiveStreamer::~cLiveStreamer()
   m_Demuxers.clear();
 
   delete m_Queue;
+
   m_uid = 0;
+
+  {
+    cMutexLock lock(&m_DeviceMutex);
+    m_Device = NULL;
+  }
 
   DEBUGLOG("Finished to delete live streamer (took %llu ms)", t.Elapsed());
 }
@@ -476,6 +482,12 @@ void cLiveStreamer::sendStatus(int status)
 
 void cLiveStreamer::RequestSignalInfo()
 {
+  cMutexLock lock(&m_DeviceMutex);
+
+  if(!Running() || m_Device == NULL) {
+    return;
+  }
+
   // do not send (and pollute the client with) signal information
   // if we are paused
   if(IsPaused())
@@ -705,11 +717,7 @@ void cLiveStreamer::Receive(uchar *Data, int Length)
 void cLiveStreamer::ChannelChange(const cChannel* channel) {
   cMutexLock lock(&m_FilterMutex);
 
-  if(CreateChannelUID(channel) != m_uid) {
-    return;
-  }
-
-  if(m_Device == NULL) {
+  if(CreateChannelUID(channel) != m_uid || !Running() || m_Device == NULL) {
     return;
   }
 
@@ -719,9 +727,13 @@ void cLiveStreamer::ChannelChange(const cChannel* channel) {
     m_Device->Detach(m_PatFilter);
   }
 
-  m_Device = cDevice::GetDevice(channel, LIVEPRIORITY, true);
-  if(m_Device == NULL) {
-    return;
+  {
+    cMutexLock lock(&m_DeviceMutex);
+
+    m_Device = cDevice::GetDevice(channel, LIVEPRIORITY, true);
+    if(m_Device == NULL) {
+      return;
+    }
   }
 
   if (!m_Device->SwitchChannel(channel, false)) {

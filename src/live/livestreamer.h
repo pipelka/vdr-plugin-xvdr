@@ -72,6 +72,7 @@ private:
   cTimeMs           m_last_tick;
   bool              m_SignalLost;
   cMutex            m_FilterMutex;
+  cMutex            m_DeviceMutex;
   int               m_LanguageIndex;
   cStreamInfo::Type m_LangStreamType;
   cLiveQueue*       m_Queue;
