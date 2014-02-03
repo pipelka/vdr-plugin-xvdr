@@ -80,6 +80,7 @@ private:
   bool              m_ready;
   uint32_t          m_protocolVersion;
   bool              m_waitforiframe;
+  int               m_sock;
 
 protected:
   void Action(void);
@@ -88,10 +89,10 @@ protected:
   void RequestStreamChange();
 
 public:
-  cLiveStreamer(int priority, uint32_t timeout = 0, uint32_t protocolVersion = XVDR_PROTOCOLVERSION);
+  cLiveStreamer(int sock, const cChannel *channel, int priority, uint32_t timeout = 0, uint32_t protocolVersion = XVDR_PROTOCOLVERSION);
   virtual ~cLiveStreamer();
 
-  int StreamChannel(const cChannel *channel, int sock, bool waitforiframe = false);
+  int SwitchChannel(const cChannel *channel, bool waitforiframe = false);
 
   bool IsReady();
   bool IsStarting() { return m_startup; }
