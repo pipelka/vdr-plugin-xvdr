@@ -153,13 +153,10 @@ void cLiveStreamer::Action(void)
     buf = Get(size);
 
     {
+      cMutexLock lock(&m_FilterMutex);
       if (!IsAttached()) {
         const cChannel* channel = FindChannelByUID(m_uid);
-        if(SwitchChannel(channel) == XVDR_RET_OK) {
-          Clear();
-          m_Queue->Cleanup();
-        }
-        else {
+        if(SwitchChannel(channel) != XVDR_RET_OK) {
           cCondWait::SleepMs(10);
         }
       }
@@ -222,11 +219,11 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
     return XVDR_RET_ERROR;
   }
 
+  cMutexLock lock(&m_FilterMutex);
+
   if(IsAttached()) {
     Detach();
   }
-
-  cMutexLock lock(&m_FilterMutex);
 
   // check if any device is able to decrypt the channel - code taken from VDR
   int NumUsableSlots = 0;
@@ -313,6 +310,10 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
   if(m_waitforiframe) {
     INFOLOG("Will wait for first I-Frame ...");
   }
+
+  // clear cached data
+  Clear();
+  m_Queue->Cleanup();
 
   m_uid = CreateChannelUID(channel);
 
