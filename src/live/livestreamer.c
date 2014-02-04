@@ -176,8 +176,6 @@ void cLiveStreamer::Action(void)
     }
     Del(used);
 
-    INFOLOG("Got %i bytes from receiver", size);
-
     while (size >= TS_SIZE)
     {
       if(!Running())
@@ -208,8 +206,6 @@ void cLiveStreamer::Action(void)
 
 int cLiveStreamer::SwitchChannel(const cChannel *channel, bool waitforiframe)
 {
-  cMutexLock lock(&m_FilterMutex);
-
   m_waitforiframe = waitforiframe;
 
   if (channel == NULL)
@@ -221,6 +217,8 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel, bool waitforiframe)
   if(IsAttached()) {
     Detach();
   }
+
+  cMutexLock lock(&m_FilterMutex);
 
   // check if any device is able to decrypt the channel - code taken from VDR
   int NumUsableSlots = 0;
@@ -738,28 +736,9 @@ void cLiveStreamer::Receive(uchar *Data, int Length)
 }
 
 void cLiveStreamer::ChannelChange(const cChannel* channel) {
-  cMutexLock lock(&m_FilterMutex);
-
-  if(CreateChannelUID(channel) != m_uid || !Running() || m_Device == NULL) {
+  if(CreateChannelUID(channel) != m_uid || !Running()) {
     return;
   }
 
   SwitchChannel(channel, m_waitforiframe);
-  /*Detach();
-
-  {
-    cMutexLock lock(&m_DeviceMutex);
-
-    m_Device = cDevice::GetDevice(channel, LIVEPRIORITY, true);
-    if(m_Device == NULL) {
-      return;
-    }
-  }
-
-  if (!m_Device->SwitchChannel(channel, false)) {
-    ERRORLOG("error retuning to channel %i - %s", channel->Number(), channel->Name());
-    return;
-  }
-
-  Attach();*/
 }
