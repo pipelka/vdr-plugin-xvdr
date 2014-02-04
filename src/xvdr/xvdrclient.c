@@ -250,6 +250,7 @@ int cXVDRClient::StartChannelStreaming(const cChannel *channel, uint32_t timeout
   m_Streamer->SetLanguage(m_LanguageIndex, m_LangStreamType);
   m_Streamer->SetTimeout(timeout);
   m_Streamer->SetProtocolVersion(m_protocolVersion);
+  m_Streamer->SetWaitForIFrame(waitforiframe);
 
   return XVDR_RET_OK;
 }
