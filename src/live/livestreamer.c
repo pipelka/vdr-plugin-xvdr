@@ -49,11 +49,11 @@
 #include "livequeue.h"
 #include "channelcache.h"
 
-cLiveStreamer::cLiveStreamer(int sock, const cChannel *channel, int priority, uint32_t timeout, uint32_t protocolVersion)
+cLiveStreamer::cLiveStreamer(int sock, const cChannel *channel, int priority)
  : cThread("cLiveStreamer stream processor")
  , cRingBufferLinear(MEGABYTE(10), TS_SIZE * 2, true)
  , cReceiver(NULL, priority)
- , m_scanTimeout(timeout)
+ , m_scanTimeout(10)
  , m_sock(sock)
 {
   m_Device          = NULL;
@@ -64,7 +64,7 @@ cLiveStreamer::cLiveStreamer(int sock, const cChannel *channel, int priority, ui
   m_LanguageIndex   = -1;
   m_uid             = CreateChannelUID(channel);
   m_ready           = false;
-  m_protocolVersion = protocolVersion;
+  m_protocolVersion = XVDR_PROTOCOLVERSION;
   m_waitforiframe   = false;
 
   m_requestStreamChange = false;
@@ -122,6 +122,18 @@ cLiveStreamer::~cLiveStreamer()
   DEBUGLOG("Finished to delete live streamer (took %llu ms)", t.Elapsed());
 }
 
+void cLiveStreamer::SetTimeout(uint32_t timeout) {
+  m_scanTimeout = timeout;
+}
+
+void cLiveStreamer::SetProtocolVersion(uint32_t protocolVersion) {
+  m_protocolVersion = protocolVersion;
+}
+
+void cLiveStreamer::SetWaitForIFrame(bool waitforiframe) {
+  m_waitforiframe = waitforiframe;
+}
+
 void cLiveStreamer::RequestStreamChange()
 {
   m_requestStreamChange = true;
@@ -143,7 +155,7 @@ void cLiveStreamer::Action(void)
     {
       if (!IsAttached()) {
         const cChannel* channel = FindChannelByUID(m_uid);
-        if(SwitchChannel(channel, m_waitforiframe) == XVDR_RET_OK) {
+        if(SwitchChannel(channel) == XVDR_RET_OK) {
           Clear();
           m_Queue->Cleanup();
         }
@@ -204,13 +216,9 @@ void cLiveStreamer::Action(void)
   INFOLOG("streamer thread ended.");
 }
 
-int cLiveStreamer::SwitchChannel(const cChannel *channel, bool waitforiframe)
+int cLiveStreamer::SwitchChannel(const cChannel *channel)
 {
-  m_waitforiframe = waitforiframe;
-
-  if (channel == NULL)
-  {
-    ERRORLOG("Starting streaming of channel without valid channel");
+  if (channel == NULL) {
     return XVDR_RET_ERROR;
   }
 
@@ -740,5 +748,5 @@ void cLiveStreamer::ChannelChange(const cChannel* channel) {
     return;
   }
 
-  SwitchChannel(channel, m_waitforiframe);
+  SwitchChannel(channel);
 }

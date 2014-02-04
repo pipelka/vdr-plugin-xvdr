@@ -246,8 +246,10 @@ int cXVDRClient::StartChannelStreaming(const cChannel *channel, uint32_t timeout
 {
   cMutexLock lock(&m_streamerLock);
 
-  m_Streamer = new cLiveStreamer(m_socket, channel, priority, timeout, m_protocolVersion);
+  m_Streamer = new cLiveStreamer(m_socket, channel, priority);
   m_Streamer->SetLanguage(m_LanguageIndex, m_LangStreamType);
+  m_Streamer->SetTimeout(timeout);
+  m_Streamer->SetProtocolVersion(m_protocolVersion);
 
   return XVDR_RET_OK;
 }

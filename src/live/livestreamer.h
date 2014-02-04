@@ -89,10 +89,10 @@ protected:
   void RequestStreamChange();
 
 public:
-  cLiveStreamer(int sock, const cChannel *channel, int priority, uint32_t timeout = 0, uint32_t protocolVersion = XVDR_PROTOCOLVERSION);
+  cLiveStreamer(int sock, const cChannel *channel, int priority);
   virtual ~cLiveStreamer();
 
-  int SwitchChannel(const cChannel *channel, bool waitforiframe = false);
+  int SwitchChannel(const cChannel *channel);
 
   bool IsReady();
   bool IsStarting() { return m_startup; }
@@ -100,6 +100,10 @@ public:
   bool TimeShiftMode();
 
   void SetLanguage(int lang, cStreamInfo::Type streamtype = cStreamInfo::stAC3);
+  void SetTimeout(uint32_t timeout);
+  void SetProtocolVersion(uint32_t protocolVersion);
+  void SetWaitForIFrame(bool waitforiframe);
+
   void Pause(bool on);
   void RequestPacket();
   void RequestSignalInfo();
