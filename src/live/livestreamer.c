@@ -66,6 +66,8 @@ cLiveStreamer::cLiveStreamer(int sock, const cChannel *channel, int priority)
   m_ready           = false;
   m_protocolVersion = XVDR_PROTOCOLVERSION;
   m_waitforiframe   = false;
+  m_PatFilter       = NULL;
+
 
   m_requestStreamChange = false;
 
@@ -153,7 +155,7 @@ void cLiveStreamer::Action(void)
     buf = Get(size);
 
     {
-      cMutexLock lock(&m_FilterMutex);
+      //cMutexLock lock(&m_FilterMutex);
       if (!IsAttached()) {
         const cChannel* channel = FindChannelByUID(m_uid);
         if(SwitchChannel(channel) != XVDR_RET_OK) {
@@ -222,6 +224,11 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
   cMutexLock lock(&m_FilterMutex);
 
   if(IsAttached()) {
+    if(m_PatFilter != NULL && m_Device != NULL) {
+      m_Device->Detach(m_PatFilter);
+      delete m_PatFilter;
+    }
+
     Detach();
   }
 
@@ -247,13 +254,7 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
   // get device for this channel
   {
     cMutexLock lock(&m_DeviceMutex);
-
-    m_Device = cDevice::GetDevice(channel, LIVEPRIORITY, true);
-
-    // try a bit harder if we can't find a device
-    if(m_Device == NULL) {
-      m_Device = cDevice::GetDevice(channel, LIVEPRIORITY, false);
-    }
+    m_Device = cDevice::GetDevice(channel, LIVEPRIORITY, false);
   }
 
   INFOLOG("--------------------------------------");
@@ -279,9 +280,6 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
     return XVDR_RET_ERROR;
   }
 
-  DEBUGLOG("Starting PAT scanner");
-  m_PatFilter->SetChannel(channel);
-
   // get cached demuxer data
   cChannelCache cache = cChannelCache::GetFromCache(m_uid);
 
@@ -303,6 +301,11 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
     cache.CreateDemuxers(this);
   }
 
+  DEBUGLOG("Starting PAT scanner");
+  m_PatFilter = new cLivePatFilter(this);
+  m_PatFilter->SetChannel(channel);
+  m_Device->AttachFilter(m_PatFilter);
+
   RequestStreamChange();
 
   INFOLOG("Successfully switched to channel %i - %s", channel->Number(), channel->Name());
@@ -320,6 +323,10 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
   if(!Attach()) {
     INFOLOG("Unable to attach receiver !");
     return XVDR_RET_DATALOCKED;
+  }
+
+    if(!m_Device->AttachReceiver(this)) {
+    return false;
   }
 
   return XVDR_RET_OK;
@@ -340,23 +347,11 @@ bool cLiveStreamer::Attach(void)
     return false;
   }
 
-  if(m_PatFilter != NULL) {
-    m_Device->AttachFilter(m_PatFilter);
-  }
-
-  if(!m_Device->AttachReceiver(this)) {
-    return false;
-  }
-
   return true;
 }
 
 void cLiveStreamer::Detach(void)
 {
-  if(m_PatFilter != NULL) {
-    m_Device->Detach(m_PatFilter);
-  }
-
   if (m_Device) {
     m_Device->Detach(this);
   }
@@ -748,6 +743,8 @@ void cLiveStreamer::ChannelChange(const cChannel* channel) {
   if(CreateChannelUID(channel) != m_uid || !Running()) {
     return;
   }
+
+  INFOLOG("ChannelChange()");
 
   SwitchChannel(channel);
 }

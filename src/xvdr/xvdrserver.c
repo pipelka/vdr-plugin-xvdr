@@ -295,7 +295,7 @@ void cXVDRServer::Action(void)
         {
           INFOLOG("Checking for channel updates ...");
           for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++)
-            (*i)->ChannelChange();
+            (*i)->ChannelsChanged();
           channelReloadTrigger = false;
           INFOLOG("Done.");
         }

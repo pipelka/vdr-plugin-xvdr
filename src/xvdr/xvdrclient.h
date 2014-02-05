@@ -96,7 +96,7 @@ public:
   cXVDRClient(int fd, unsigned int id);
   virtual ~cXVDRClient();
 
-  void ChannelChange();
+  void ChannelsChanged();
   void RecordingsChange();
   void TimerChange();
 

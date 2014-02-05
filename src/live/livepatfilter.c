@@ -374,10 +374,13 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
     if (m_ChannelCache.ismetaof(cache))
       return;
 
+    // create new stream demuxers
+    if(m_Streamer->IsAttached()) {
+      m_Streamer->Detach();
+    }
+
     m_Streamer->m_FilterMutex.Lock();
 
-    // create new stream demuxers
-    m_Streamer->Detach();
     cache.CreateDemuxers(m_Streamer);
 
     m_Streamer->m_ready = false;
