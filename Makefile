@@ -48,7 +48,7 @@ SOFILE = libvdr-$(PLUGIN).so
 
 ### Includes and Defines (add further entries here):
 
-INCLUDES += -I./src
+INCLUDES += -I./src -I./src/vdr
 
 ifdef DEBUG
 INCLUDES += -DDEBUG
@@ -95,7 +95,7 @@ all: $(SOFILE) i18n
 ### Implicit rules:
 
 %.o: %.c
-	$(CXX) $(CXXFLAGS) -c $(DEFINES) $(INCLUDES) -o $@ $<
+	$(CXX) $(CXXFLAGS) -fPIC -c $(DEFINES) $(INCLUDES) -o $@ $<
 
 ### Dependencies:
 
