@@ -97,12 +97,15 @@ cLiveStreamer::~cLiveStreamer()
   cMutexLock lock(&m_FilterMutex);
 
   DEBUGLOG("Detaching");
-  if (m_Device) {
-    Detach();
+
+  if(m_PatFilter != NULL && m_Device != NULL) {
+    delete m_PatFilter;
+    m_PatFilter = NULL;
   }
 
-  delete m_PatFilter;
-  m_PatFilter = NULL;
+  if (IsAttached()) {
+    Detach();
+  }
 
   for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++) {
     if ((*i) != NULL) {
@@ -223,12 +226,13 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
 
   cMutexLock lock(&m_FilterMutex);
 
-  if(IsAttached()) {
-    if(m_PatFilter != NULL && m_Device != NULL) {
-      m_Device->Detach(m_PatFilter);
-      delete m_PatFilter;
-    }
+  if(m_PatFilter != NULL && m_Device != NULL) {
+    m_Device->Detach(m_PatFilter);
+    delete m_PatFilter;
+    m_PatFilter = NULL;
+  }
 
+  if(IsAttached()) {
     Detach();
   }
 
@@ -301,11 +305,6 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
     cache.CreateDemuxers(this);
   }
 
-  DEBUGLOG("Starting PAT scanner");
-  m_PatFilter = new cLivePatFilter(this);
-  m_PatFilter->SetChannel(channel);
-  m_Device->AttachFilter(m_PatFilter);
-
   RequestStreamChange();
 
   INFOLOG("Successfully switched to channel %i - %s", channel->Number(), channel->Name());
@@ -325,10 +324,12 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
     return XVDR_RET_DATALOCKED;
   }
 
-    if(!m_Device->AttachReceiver(this)) {
-    return false;
-  }
+  INFOLOG("Starting PAT scanner");
+  m_PatFilter = new cLivePatFilter(this);
+  m_PatFilter->SetChannel(channel);
+  m_Device->AttachFilter(m_PatFilter);
 
+  INFOLOG("done switching.");
   return XVDR_RET_OK;
 }
 
@@ -347,7 +348,7 @@ bool cLiveStreamer::Attach(void)
     return false;
   }
 
-  return true;
+  return m_Device->AttachReceiver(this);
 }
 
 void cLiveStreamer::Detach(void)
