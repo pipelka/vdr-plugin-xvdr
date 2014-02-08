@@ -88,11 +88,11 @@ protected:
 
   void RequestStreamChange();
 
+  int SwitchChannel(const cChannel *channel);
+
 public:
   cLiveStreamer(int sock, const cChannel *channel, int priority);
   virtual ~cLiveStreamer();
-
-  int SwitchChannel(const cChannel *channel);
 
   bool IsReady();
   bool IsStarting() { return m_startup; }

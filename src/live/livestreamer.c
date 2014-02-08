@@ -78,8 +78,6 @@ cLiveStreamer::cLiveStreamer(int sock, const cChannel *channel, int priority)
   m_Queue = new cLiveQueue(m_sock);
   m_Queue->Start();
 
-  m_PatFilter = new cLivePatFilter(this);
-
   SetTimeouts(0, 10);
   Start();
 }
@@ -159,7 +157,7 @@ void cLiveStreamer::Action(void)
     buf = Get(size);
 
     {
-      //cMutexLock lock(&m_FilterMutex);
+      cMutexLock lock(&m_FilterMutex);
       if (!IsAttached()) {
         const cChannel* channel = FindChannelByUID(m_uid);
         if(SwitchChannel(channel) != XVDR_RET_OK) {
@@ -224,8 +222,6 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
   if (channel == NULL) {
     return XVDR_RET_ERROR;
   }
-
-  cMutexLock lock(&m_FilterMutex);
 
   if(m_PatFilter != NULL && m_Device != NULL) {
     m_Device->Detach(m_PatFilter);
@@ -742,6 +738,8 @@ void cLiveStreamer::Receive(uchar *Data, int Length)
 }
 
 void cLiveStreamer::ChannelChange(const cChannel* channel) {
+  cMutexLock lock(&m_FilterMutex);
+
   if(CreateChannelUID(channel) != m_uid || !Running()) {
     return;
   }

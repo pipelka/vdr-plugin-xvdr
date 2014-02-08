@@ -374,12 +374,12 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
     if (m_ChannelCache.ismetaof(cache))
       return;
 
+    m_Streamer->m_FilterMutex.Lock();
+
     // create new stream demuxers
     if(m_Streamer->IsAttached()) {
       m_Streamer->Detach();
     }
-
-    m_Streamer->m_FilterMutex.Lock();
 
     cache.CreateDemuxers(m_Streamer);
 
@@ -394,6 +394,8 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
       cMutexLock lock(&m_Mutex);
       cChannelCache::AddToCache(CreateChannelUID(m_Channel), m_ChannelCache);
     }
+
+    m_Streamer->Attach();
 
     m_Streamer->m_FilterMutex.Unlock();
   }
