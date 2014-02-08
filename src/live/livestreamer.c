@@ -260,9 +260,6 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
   {
     cMutexLock lock(&m_DeviceMutex);
     m_Device = cDevice::GetDevice(channel, LIVEPRIORITY, false);
-    if(m_Device == NULL) {
-      m_Device = cDevice::GetDevice(channel, LIVEPRIORITY, true);
-    }
   }
 
   INFOLOG("--------------------------------------");
