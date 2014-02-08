@@ -80,7 +80,7 @@ cXVDRServer::cXVDRServer(int listenPort) : cThread("VDR XVDR Server")
 
   if(*XVDRServerConfig.ConfigDirectory)
   {
-    m_AllowedHostsFile = cString::sprintf("%s/" ALLOWED_HOSTS_FILE, *XVDRServerConfig.ConfigDirectory);
+    m_AllowedHostsFile = cString::sprintf("%s/" ALLOWED_HOSTS_FILE, (const char*)XVDRServerConfig.ConfigDirectory);
   }
   else
   {

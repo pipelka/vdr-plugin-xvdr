@@ -30,7 +30,7 @@
 #include "net/msgpacket.h"
 #include "livequeue.h"
 
-cString cLiveQueue::TimeShiftDir = "/video";
+std::string cLiveQueue::TimeShiftDir = "/video";
 uint64_t cLiveQueue::BufferSize = 1024*1024*1024;
 
 cLiveQueue::cLiveQueue(int sock) : m_socket(sock), m_readfd(-1), m_writefd(-1)
@@ -192,7 +192,7 @@ void cLiveQueue::CloseTimeShift()
   close(m_writefd);
   m_writefd = -1;
 
-  unlink(m_storage);
+  unlink(m_storage.c_str());
 }
 
 bool cLiveQueue::Pause(bool on)
@@ -213,11 +213,11 @@ bool cLiveQueue::Pause(bool on)
   // create offline storage
   if(m_readfd == -1)
   {
-    m_storage = cString::sprintf("%s/xvdr-ringbuffer-%05i.data", (const char*)TimeShiftDir, m_socket);
+    m_storage = cString::sprintf("%s/xvdr-ringbuffer-%05i.data", TimeShiftDir.c_str(), m_socket);
     DEBUGLOG("FILE: %s", (const char*)m_storage);
 
-    m_readfd = open(m_storage, O_CREAT | O_RDONLY, 0644);
-    m_writefd = open(m_storage, O_CREAT | O_WRONLY, 0644);
+    m_readfd = open(m_storage.c_str(), O_CREAT | O_RDONLY, 0644);
+    m_writefd = open(m_storage.c_str(), O_CREAT | O_WRONLY, 0644);
     lseek(m_readfd, 0, SEEK_SET);
     lseek(m_writefd, 0, SEEK_SET);
 
@@ -258,7 +258,7 @@ void cLiveQueue::SetBufferSize(uint64_t s)
 
 void cLiveQueue::RemoveTimeShiftFiles()
 {
-  DIR* dir = opendir((const char*)TimeShiftDir);
+  DIR* dir = opendir(TimeShiftDir.c_str());
 
   if(dir == NULL)
     return;
@@ -270,7 +270,7 @@ void cLiveQueue::RemoveTimeShiftFiles()
     if(strncmp(entry->d_name, "xvdr-ringbuffer-", 16) == 0)
     {
       INFOLOG("Removing old time-shift storage: %s", entry->d_name);
-      unlink(AddDirectory(TimeShiftDir, entry->d_name));
+      unlink(AddDirectory(TimeShiftDir.c_str(), entry->d_name));
     }
   }
 

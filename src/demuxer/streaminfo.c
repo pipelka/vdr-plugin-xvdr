@@ -47,7 +47,7 @@ cStreamInfo::cStreamInfo(int pid, Type type, const char* lang) {
   m_parsed = false;
 
   if(lang != NULL)
-    strncpy(m_language, lang, 4);
+    strncpy(m_language, lang, sizeof(m_language));
 
   SetContent();
 }
@@ -85,7 +85,7 @@ bool cStreamInfo::operator ==(const cStreamInfo& rhs) const {
       return false;
     case scAUDIO:
       return
-        (strcmp(m_language, rhs.m_language) == 0) &&
+        (strncmp(m_language, rhs.m_language, sizeof(m_language)) == 0) &&
         (m_audiotype == rhs.m_audiotype) &&
         (m_channels == rhs.m_channels) &&
         (m_samplerate == rhs.m_samplerate);
@@ -98,7 +98,7 @@ bool cStreamInfo::operator ==(const cStreamInfo& rhs) const {
         (m_fpsrate == rhs.m_fpsrate);
     case scSUBTITLE:
       return
-        (strcmp(m_language, rhs.m_language) == 0) &&
+        (strncmp(m_language, rhs.m_language, sizeof(m_language)) == 0) &&
         (m_subtitlingtype == rhs.m_subtitlingtype) &&
         (m_compositionpageid == rhs.m_compositionpageid) &&
         (m_ancillarypageid == rhs.m_ancillarypageid);
@@ -279,7 +279,7 @@ std::fstream& operator>> (std::fstream& lhs, cStreamInfo& rhs) {
   }
 
   if(lang != "XXX")
-    strncpy(rhs.m_language, lang.c_str(), 4);
+    strncpy(rhs.m_language, lang.c_str(), sizeof(rhs.m_language));
 
   return lhs;
 }

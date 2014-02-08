@@ -25,6 +25,7 @@
 #ifndef XVDR_LIVEQUEUE_H
 #define XVDR_LIVEQUEUE_H
 
+#include <string>
 #include <queue>
 #include <vdr/thread.h>
 
@@ -74,9 +75,9 @@ protected:
 
   cCondWait m_cond;
 
-  cString m_storage;
+  std::string m_storage;
 
-  static cString TimeShiftDir;
+  static std::string TimeShiftDir;
 
   static uint64_t BufferSize;
 };
