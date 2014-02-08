@@ -99,6 +99,7 @@ cLiveStreamer::~cLiveStreamer()
   DEBUGLOG("Detaching");
 
   if(m_PatFilter != NULL && m_Device != NULL) {
+    m_Device->Detach(m_PatFilter);
     delete m_PatFilter;
     m_PatFilter = NULL;
   }
