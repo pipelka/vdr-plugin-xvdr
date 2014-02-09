@@ -142,13 +142,11 @@ cXVDRServer::cXVDRServer(int listenPort) : cThread("VDR XVDR Server")
 
 cXVDRServer::~cXVDRServer()
 {
-  Cancel(-1);
+  Cancel(5);
   for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++)
   {
     delete (*i);
   }
-  m_clients.erase(m_clients.begin(), m_clients.end());
-  Cancel();
 
   cChannelCache::SaveChannelCacheData();
 
