@@ -83,7 +83,7 @@ void cParserLATM::ParsePayload(unsigned char* data, int len) {
     slotLen += tmp;
   } while (tmp == 255);
 
-  if (slotLen * 8 > (bs.Length() - bs.Index()))
+  if (slotLen * 8 > (bs.Length() - (unsigned)bs.Index()))
     return;
 
   if (m_curDTS == DVD_NOPTS_VALUE)

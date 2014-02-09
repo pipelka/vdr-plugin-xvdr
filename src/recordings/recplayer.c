@@ -32,6 +32,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#define __STDC_FORMAT_MACROS // Required for format specifiers
+#include <inttypes.h>
 
 #include "config/config.h"
 
@@ -97,7 +99,7 @@ void cRecPlayer::scan()
   }
 
   if(len != m_totalLength) {
-    INFOLOG("recording scan: %llu bytes", m_totalLength);
+    INFOLOG("recording scan: %"PRIu64" bytes", m_totalLength);
   }
 }
 
@@ -203,7 +205,7 @@ int cRecPlayer::getBlock(unsigned char* buffer, uint64_t position, int amount)
 
   // seek to position
   if(lseek(m_file, filePosition, SEEK_SET) == -1) {
-    ERRORLOG("unable to seek to position: %llu", filePosition);
+    ERRORLOG("unable to seek to position: %"PRIu64, filePosition);
     return 0;
   }
 

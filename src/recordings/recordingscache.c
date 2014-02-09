@@ -23,6 +23,8 @@
  */
 
 #include <stdio.h>
+#define __STDC_FORMAT_MACROS // Required for format specifiers
+#include <inttypes.h>
 
 #include "config/config.h"
 #include "recordingscache.h"
@@ -150,7 +152,7 @@ void cRecordingsCache::LoadResumeData()
   uint64_t pos = 0;
   int count = 0;
 
-  while(fscanf(f, "%08x = %llu, %i", &uid, &pos, &count) != EOF)
+  while(fscanf(f, "%08x = %"PRIu64", %i", &uid, &pos, &count) != EOF)
   {
     m_recordings[uid].lastplayedposition = pos;
     m_recordings[uid].playcount = count;
@@ -181,7 +183,7 @@ void cRecordingsCache::SaveResumeData()
   for(i = m_recordings.begin(); i != m_recordings.end(); i++)
   {
     if(i->second.lastplayedposition != 0 || i->second.playcount != 0)
-      fprintf(f, "%08x = %llu, %i\n", i->first, i->second.lastplayedposition, i->second.playcount);
+      fprintf(f, "%08x = %"PRIu64", %i\n", i->first, i->second.lastplayedposition, i->second.playcount);
   }
 
   fclose(f);
