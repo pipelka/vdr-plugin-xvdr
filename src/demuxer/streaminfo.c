@@ -177,6 +177,8 @@ void cStreamInfo::SetSubtitlingDescriptor(unsigned char SubtitlingType, uint16_t
 }
 
 std::fstream& operator<< (std::fstream& lhs, const cStreamInfo& rhs) {
+  rhs.info();
+
   // write item sync
   lhs << (int)0xFEFEFEFE << std::endl;
 

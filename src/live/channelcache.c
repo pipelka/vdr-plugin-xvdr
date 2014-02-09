@@ -225,6 +225,9 @@ cChannelCache cChannelCache::GetFromCache(uint32_t channeluid) {
 }
 
 void cChannelCache::SaveChannelCacheData() {
+  INFOLOG("=============================================================================");
+  INFOLOG("cChannelCache::SaveChannelCacheData()");
+
   std::fstream out;
   cString filename = cString::sprintf("%s%s", (const char*)AddDirectory(XVDRServerConfig.CacheDirectory, CHANNEL_CACHE_FILE), ".bak");
 
@@ -239,12 +242,17 @@ void cChannelCache::SaveChannelCacheData() {
   out << "V2" << std::endl;
   out << m_cache.size() << std::endl;
 
+  INFOLOG("writing %i cache entries", m_cache.size());
+
   for(std::map<uint32_t, cChannelCache>::iterator i = m_cache.begin(); i != m_cache.end(); i++) {
+    INFOLOG("writing channel (uid = %u)", i->first);
     out << i->first << std::endl;
     out << i->second;
   }
 
   Unlock();
+
+  INFOLOG("=============================================================================");
 
   cString filenamenew = AddDirectory(XVDRServerConfig.CacheDirectory, CHANNEL_CACHE_FILE);
 
@@ -337,6 +345,7 @@ void cChannelCache::LoadChannelCacheData() {
 
 
 std::fstream& operator<< (std::fstream& lhs, const cChannelCache& rhs) {
+  INFOLOG("channel has %i streams", rhs.size());
   lhs << (int)rhs.size() << std::endl;
 
   for(cChannelCache::const_iterator i = rhs.begin(); i != rhs.end(); i++) {
