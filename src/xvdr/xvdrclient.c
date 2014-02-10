@@ -246,7 +246,7 @@ int cXVDRClient::StartChannelStreaming(const cChannel *channel, uint32_t timeout
 {
   cMutexLock lock(&m_streamerLock);
 
-  m_Streamer = new cLiveStreamer(m_socket, channel, priority);
+  m_Streamer = new cLiveStreamer(this, channel, priority);
   m_Streamer->SetLanguage(m_LanguageIndex, m_LangStreamType);
   m_Streamer->SetTimeout(timeout);
   m_Streamer->SetProtocolVersion(m_protocolVersion);
@@ -380,13 +380,17 @@ void cXVDRClient::OsdStatusMessage(const char *Message)
     else if (strcasecmp(Message, trVDR("Cutter already running - Add to cutting queue?")) == 0) return;
     else if (strcasecmp(Message, trVDR("No index-file found. Creating may take minutes. Create one?")) == 0) return;
 
-    MsgPacket* resp = new MsgPacket(XVDR_STATUS_MESSAGE, XVDR_CHANNEL_STATUS);
-
-    resp->put_U32(0);
-    resp->put_String(Message);
-
-    QueueMessage(resp);
+    StatusMessage(Message);
   }
+}
+
+void cXVDRClient::StatusMessage(const char *Message) {
+  MsgPacket* resp = new MsgPacket(XVDR_STATUS_MESSAGE, XVDR_CHANNEL_STATUS);
+
+  resp->put_U32(0);
+  resp->put_String(Message);
+
+  QueueMessage(resp);
 }
 
 bool cXVDRClient::IsChannelWanted(cChannel* channel, bool radio)
@@ -834,10 +838,13 @@ bool cXVDRClient::processChannelStream_Open() /* OPCODE 20 */
   {
     int status = StartChannelStreaming(channel, timeout, priority, waitforiframe);
 
-    if (status == XVDR_RET_OK)
+    if (status == XVDR_RET_OK) {
+      INFOLOG("--------------------------------------");
       INFOLOG("Started streaming of channel %s (timeout %i seconds, priority %i)", channel->Name(), timeout, priority);
-    else
+    }
+    else {
       DEBUGLOG("Can't stream channel %s", channel->Name());
+    }
 
     m_resp->put_U32(status);
   }

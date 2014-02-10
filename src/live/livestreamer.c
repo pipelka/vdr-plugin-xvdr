@@ -42,6 +42,7 @@
 #include "config/config.h"
 #include "net/msgpacket.h"
 #include "xvdr/xvdrcommand.h"
+#include "xvdr/xvdrclient.h"
 #include "tools/hash.h"
 
 #include "livestreamer.h"
@@ -49,12 +50,12 @@
 #include "livequeue.h"
 #include "channelcache.h"
 
-cLiveStreamer::cLiveStreamer(int sock, const cChannel *channel, int priority)
+cLiveStreamer::cLiveStreamer(cXVDRClient* parent, const cChannel *channel, int priority)
  : cThread("cLiveStreamer stream processor")
  , cRingBufferLinear(MEGABYTE(10), TS_SIZE * 2, true)
  , cReceiver(NULL, priority)
  , m_scanTimeout(10)
- , m_sock(sock)
+ , m_parent(parent)
 {
   m_Device          = NULL;
   m_Queue           = NULL;
@@ -75,7 +76,7 @@ cLiveStreamer::cLiveStreamer(int sock, const cChannel *channel, int priority)
     m_scanTimeout = XVDRServerConfig.stream_timeout;
 
   // create send queue
-  m_Queue = new cLiveQueue(m_sock);
+  m_Queue = new cLiveQueue(m_parent->GetSocket());
   m_Queue->Start();
 
   SetTimeouts(0, 10);
@@ -143,11 +144,55 @@ void cLiveStreamer::RequestStreamChange()
   m_requestStreamChange = true;
 }
 
+void cLiveStreamer::TryChannelSwitch() {
+  // find channel from uid
+  const cChannel* channel = FindChannelByUID(m_uid);
+
+  // try to switch channel
+  int rc = SwitchChannel(channel);
+
+  // succeeded -> exit
+  if(rc == XVDR_RET_OK) {
+    return;
+  }
+
+  // time limit not exceeded -> relax & exit
+  if(m_last_tick.Elapsed() < (uint64_t)(m_scanTimeout*1000)) {
+    cCondWait::SleepMs(10);
+    return;
+  }
+
+  // push notification after timeout
+  switch(rc) {
+    case XVDR_RET_ENCRYPTED:
+      ERRORLOG("Unable to decrypt channel %i - %s", channel->Number(), channel->Name());
+      m_parent->StatusMessage(tr("Unable to decrypt channel"));
+      break;
+    case XVDR_RET_DATALOCKED:
+      ERRORLOG("Can't get device for channel %i - %s", channel->Number(), channel->Name());
+      m_parent->StatusMessage(tr("All tuners busy"));
+      break;
+    case XVDR_RET_RECRUNNING:
+      ERRORLOG("Active recording blocking channel %i - %s", channel->Number(), channel->Name());
+      m_parent->StatusMessage(tr("Blocked by active recording"));
+      break;
+    case XVDR_RET_ERROR:
+      ERRORLOG("Error switching to channel %i - %s", channel->Number(), channel->Name());
+      m_parent->StatusMessage(tr("Failed to switch"));
+      break;
+  }
+
+  m_last_tick.Set(0);
+}
+
 void cLiveStreamer::Action(void)
 {
   int size = 0;
   unsigned char *buf = NULL;
   m_startup = true;
+
+  // reset timer
+  m_last_tick.Set(0);
 
   INFOLOG("streamer thread started.");
 
@@ -156,13 +201,11 @@ void cLiveStreamer::Action(void)
     size = 0;
     buf = Get(size);
 
+    // try to switch channel if we aren't attached yet
     {
       cMutexLock lock(&m_FilterMutex);
       if (!IsAttached()) {
-        const cChannel* channel = FindChannelByUID(m_uid);
-        if(SwitchChannel(channel) != XVDR_RET_OK) {
-          cCondWait::SleepMs(10);
-        }
+        TryChannelSwitch();
       }
     }
 
@@ -247,7 +290,6 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
       }
     }
     if (!NumUsableSlots) {
-      ERRORLOG("Unable to decrypt channel %i - %s", channel->Number(), channel->Name());
       return XVDR_RET_ENCRYPTED;
     }
   }
@@ -258,17 +300,16 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
     m_Device = cDevice::GetDevice(channel, LIVEPRIORITY, false);
   }
 
-  INFOLOG("--------------------------------------");
-  INFOLOG("Channel streaming request: %i - %s", channel->Number(), channel->Name());
-
   if (m_Device == NULL)
   {
-    ERRORLOG("Can't get device for channel %i - %s", channel->Number(), channel->Name());
-
     // return status "recording running" if there is an active timer
     time_t now = time(NULL);
-    if(Timers.GetMatch(now) != NULL)
-      return XVDR_RET_RECRUNNING;
+
+    for (cTimer *ti = Timers.First(); ti; ti = Timers.Next(ti)) {
+      if (ti->Recording() && ti->Matches(now)) {
+        return XVDR_RET_RECRUNNING;
+      }
+    }
 
     return XVDR_RET_DATALOCKED;
   }
@@ -419,7 +460,7 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
 void cLiveStreamer::sendDetach() {
   INFOLOG("sending detach message");
   MsgPacket* resp = new MsgPacket(XVDR_STREAM_DETACH, XVDR_CHANNEL_STREAM);
-  m_Queue->Add(resp);
+  m_parent->QueueMessage(resp);
 }
 
 void cLiveStreamer::sendStreamChange()
@@ -500,7 +541,7 @@ void cLiveStreamer::sendStatus(int status)
 {
   MsgPacket* packet = new MsgPacket(XVDR_STREAM_STATUS, XVDR_CHANNEL_STREAM);
   packet->put_U32(status);
-  m_Queue->Add(packet);
+  m_parent->QueueMessage(packet);
 }
 
 void cLiveStreamer::RequestSignalInfo()
