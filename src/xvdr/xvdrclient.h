@@ -89,8 +89,6 @@ protected:
   virtual void Recording(const cDevice *Device, const char *Name, const char *FileName, bool On);
   virtual void OsdStatusMessage(const char *Message);
 
-  void QueueMessage(MsgPacket* p);
-
 public:
 
   cXVDRClient(int fd, unsigned int id);
@@ -100,9 +98,12 @@ public:
   void RecordingsChange();
   void TimerChange();
 
-  unsigned int GetID() { return m_Id; }
+  void QueueMessage(MsgPacket* p);
+  void StatusMessage(const char *Message);
 
+  unsigned int GetID() { return m_Id; }
   const std::string& GetClientName() { return m_clientName; }
+  int GetSocket() { return m_socket; }
 
 protected:
 

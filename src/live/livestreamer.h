@@ -42,6 +42,7 @@ class cTSDemuxer;
 class MsgPacket;
 class cLivePatFilter;
 class cLiveQueue;
+class cXVDRClient;
 
 class cLiveStreamer : public cThread
                     , public cRingBufferLinear
@@ -80,7 +81,7 @@ private:
   bool              m_ready;
   uint32_t          m_protocolVersion;
   bool              m_waitforiframe;
-  int               m_sock;
+  cXVDRClient*      m_parent;
 
 protected:
   void Action(void);
@@ -90,8 +91,12 @@ protected:
 
   int SwitchChannel(const cChannel *channel);
 
+private:
+
+  void TryChannelSwitch();
+
 public:
-  cLiveStreamer(int sock, const cChannel *channel, int priority);
+  cLiveStreamer(cXVDRClient* parent, const cChannel *channel, int priority);
   virtual ~cLiveStreamer();
 
   bool IsReady();
