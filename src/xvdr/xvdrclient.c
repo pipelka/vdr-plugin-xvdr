@@ -277,7 +277,7 @@ void cXVDRClient::TimerChange()
   }
 }
 
-void cXVDRClient::ChannelChange()
+void cXVDRClient::ChannelsChanged()
 {
   cMutexLock lock(&m_msgLock);
 
