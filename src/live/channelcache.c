@@ -256,7 +256,7 @@ void cChannelCache::gc() {
   std::map<uint32_t, cChannelCache> m_newcache;
 
   INFOLOG("channel cache garbage collection ...");
-  INFOLOG("before: %i channels in cache", m_cache.size());
+  INFOLOG("before: %zu channels in cache", m_cache.size());
 
   // remove orphaned cache entries
   XVDRChannels.Lock(false);
@@ -287,7 +287,7 @@ void cChannelCache::gc() {
     m_cache[i->first] = i->second;
   }
 
-  INFOLOG("after: %i channels in cache", m_cache.size());
+  INFOLOG("after: %zu channels in cache", m_cache.size());
 }
 
 void cChannelCache::LoadChannelCacheData() {
