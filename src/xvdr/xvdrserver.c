@@ -148,8 +148,6 @@ cXVDRServer::~cXVDRServer()
     delete (*i);
   }
 
-  cChannelCache::SaveChannelCacheData();
-
   INFOLOG("XVDR Server stopped");
 }
 
@@ -309,7 +307,9 @@ void cXVDRServer::Action(void)
 
       // store channel cache
       if(m_clients.size() > 0 && channelCacheTimer.Elapsed() >= 60*1000) {
-        cChannelCache::SaveChannelCacheData();
+        if(!bChanged) {
+          cChannelCache::SaveChannelCacheData();
+        }
         channelCacheTimer.Set(0);
       }
 
