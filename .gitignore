@@ -2,3 +2,6 @@
 .dependencies
 *.so
 libvdr-vnsiserver.so*
+po/*.mo
+tools/serviceref
+po/xvdr.pot
