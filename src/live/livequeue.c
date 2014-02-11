@@ -192,7 +192,9 @@ void cLiveQueue::CloseTimeShift()
   close(m_writefd);
   m_writefd = -1;
 
-  unlink(m_storage);
+  if(*m_storage) {
+    unlink(m_storage);
+  }
 }
 
 bool cLiveQueue::Pause(bool on)
