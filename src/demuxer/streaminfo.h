@@ -29,6 +29,8 @@
 #include <fstream>
 #include <string>
 
+#include "net/msgpacket.h"
+
 class cStreamInfo {
 public:
 
@@ -126,9 +128,8 @@ protected:
 
   friend class cLivePatFilter;
 
-  friend std::fstream& operator<< (std::fstream& lhs, const cStreamInfo& rhs);
-
-  friend std::fstream& operator>> (std::fstream& lhs, cStreamInfo& rhs);
+  friend MsgPacket& operator<< (MsgPacket& lhs, const cStreamInfo& rhs);
+  friend MsgPacket& operator>> (MsgPacket& lhs, cStreamInfo& rhs);
 
 private:
 
@@ -136,8 +137,7 @@ private:
 
 };
 
-std::fstream& operator<< (std::fstream& lhs, const cStreamInfo& rhs);
-
-std::fstream& operator>> (std::fstream& lhs, cStreamInfo& rhs);
+MsgPacket& operator>> (MsgPacket& lhs, cStreamInfo& rhs);
+MsgPacket& operator<< (MsgPacket& lhs, const cStreamInfo& rhs);
 
 #endif // XVDR_STREAMINFO_H

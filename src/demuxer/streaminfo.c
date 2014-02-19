@@ -176,41 +176,41 @@ void cStreamInfo::SetSubtitlingDescriptor(unsigned char SubtitlingType, uint16_t
   m_parsed            = true;
 }
 
-std::fstream& operator<< (std::fstream& lhs, const cStreamInfo& rhs) {
+MsgPacket& operator<< (MsgPacket& lhs, const cStreamInfo& rhs) {
   // write item sync
-  lhs << (int)0xFEFEFEFE << std::endl;
+  lhs.put_U32(0xFEFEFEFE);
 
   // write general data
-  lhs << rhs.m_type << std::endl;
-  lhs << rhs.m_content << std::endl;
-  lhs << rhs.m_pid << std::endl;
-  lhs << rhs.m_parsed << std::endl;
+  lhs.put_U8(rhs.m_type);
+  lhs.put_U8(rhs.m_content);
+  lhs.put_U16(rhs.m_pid);
+  lhs.put_U8(rhs.m_parsed);
 
   const char* lang = (rhs.m_language[0] == 0 ? "XXX" : rhs.m_language);
 
   // write specific data
   switch(rhs.m_content) {
     case cStreamInfo::scAUDIO:
-      lhs << lang << std::endl;
-      lhs << (int)rhs.m_audiotype << std::endl;
-      lhs << rhs.m_channels << std::endl;
-      lhs << rhs.m_samplerate << std::endl;
-      lhs << rhs.m_bitrate << std::endl;
-      lhs << rhs.m_bitspersample << std::endl;
-      lhs << rhs.m_blockalign << std::endl;
+      lhs.put_String(lang);
+      lhs.put_U8(rhs.m_audiotype);
+      lhs.put_U8(rhs.m_channels);
+      lhs.put_U32(rhs.m_samplerate);
+      lhs.put_U32(rhs.m_bitrate);
+      lhs.put_U8(rhs.m_bitspersample);
+      lhs.put_U32(rhs.m_blockalign);
       break;
     case cStreamInfo::scVIDEO:
-      lhs << rhs.m_fpsscale << std::endl;
-      lhs << rhs.m_fpsrate << std::endl;
-      lhs << rhs.m_height << std::endl;
-      lhs << rhs.m_width << std::endl;
-      lhs << (unsigned long long)(rhs.m_aspect * 1000000000) << std::endl;
+      lhs.put_U32(rhs.m_fpsscale);
+      lhs.put_U32(rhs.m_fpsrate);
+      lhs.put_U16(rhs.m_height);
+      lhs.put_U16(rhs.m_width);
+      lhs.put_U64((unsigned long long)(rhs.m_aspect * 1000000000));
       break;
     case cStreamInfo::scSUBTITLE:
-      lhs << lang << std::endl;
-      lhs << rhs.m_subtitlingtype << std::endl;
-      lhs << rhs.m_compositionpageid << std::endl;
-      lhs << rhs.m_ancillarypageid << std::endl;
+      lhs.put_String(lang);
+      lhs.put_U8(rhs.m_subtitlingtype);
+      lhs.put_U16(rhs.m_compositionpageid);
+      lhs.put_U16(rhs.m_ancillarypageid);
       break;
     case cStreamInfo::scTELETEXT:
       break;
@@ -221,10 +221,9 @@ std::fstream& operator<< (std::fstream& lhs, const cStreamInfo& rhs) {
   return lhs;
 }
 
-std::fstream& operator>> (std::fstream& lhs, cStreamInfo& rhs) {
-  unsigned long long a;
+MsgPacket& operator>> (MsgPacket& lhs, cStreamInfo& rhs) {
   unsigned int check = 0;
-  lhs >> check;
+  check = lhs.get_U32();
 
   if(check != 0xFEFEFEFE)
     return lhs;
@@ -232,16 +231,10 @@ std::fstream& operator>> (std::fstream& lhs, cStreamInfo& rhs) {
   rhs.Initialize();
 
   // read general data
-  int t = 0;
-  lhs >> t;
-  rhs.m_type = static_cast<cStreamInfo::Type>(t);
-
-  int c = 0;
-  lhs >> c;
-  rhs.m_content = static_cast<cStreamInfo::Content>(c);
-
-  lhs >> rhs.m_pid;
-  lhs >> rhs.m_parsed;
+  rhs.m_type = static_cast<cStreamInfo::Type>(lhs.get_U8());
+  rhs.m_content = static_cast<cStreamInfo::Content>(lhs.get_U8());
+  rhs.m_pid = lhs.get_U16();
+  rhs.m_parsed = lhs.get_U8();
 
   // read specific data
   int at = 0;
@@ -249,28 +242,26 @@ std::fstream& operator>> (std::fstream& lhs, cStreamInfo& rhs) {
 
   switch(rhs.m_content) {
     case cStreamInfo::scAUDIO:
-      lhs >> lang;
-      lhs >> at;
-      rhs.m_audiotype = at;
-      lhs >> rhs.m_channels;
-      lhs >> rhs.m_samplerate;
-      lhs >> rhs.m_bitrate;
-      lhs >> rhs.m_bitspersample;
-      lhs >> rhs.m_blockalign;
+      lang = lhs.get_String();
+      rhs.m_audiotype = lhs.get_U8();
+      rhs.m_channels = lhs.get_U8();
+      rhs.m_samplerate = lhs.get_U32();
+      rhs.m_bitrate = lhs.get_U32();
+      rhs.m_bitspersample = lhs.get_U8();
+      rhs.m_blockalign = lhs.get_U32();
       break;
     case cStreamInfo::scVIDEO:
-      lhs >> rhs.m_fpsscale;
-      lhs >> rhs.m_fpsrate;
-      lhs >> rhs.m_height;
-      lhs >> rhs.m_width;
-      lhs >> a;
-      rhs.m_aspect = (double)a / 1000000000.0;
+      rhs.m_fpsscale = lhs.get_U32();
+      rhs.m_fpsrate = lhs.get_U32();
+      rhs.m_height = lhs.get_U16();
+      rhs.m_width = lhs.get_U16();
+      rhs.m_aspect = (double)lhs.get_U64() / 1000000000.0;
       break;
     case cStreamInfo::scSUBTITLE:
-      lhs >> lang;
-      lhs >> rhs.m_subtitlingtype;
-      lhs >> rhs.m_compositionpageid;
-      lhs >> rhs.m_ancillarypageid;
+      lang = lhs.get_String();
+      rhs.m_subtitlingtype = lhs.get_U8();
+      rhs.m_compositionpageid = lhs.get_U16();
+      rhs.m_ancillarypageid = lhs.get_U16();
       break;
     case cStreamInfo::scTELETEXT:
       break;
@@ -278,8 +269,7 @@ std::fstream& operator>> (std::fstream& lhs, cStreamInfo& rhs) {
       break;
   }
 
-  if(lang != "XXX")
-    strncpy(rhs.m_language, lang.c_str(), 4);
+  strncpy(rhs.m_language, lang.c_str(), sizeof(rhs.m_language));
 
   return lhs;
 }

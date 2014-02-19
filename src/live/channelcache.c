@@ -225,26 +225,30 @@ cChannelCache cChannelCache::GetFromCache(uint32_t channeluid) {
 }
 
 void cChannelCache::SaveChannelCacheData() {
-  std::fstream out;
   cString filename = AddDirectory(XVDRServerConfig.CacheDirectory, CHANNEL_CACHE_FILE".bak");
 
-  out.open(filename, std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
-
-  if(!out.is_open()) {
+  int fd = open(*filename, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+  if(fd == -1) {
+    ERRORLOG("Unable to open channel cache data file (%s) !", (const char*)filename);
     return;
   }
 
   Lock();
 
-  out << "V2" << std::endl;
-  out << m_cache.size() << std::endl;
+  MsgPacket* p = new MsgPacket;
+  p->put_String("V2");
+  p->put_U32(m_cache.size());
 
   for(std::map<uint32_t, cChannelCache>::iterator i = m_cache.begin(); i != m_cache.end(); i++) {
-    out << i->first << std::endl;
-    out << i->second;
+    p->put_U32(i->first);
+    *p << i->second;
   }
 
   Unlock();
+
+  p->write(fd, 1000);
+  delete p;
+  close(fd);
 
   cString filenamenew = AddDirectory(XVDRServerConfig.CacheDirectory, CHANNEL_CACHE_FILE);
 
@@ -294,50 +298,56 @@ void cChannelCache::LoadChannelCacheData() {
   m_cache.clear();
 
   // load cache
-  std::fstream in;
   cString filename = AddDirectory(XVDRServerConfig.CacheDirectory, CHANNEL_CACHE_FILE);
 
-  in.open(filename, std::ios_base::in | std::ios_base::binary);
-
-  if(!in.is_open()) {
+  int fd = open(*filename, O_RDONLY);
+  if(fd == -1) {
     ERRORLOG("Unable to open channel cache data file (%s) !", (const char*)filename);
     return;
   }
 
-  std::string version;
-  in >> version;
+  MsgPacket* p = MsgPacket::read(fd, 1000);
+  if(p == NULL) {
+    ERRORLOG("Unable to load channel cache data file (%s) !", (const char*)filename);
+    close(fd);
+    return;
+  }
 
+  std::string version = p->get_String();
   if(version != "V2") {
     INFOLOG("old channel cache detected - skipped");
     return;
   }
 
-  int c = 0;
-  in >> c;
+  uint32_t c = p->get_U32();
 
   // sanity check
-  if(c > 10000)
+  if(c > 10000) {
+    delete p;
+    close(fd);
     return;
+  }
 
-  INFOLOG("Loading %i channels from cache", c);
+  INFOLOG("Loading %u channels from cache", c);
 
-  for(int i = 0; i < c; i++) {
-    int uid = 0;
-    in >> uid;
+  for(uint32_t i = 0; i < c; i++) {
+    uint32_t uid = p->get_U32();
 
     cChannelCache cache;
-    in >> cache;
+    *p >> cache;
 
     if(uid != 0)
       m_cache[uid] = cache;
   }
 
+  delete p;
+  close(fd);
+
   gc();
 }
 
-
-std::fstream& operator<< (std::fstream& lhs, const cChannelCache& rhs) {
-  lhs << (int)rhs.size() << std::endl;
+MsgPacket& operator<< (MsgPacket& lhs, const cChannelCache& rhs) {
+  lhs.put_U32((int)rhs.size());
 
   for(cChannelCache::const_iterator i = rhs.begin(); i != rhs.end(); i++) {
     lhs << i->second;
@@ -346,12 +356,11 @@ std::fstream& operator<< (std::fstream& lhs, const cChannelCache& rhs) {
   return lhs;
 }
 
-std::fstream& operator>> (std::fstream& lhs, cChannelCache& rhs) {
+MsgPacket& operator>> (MsgPacket& lhs, cChannelCache& rhs) {
   rhs.clear();
-  int c = 0;
-  lhs >> c;
+  uint32_t c = lhs.get_U32();
 
-  for(int i = 0; i < c; i++) {
+  for(uint32_t i = 0; i < c; i++) {
     cStreamInfo s;
     lhs >> s;
     rhs.AddStream(s);

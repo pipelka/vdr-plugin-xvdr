@@ -81,8 +81,7 @@ private:
   bool m_bChanged;
 };
 
-std::fstream& operator<< (std::fstream& lhs, const cChannelCache& rhs);
-
-std::fstream& operator>> (std::fstream& lhs, cChannelCache& rhs);
+MsgPacket& operator<< (MsgPacket& lhs, const cChannelCache& rhs);
+MsgPacket& operator>> (MsgPacket& lhs, cChannelCache& rhs);
 
 #endif // XVDR_CHANNELCACHEITEM_H
