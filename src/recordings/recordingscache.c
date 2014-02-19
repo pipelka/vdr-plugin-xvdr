@@ -202,14 +202,18 @@ bool cRecordingsCache::Changed() {
 void cRecordingsCache::gc() {
   cMutexLock lock(&m_mutex);
 
-  std::map<uint32_t, struct RecEntry>::iterator i;
-
   Update();
 
-  for(i = m_recordings.begin(); i != m_recordings.end(); i++) {
+  std::map<uint32_t, struct RecEntry>::iterator i = m_recordings.begin();
+
+  while(i != m_recordings.end()) {
     if(!isempty(i->second.filename) && Recordings.GetByName(i->second.filename) == NULL) {
       INFOLOG("removing outdated recording (%08x) '%s' from cache", i->first, (const char*)i->second.filename);
-      m_recordings.erase(i->first);
+      std::map<uint32_t, struct RecEntry>::iterator n = i++;
+      m_recordings.erase(n);
+    }
+    else {
+      i++;
     }
   }
 }
