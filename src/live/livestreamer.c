@@ -719,24 +719,20 @@ bool cLiveStreamer::IsReady()
   if(m_ready)
     return true;
 
+  cMutexLock lock(&m_FilterMutex);
+
   bool bAllParsed = true;
 
   for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++)
   {
-    /*if((*i)->IsParsed() && (*i)->GetContent() == cStreamInfo::scVIDEO) {
-      bAllParsed = true;
-      break;
-    }*/
     if (!(*i)->IsParsed()) {
       DEBUGLOG("Stream with PID %i not parsed", (*i)->GetPID());
-      bAllParsed = false;
-      break;
+      return false;
     }
   }
 
-  m_ready = bAllParsed;
-
-  return bAllParsed;
+  m_ready = true;
+  return true;
 }
 
 bool cLiveStreamer::IsPaused()
