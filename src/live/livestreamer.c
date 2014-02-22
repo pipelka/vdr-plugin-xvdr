@@ -721,8 +721,6 @@ bool cLiveStreamer::IsReady()
 
   cMutexLock lock(&m_FilterMutex);
 
-  bool bAllParsed = true;
-
   for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++)
   {
     if (!(*i)->IsParsed()) {
