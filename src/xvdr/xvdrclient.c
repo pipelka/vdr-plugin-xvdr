@@ -129,7 +129,8 @@ void cXVDRClient::PutTimer(cTimer* timer, MsgPacket* p)
 {
   int flags = CheckTimerConflicts(timer);
 
-  p->put_U32(timer->Index()+1);
+  //p->put_U32(timer->Index()+1);
+  p->put_U32(CreateTimerUID(timer));
   p->put_U32(timer->Flags() | flags);
   p->put_U32(timer->Priority());
   p->put_U32(timer->Lifetime());
@@ -265,9 +266,23 @@ void cXVDRClient::StopChannelStreaming()
 
 void cXVDRClient::TimerChange(const cTimer *Timer, eTimerChange Change)
 {
-  // do not handle timer modifications and deletions
-  if(Change == tcMod || Change == tcDel)
+  // ignore invalid timers
+  if(Timer == NULL) {
     return;
+  }
+
+  // prevent that a completed timer signals a newly scheduled recording
+  const char* timerdesc = *Timer->ToText();
+  if(m_activeRecordings.count(timerdesc) == 1) {
+    if(Timer->Flags() == 0) {
+      return;
+    }
+  }
+
+  // remove timer from active recordings
+  if(Change == tcDel) {
+    m_activeRecordings.erase(timerdesc);
+  }
 
   TimerChange();
 }
@@ -1203,6 +1218,13 @@ bool cXVDRClient::processTIMER_GetList() /* OPCODE 82 */
 {
   cMutexLock lock(&m_timerLock);
 
+  if (Timers.BeingEdited())
+  {
+    ERRORLOG("Unable to delete timer - timers being edited at VDR");
+    m_resp->put_U32(XVDR_RET_DATALOCKED);
+    return true;
+  }
+
   cTimer *timer;
   int numTimers = Timers.Count();
 
@@ -1223,6 +1245,13 @@ bool cXVDRClient::processTIMER_GetList() /* OPCODE 82 */
 bool cXVDRClient::processTIMER_Add() /* OPCODE 83 */
 {
   cMutexLock lock(&m_timerLock);
+
+  if (Timers.BeingEdited())
+  {
+    ERRORLOG("Unable to add timer - timers being edited at VDR");
+    m_resp->put_U32(XVDR_RET_DATALOCKED);
+    return true;
+  }
 
   m_req->get_U32(); // index unused
   uint32_t flags      = m_req->get_U32() > 0 ? tfActive : tfNone;
@@ -1291,19 +1320,12 @@ bool cXVDRClient::processTIMER_Delete() /* OPCODE 84 */
 {
   cMutexLock lock(&m_timerLock);
 
-  uint32_t number = m_req->get_U32();
+  uint32_t uid = m_req->get_U32();
   bool     force  = m_req->get_U32();
 
-  if (number <= 0 || number > (uint32_t)Timers.Count())
-  {
-    ERRORLOG("Unable to delete timer - invalid timer identifier");
-    m_resp->put_U32(XVDR_RET_DATAINVALID);
-    return true;
-  }
+  cTimer* timer = FindTimerByUID(uid);
 
-  cTimer *timer = Timers.Get(number-1);
-  if (timer == NULL)
-  {
+  if (timer == NULL) {
     ERRORLOG("Unable to delete timer - invalid timer identifier");
     m_resp->put_U32(XVDR_RET_DATAINVALID);
     return true;
@@ -1318,7 +1340,7 @@ bool cXVDRClient::processTIMER_Delete() /* OPCODE 84 */
 
   if (timer->Recording() && !force)
   {
-    ERRORLOG("Timer \"%i\" is recording and can be deleted (use force=1 to stop it)", number);
+    ERRORLOG("Timer is recording and can be deleted (use force to stop it)");
     m_resp->put_U32(XVDR_RET_RECRUNNING);
     return true;
   }
@@ -1338,20 +1360,19 @@ bool cXVDRClient::processTIMER_Update() /* OPCODE 85 */
 {
   cMutexLock lock(&m_timerLock);
 
-  uint32_t index  = m_req->get_U32();
-  bool active     = m_req->get_U32();
+  uint32_t uid = m_req->get_U32();
+  bool active = m_req->get_U32();
 
-  cTimer *timer = Timers.Get(index - 1);
-  if (!timer)
-  {
-    ERRORLOG("Timer \"%u\" not defined", index);
+  cTimer* timer = FindTimerByUID(uid);
+  if(timer == NULL) {
+    ERRORLOG("Timer not defined");
     m_resp->put_U32(XVDR_RET_DATAUNKNOWN);
     return true;
   }
 
   if(timer->Recording())
   {
-    INFOLOG("Will not update timer #%i - currently recording", index);
+    INFOLOG("Will not update timer - currently recording");
     m_resp->put_U32(XVDR_RET_OK);
     return true;
   }
@@ -1397,6 +1418,7 @@ bool cXVDRClient::processTIMER_Update() /* OPCODE 85 */
 
   *timer = t;
   Timers.SetModified();
+  TimerChange();
 
   m_resp->put_U32(XVDR_RET_OK);
 

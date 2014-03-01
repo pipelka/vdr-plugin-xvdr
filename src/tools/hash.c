@@ -115,3 +115,24 @@ const cChannel* FindChannelByUID(uint32_t channelUID) {
   XVDRChannels.Unlock();
   return result;
 }
+
+uint32_t CreateTimerUID(const cTimer* timer) {
+  cString channelid = timer->ToText(true);
+  return CreateStringHash(channelid);
+}
+
+cTimer* FindTimerByUID(uint32_t timerUID) {
+  int numTimers = Timers.Count();
+
+  for (int i = 0; i < numTimers; i++) {
+    cTimer* timer = Timers.Get(i);
+    if (!timer)
+      continue;
+
+    if(CreateTimerUID(timer) == timerUID) {
+      return timer;
+    }
+  }
+
+  return NULL;
+}

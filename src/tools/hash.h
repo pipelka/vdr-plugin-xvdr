@@ -28,11 +28,13 @@
 
 #include <stdint.h>
 #include <vdr/channels.h>
-
-class cChannel;
+#include <vdr/timers.h>
 
 uint32_t CreateChannelUID(const cChannel* channel);
 const cChannel* FindChannelByUID(uint32_t channelUID);
+
+uint32_t CreateTimerUID(const cTimer* channel);
+cTimer* FindTimerByUID(uint32_t timerUID);
 
 uint32_t CreateStringHash(const cString& string);
 
