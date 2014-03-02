@@ -129,7 +129,6 @@ void cXVDRClient::PutTimer(cTimer* timer, MsgPacket* p)
 {
   int flags = CheckTimerConflicts(timer);
 
-  //p->put_U32(timer->Index()+1);
   p->put_U32(CreateTimerUID(timer));
   p->put_U32(timer->Flags() | flags);
   p->put_U32(timer->Priority());
@@ -269,19 +268,6 @@ void cXVDRClient::TimerChange(const cTimer *Timer, eTimerChange Change)
   // ignore invalid timers
   if(Timer == NULL) {
     return;
-  }
-
-  // prevent that a completed timer signals a newly scheduled recording
-  const char* timerdesc = *Timer->ToText();
-  if(m_activeRecordings.count(timerdesc) == 1) {
-    if(Timer->Flags() == 0) {
-      return;
-    }
-  }
-
-  // remove timer from active recordings
-  if(Change == tcDel) {
-    m_activeRecordings.erase(timerdesc);
   }
 
   TimerChange();

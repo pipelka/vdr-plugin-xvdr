@@ -76,8 +76,6 @@ private:
   cWirbelScan       m_scanner;
   std::string       m_clientName;
 
-  std::set<std::string> m_activeRecordings;
-
   std::queue<MsgPacket*> m_queue;
   cMutex                 m_queueLock;
 
