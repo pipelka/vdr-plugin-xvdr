@@ -214,6 +214,18 @@ void cLiveStreamer::Action(void)
       INFOLOG("timeout. signal lost!");
       sendStatus(XVDR_STREAM_STATUS_SIGNALLOST);
       m_SignalLost = true;
+
+      // retune to restore
+      cMutexLock lock(&m_FilterMutex);
+      if(m_PatFilter != NULL && m_Device != NULL) {
+        m_Device->Detach(m_PatFilter);
+        delete m_PatFilter;
+        m_PatFilter = NULL;
+      }
+
+      if(IsAttached()) {
+        Detach();
+      }
     }
 
     // no data
