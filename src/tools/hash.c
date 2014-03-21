@@ -117,8 +117,14 @@ const cChannel* FindChannelByUID(uint32_t channelUID) {
 }
 
 uint32_t CreateTimerUID(const cTimer* timer) {
-  cString channelid = timer->ToText(true);
-  return CreateStringHash(channelid);
+  cString timerid = cString::sprintf("%s:%s:%04d:%04d:%s",
+      *timer->Channel()->GetChannelID().ToString(),
+      *timer->PrintDay(timer->Day(), timer->WeekDays(), true),
+      timer->Start(),
+      timer->Stop(),
+      timer->File());
+
+  return CreateStringHash(timerid);
 }
 
 cTimer* FindTimerByUID(uint32_t timerUID) {
