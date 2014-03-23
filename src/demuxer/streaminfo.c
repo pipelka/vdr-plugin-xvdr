@@ -72,6 +72,8 @@ void cStreamInfo::Initialize() {
   m_type              = stNONE;
   m_content           = scNONE;
   m_parsed            = false;
+  m_caid              = 0;
+  m_ecmpid            = 0;
 }
 
 bool cStreamInfo::operator ==(const cStreamInfo& rhs) const {
@@ -165,7 +167,14 @@ void cStreamInfo::info() const {
   else if (m_content == scNONE) snprintf(buffer, sizeof(buffer), "None");
   else snprintf(buffer, sizeof(buffer), "Unknown");
 
-  INFOLOG("Stream: %s PID: %i %s (parsed: %s)", TypeName(m_type), m_pid, buffer, (m_parsed ? "yes" : "no"));
+  char ecmbuffer[40];
+  ecmbuffer[0] = 0;
+
+  if(m_ecmpid != 0) {
+    snprintf(ecmbuffer, sizeof(ecmbuffer), "ECMPID: 0x%04X CAID: 0x%04X ", m_ecmpid, m_caid);
+  }
+
+  INFOLOG("Stream: %s PID: %i %s %s(parsed: %s)", TypeName(m_type), m_pid, buffer, ecmbuffer, (m_parsed ? "yes" : "no"));
 }
 
 void cStreamInfo::SetSubtitlingDescriptor(unsigned char SubtitlingType, uint16_t CompositionPageId, uint16_t AncillaryPageId)
@@ -237,7 +246,6 @@ MsgPacket& operator>> (MsgPacket& lhs, cStreamInfo& rhs) {
   rhs.m_parsed = lhs.get_U8();
 
   // read specific data
-  int at = 0;
   std::string lang;
 
   switch(rhs.m_content) {

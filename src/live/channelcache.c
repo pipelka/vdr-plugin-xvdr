@@ -30,8 +30,17 @@
 
 cMutex cChannelCache::m_access;
 std::map<uint32_t, cChannelCache> cChannelCache::m_cache;
+std::map<int, uint32_t> cChannelCache::m_ecm;
 
-cChannelCache::cChannelCache() : m_bChanged(false) {
+cChannelCache::cChannelCache() : m_bChanged(false), m_caid(0xFFFF) {
+}
+
+void cChannelCache::SetCaID(int caid) {
+  m_caid = caid;
+}
+
+int cChannelCache::GetCaID() const {
+  return m_caid;
 }
 
 void cChannelCache::AddStream(const cStreamInfo& s) {
@@ -162,7 +171,7 @@ void cChannelCache::AddToCache(const cChannel* channel) {
   }
 
   // create new cache item
-  cChannelCache item;
+  cChannelCache item = i->second;
 
   // add video stream
   int vpid = channel->Vpid();
@@ -222,6 +231,51 @@ cChannelCache cChannelCache::GetFromCache(uint32_t channeluid) {
   Unlock();
 
   return result;
+}
+
+void cChannelCache::AddECM(int ecmpid, uint32_t channeluid) {
+  if(ecmpid == 0 || channeluid == 0) {
+    return;
+  }
+
+  cMutexLock lock(&m_access);
+
+  INFOLOG("ECM MAPPING: ECM 0x%04X -> UID 0x%08X", ecmpid, channeluid);
+  m_ecm[ecmpid] = channeluid;
+}
+
+uint32_t cChannelCache::FindByECM(int ecmpid, cChannelCache& result) {
+  cMutexLock lock(&m_access);
+
+  if(m_ecm.find(ecmpid) == m_ecm.end()) {
+    return 0;
+  }
+
+  int channeluid = m_ecm[ecmpid];
+  result = GetFromCache(channeluid);
+
+  return channeluid;
+}
+
+bool cChannelCache::SetRealCaID(int caid, int ecmpid) {
+  cMutexLock lock(&m_access);
+
+  cChannelCache c;
+  uint32_t uid = 0;
+
+  if((uid = cChannelCache::FindByECM(ecmpid, c)) == 0) {
+    return false;
+  }
+
+  bool changed = (c.GetCaID() != caid);
+
+  if(changed) {
+    c.SetCaID(caid);
+    cChannelCache::AddToCache(uid, c);
+  }
+
+  INFOLOG("ECMINFO: PID=0x%04X UID=0x%08x", ecmpid, uid);
+  return changed;
 }
 
 void cChannelCache::SaveChannelCacheData() {

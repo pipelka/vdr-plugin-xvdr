@@ -65,13 +65,27 @@ cLivePatFilter::cLivePatFilter(cLiveStreamer *Streamer)
   m_pmtPid      = 0;
   m_pmtSid      = 0;
   m_pmtVersion  = -1;
-  Set(0x00, 0x00);  // PAT
+  m_channeluid  = 0;
 
+  Set(0x00, 0x00);  // PAT
 }
 
 void cLivePatFilter::SetChannel(const cChannel *Channel) {
   cMutexLock lock(&m_Mutex);
   m_Channel = Channel;
+  m_channeluid = CreateChannelUID(m_Channel);
+
+
+}
+
+void cLivePatFilter::GetECM(SI::PMT::Stream& stream, cStreamInfo& info) {
+  SI::CaDescriptor* d;
+  int i = 0;
+
+  for (SI::Loop::Iterator it; (d = (SI::CaDescriptor*)stream.streamDescriptors.getNext(it, SI::CaDescriptorTag)); i++) {
+    cChannelCache::AddECM(d->getCaPid(), m_channeluid);
+    delete d;
+  }
 }
 
 void cLivePatFilter::GetLanguage(SI::PMT::Stream& stream, char *langs, uint8_t& type)
@@ -115,6 +129,7 @@ bool cLivePatFilter::GetStreamInfo(SI::PMT::Stream& stream, cStreamInfo& info)
     case 0x80: // ATSC Video MPEG2 (ATSC DigiCipher QAM)
       DEBUGLOG("PMT scanner adding PID %d (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()]);
       info.m_type = cStreamInfo::stMPEG2VIDEO;
+      GetECM(stream, info);
       return true;
 
     case 0x03: // ISO/IEC 11172 Audio
@@ -152,6 +167,7 @@ bool cLivePatFilter::GetStreamInfo(SI::PMT::Stream& stream, cStreamInfo& info)
     case 0x1b: // ISO/IEC 14496-10 Video (MPEG-4 part 10/AVC, aka H.264)
       DEBUGLOG("PMT scanner adding PID %d (%s)\n", stream.getPid(), psStreamTypes[stream.getStreamType()]);
       info.m_type = cStreamInfo::stH264;
+      GetECM(stream, info);
       return true;
 
     case 0x05: // ISO/IEC 13818-1 private sections
@@ -355,7 +371,7 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
     // get cached channel data
     if(m_ChannelCache.size() == 0) {
       cMutexLock lock(&m_Mutex);
-      m_ChannelCache = cChannelCache::GetFromCache(CreateChannelUID(m_Channel));
+      m_ChannelCache = cChannelCache::GetFromCache(m_channeluid);
     }
 
     // get all streams and check if there are new (currently unknown) streams
@@ -368,6 +384,13 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
         info.SetContent();
         cache.AddStream(info);
       }
+    }
+
+    // scan ecmpid and caid
+    SI::CaDescriptor* d = NULL;
+    for (SI::Loop::Iterator it; (d = (SI::CaDescriptor*)pmt.commonDescriptors.getNext(it, SI::CaDescriptorTag)); ) {
+      cChannelCache::AddECM(d->getCaPid(), m_channeluid);
+      delete d;
     }
 
     // no new streams found -> exit

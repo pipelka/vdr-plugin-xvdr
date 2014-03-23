@@ -29,6 +29,7 @@
 #include <vdr/filter.h>
 #include <libsi/section.h>
 #include <libsi/descriptor.h>
+#include <stdint.h>
 
 #include "demuxer/demuxer.h"
 #include "channelcache.h"
@@ -45,9 +46,11 @@ private:
   cLiveStreamer  *m_Streamer;
   cChannelCache   m_ChannelCache;
   cMutex          m_Mutex;
+  uint32_t        m_channeluid;
 
   bool GetStreamInfo(SI::PMT::Stream& stream, cStreamInfo& info);
   void GetLanguage(SI::PMT::Stream& stream, char *langs, uint8_t& type);
+  void GetECM(SI::PMT::Stream& stream, cStreamInfo& info);
   virtual void Process(u_short Pid, u_char Tid, const u_char *Data, int Length);
 
 public:

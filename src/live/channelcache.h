@@ -56,6 +56,12 @@ public:
 
   bool IsParsed();
 
+  void SetCaID(int caid);
+
+  int GetCaID() const;
+
+  static bool SetRealCaID(int caid, int ecmpid);
+
   static void LoadChannelCacheData();
 
   static void SaveChannelCacheData();
@@ -65,6 +71,10 @@ public:
   static void AddToCache(const cChannel* channel);
 
   static cChannelCache GetFromCache(uint32_t channeluid);
+
+  static uint32_t FindByECM(int ecmpid, cChannelCache& result);
+
+  static void AddECM(int ecmpid, uint32_t channeluid);
 
   static void gc();
 
@@ -76,9 +86,13 @@ private:
 
   static std::map<uint32_t, cChannelCache> m_cache;
 
+  static std::map<int, uint32_t> m_ecm;
+
   static cMutex m_access;
 
   bool m_bChanged;
+
+  int m_caid;
 };
 
 MsgPacket& operator<< (MsgPacket& lhs, const cChannelCache& rhs);
