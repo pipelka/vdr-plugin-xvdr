@@ -43,6 +43,7 @@
 
 #include "config/config.h"
 #include "live/livestreamer.h"
+#include "live/channelcache.h"
 #include "net/msgpacket.h"
 #include "recordings/recordingscache.h"
 #include "recordings/recplayer.h"
@@ -303,11 +304,6 @@ void cXVDRClient::ChannelsChanged()
     return;
 
   int count = ChannelsCount();
-  if (m_channelCount == count)
-  {
-    INFOLOG("Client %i: %i channels, no change", m_Id, count);
-    return;
-  }
 
   if (m_channelCount == 0)
     INFOLOG("Client %i: no channels - sending request", m_Id);
@@ -1015,10 +1011,13 @@ bool cXVDRClient::processCHANNELS_GetChannels() /* OPCODE 63 */
     if(!IsChannelWanted(channel, radio))
       continue;
 
+    uint32_t uid = CreateChannelUID(channel);
+    cChannelCache cacheitem = cChannelCache::GetFromCache(uid);
+
     m_resp->put_U32(channel->Number());
     m_resp->put_String(m_toUTF8.Convert(channel->Name()));
-    m_resp->put_U32(CreateChannelUID(channel));
-    m_resp->put_U32(channel->Ca());
+    m_resp->put_U32(uid);
+    m_resp->put_U32(channel->Ca() != 0 ? cacheitem.GetCaID() : 0);
 
     // logo url
     m_resp->put_String((const char*)CreateLogoURL(channel));

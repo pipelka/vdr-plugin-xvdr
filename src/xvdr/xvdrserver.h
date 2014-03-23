@@ -41,14 +41,23 @@ protected:
 
   virtual void Action(void);
   void NewClientConnected(int fd);
+  void ProcessNotifications();
+  void ReloadECMInfo();
 
   int           m_ServerPort;
   int           m_ServerFD;
   bool          m_IPv4Fallback;
   cString       m_AllowedHostsFile;
   ClientList    m_clients;
+  cMutex        m_lock;
+  bool          m_channelReloadTrigger;
+  cTimeMs       m_channelReloadTimer;
 
   static unsigned int m_IdCnt;
+
+  // inotify fds
+  int m_watchfd;
+  int m_wd;
 
 public:
   cXVDRServer(int listenPort);

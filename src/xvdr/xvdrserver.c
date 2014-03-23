@@ -36,6 +36,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
+#include <sys/inotify.h>
 
 #include <vdr/plugin.h>
 #include <vdr/shutdown.h>
@@ -77,6 +78,7 @@ cXVDRServer::cXVDRServer(int listenPort) : cThread("VDR XVDR Server")
 {
   m_IPv4Fallback = false;
   m_ServerPort  = listenPort;
+  m_channelReloadTrigger = false;
 
   if(*XVDRServerConfig.ConfigDirectory)
   {
@@ -86,6 +88,20 @@ cXVDRServer::cXVDRServer(int listenPort) : cThread("VDR XVDR Server")
   {
     ERRORLOG("cXVDRServer: missing ConfigDirectory!");
     m_AllowedHostsFile = cString::sprintf("/video/" ALLOWED_HOSTS_FILE);
+  }
+
+  // add inotify watch for /tmp/ecm.info
+  m_watchfd = inotify_init();
+  if(m_watchfd == -1) {
+    ERRORLOG("unable to init inotify !");
+  }
+  else {
+    m_wd = inotify_add_watch(m_watchfd, "/tmp", IN_CLOSE_WRITE | IN_EXCL_UNLINK);
+    if(m_wd == -1) {
+      ERRORLOG("unable to add inotify watch for /tmp !");
+      close(m_watchfd);
+      m_watchfd = -1;
+    }
   }
 
   m_ServerFD = socket(AF_INET6, SOCK_STREAM, 0);
@@ -149,6 +165,11 @@ cXVDRServer::~cXVDRServer()
   }
 
   INFOLOG("XVDR Server stopped");
+
+  // close inotify fd
+  if(m_watchfd != -1) {
+    close(m_watchfd);
+  }
 }
 
 void cXVDRServer::NewClientConnected(int fd)
@@ -222,11 +243,10 @@ void cXVDRServer::Action(void)
 {
   fd_set fds;
   struct timeval tv;
-  cTimeMs channelReloadTimer;
   cTimeMs channelCacheTimer;
   cTimeMs recordingReloadTimer;
 
-  bool channelReloadTrigger = false;
+  m_channelReloadTrigger = false;
   bool recordingReloadTrigger = false;
   uint64_t channelsHash = 0;
 
@@ -244,17 +264,27 @@ void cXVDRServer::Action(void)
     FD_ZERO(&fds);
     FD_SET(m_ServerFD, &fds);
 
-    tv.tv_sec = 0;
-    tv.tv_usec = 250*1000;
+    // add "/tmp" watch fd
+    if(m_watchfd != -1) {
+      FD_SET(m_watchfd, &fds);
+    }
 
-    int r = select(m_ServerFD + 1, &fds, NULL, NULL, &tv);
-    if (r == -1)
-    {
+    tv.tv_sec = 0;
+    tv.tv_usec = 250 * 1000;
+
+    // get highest fd
+    int rfd = m_ServerFD;
+    if(m_watchfd > rfd) {
+      rfd = m_watchfd;
+    }
+
+    int r = select(rfd + 1, &fds, NULL, NULL, &tv);
+    if (r == -1) {
       ERRORLOG("failed during select");
       continue;
     }
-    if (r == 0)
-    {
+
+    if (r == 0) {
       // remove disconnected clients
       bool bChanged = false;
       for (ClientList::iterator i = m_clients.begin(); i != m_clients.end();)
@@ -279,20 +309,22 @@ void cXVDRServer::Action(void)
       // trigger clients to reload the modified channel list
       if(m_clients.size() > 0)
       {
+        cMutexLock lock(&m_lock);
+
         uint64_t hash = XVDRChannels.CheckUpdates();
         XVDRChannels.Lock(false);
 
         if(hash != channelsHash)
         {
-          channelReloadTrigger = true;
-          channelReloadTimer.Set(0);
+          m_channelReloadTrigger = true;
+          m_channelReloadTimer.Set(0);
         }
-        if(channelReloadTrigger && channelReloadTimer.Elapsed() >= 10*1000)
+        if(m_channelReloadTrigger && m_channelReloadTimer.Elapsed() >= 10*1000)
         {
           INFOLOG("Checking for channel updates ...");
           for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++)
             (*i)->ChannelsChanged();
-          channelReloadTrigger = false;
+          m_channelReloadTrigger = false;
           INFOLOG("Done.");
         }
 
@@ -344,19 +376,95 @@ void cXVDRServer::Action(void)
         recordingReloadTrigger = false;
       }
 
-      // no connect request -> continue waiting
+      // continue waiting
       continue;
     }
 
-    int fd = accept(m_ServerFD, 0, 0);
-    if (fd >= 0)
-    {
-      NewClientConnected(fd);
+    // process connections
+    if (FD_ISSET(m_ServerFD, &fds)) {
+      INFOLOG("server messages");
+      int fd = accept(m_ServerFD, 0, 0);
+      if (fd >= 0) {
+        NewClientConnected(fd);
+      }
+      else {
+        ERRORLOG("accept failed");
+      }
     }
-    else
-    {
-      ERRORLOG("accept failed");
+
+    // process notifictions
+    if (m_watchfd != -1 && FD_ISSET(m_watchfd, &fds)) {
+      INFOLOG("inotify messages");
+      ProcessNotifications();
     }
   }
+
   return;
+}
+
+void cXVDRServer::ProcessNotifications() {
+  char buffer[128];
+
+  int length = read(m_watchfd, (char*)buffer, sizeof(buffer));
+  int i = 0;
+
+  while (i < length) {
+    struct inotify_event *e = (struct inotify_event*)&buffer[i];
+
+    if(e->wd != m_wd) {
+      continue;
+    }
+
+    // check for ecm.info
+    if(strcmp(e->name, "ecm.info") == 0) {
+      INFOLOG("ECM Information changed, reloading.");
+      ReloadECMInfo();
+    }
+
+    i += sizeof(struct inotify_event) + e->len;
+  }
+}
+
+void cXVDRServer::ReloadECMInfo() {
+  int ecmpid = 0;
+  int caid = 0;
+
+  // open file
+  FILE* f = fopen("/tmp/ecm.info", "r");
+
+  cReadLine rl;
+  char* line = NULL;
+
+  // read all lines
+  while((line = rl.Read(f)) != NULL) {
+
+    // parse line (name: value()
+    char* d = strchr(line, ':');
+    if(d == NULL) {
+      continue;
+    }
+
+    *d++ = 0;
+    char* name = compactspace(line);
+    char* value = compactspace(d);
+
+    if(strcmp(name, "pid") == 0) {
+      ecmpid = strtol(value, NULL, 0);
+    }
+    else if(strcmp(name, "caid") == 0) {
+      caid = strtol(value, NULL, 0);
+    }
+  }
+
+  fclose(f);
+
+  if(ecmpid == 0 || caid == 0) {
+    return;
+  }
+
+  if(cChannelCache::SetRealCaID(caid, ecmpid)) {
+    cMutexLock lock(&m_lock);
+    m_channelReloadTrigger = true;
+    m_channelReloadTimer.Set(0);
+  }
 }
