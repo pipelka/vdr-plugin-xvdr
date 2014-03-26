@@ -394,7 +394,6 @@ void cXVDRServer::Action(void)
 
     // process notifictions
     if (m_watchfd != -1 && FD_ISSET(m_watchfd, &fds)) {
-      INFOLOG("inotify messages");
       ProcessNotifications();
     }
   }
@@ -417,7 +416,6 @@ void cXVDRServer::ProcessNotifications() {
 
     // check for ecm.info
     if(strcmp(e->name, "ecm.info") == 0) {
-      INFOLOG("ECM Information changed, reloading.");
       ReloadECMInfo();
     }
 
