@@ -90,10 +90,6 @@ public:
 
   const char* TypeName();
 
-  int GetECMPid() const { return m_ecmpid; }
-
-  int GetCaID() const { return m_caid; }
-
   static const char* TypeName(const cStreamInfo::Type& type);
 
   static const char* ContentName(const cStreamInfo::Content& content);
@@ -109,9 +105,6 @@ protected:
   Content m_content;   // stream content (e.g. scVIDEO)
   Type m_type;         // stream type (e.g. stAC3)
   int m_pid;           // transport stream pid
-
-  int m_caid;
-  int m_ecmpid;
 
   char m_language[4];  // ISO 639 3-letter language code (empty string if undefined)
   uint8_t m_audiotype; // ISO 639 audio type
