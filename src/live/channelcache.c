@@ -239,8 +239,6 @@ void cChannelCache::AddECM(int ecmpid, uint32_t channeluid) {
   }
 
   cMutexLock lock(&m_access);
-
-  INFOLOG("ECM MAPPING: ECM 0x%04X -> UID 0x%08X", ecmpid, channeluid);
   m_ecm[ecmpid] = channeluid;
 }
 
@@ -274,7 +272,6 @@ bool cChannelCache::SetRealCaID(int caid, int ecmpid) {
     cChannelCache::AddToCache(uid, c);
   }
 
-  INFOLOG("ECMINFO: PID=0x%04X UID=0x%08x", ecmpid, uid);
   return changed;
 }
 
