@@ -171,7 +171,7 @@ void cChannelCache::AddToCache(const cChannel* channel) {
   }
 
   // create new cache item
-  cChannelCache item = i->second;
+  cChannelCache item;
 
   // add video stream
   int vpid = channel->Vpid();
