@@ -1,3 +1,2 @@
-libvdr-xvdr.so.*         usr/lib/vdr/plugins/
 debian/plugin.xvdr.conf  etc/vdr/plugins/
 xvdr/allowed_hosts.conf  var/lib/vdr/plugins/xvdr/
