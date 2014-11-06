@@ -157,12 +157,15 @@ cXVDRClient::cXVDRClient(int fd, unsigned int id)
   m_LangStreamType          = cStreamInfo::stMPEG2AUDIO;
   m_channelCount            = 0;
   m_timeout                 = 3000;
+  m_scanSupported           = false;
 
   m_socket = fd;
   m_wantfta = true;
   m_filterlanguage = false;
 
   Start();
+
+  m_scanSupported = m_scanner.Connect();
 }
 
 cXVDRClient::~cXVDRClient()
@@ -1858,7 +1861,7 @@ bool cXVDRClient::processEPG_GetForChannel() /* OPCODE 120 */
 
 bool cXVDRClient::processSCAN_ScanSupported() /* OPCODE 140 */
 {
-  if(m_scanner.Connect()) {
+  if(m_scanSupported) {
     m_resp->put_U32(XVDR_RET_OK);
   }
   else {

@@ -74,6 +74,7 @@ private:
   int               m_channelCount;
   int               m_timeout;
   cWirbelScan       m_scanner;
+  bool              m_scanSupported;
   std::string       m_clientName;
 
   std::queue<MsgPacket*> m_queue;
