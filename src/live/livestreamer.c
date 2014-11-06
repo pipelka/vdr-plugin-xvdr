@@ -418,11 +418,6 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
   // Send stream information as the first packet on startup
   if (IsStarting() && bReady)
   {
-    // wait for first I-Frame (if enabled)
-    if(m_waitforiframe && pkt->frametype != cStreamInfo::ftIFRAME) {
-      return;
-    }
-
     INFOLOG("streaming of channel started");
     m_last_tick.Set(0);
     m_requestStreamChange = true;
@@ -432,6 +427,13 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
   // send stream change on demand
   if(m_requestStreamChange)
     sendStreamChange();
+
+  // wait for first I-Frame (if enabled)
+  if(m_waitforiframe && pkt->frametype != cStreamInfo::ftIFRAME) {
+    return;
+  }
+
+  m_waitforiframe = false;
 
   // if a audio or video packet was sent, the signal is restored
   if(m_SignalLost && (pkt->content == cStreamInfo::scVIDEO || pkt->content == cStreamInfo::scAUDIO)) {
