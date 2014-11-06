@@ -125,14 +125,15 @@ bool cLiveQueue::Add(MsgPacket* p)
     return true;
   }
 
-  // queue too long ?
-  if (size() > 100) {
-    delete p;
-    return false;
-  }
-
   // add packet to queue
   push(p);
+
+  // queue too long ?
+  while (size() > 100) {
+    p = front();
+    pop();
+  }
+
   m_cond.Signal();
 
   return true;
