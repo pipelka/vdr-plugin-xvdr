@@ -47,6 +47,8 @@
 #include "recordings/recordingscache.h"
 #include "recordings/recplayer.h"
 #include "tools/hash.h"
+#include "tools/urlencode.h"
+
 #include "xvdr/xvdrchannels.h"
 
 #include "xvdrcommand.h"
@@ -118,11 +120,19 @@ cString cXVDRClient::CreateServiceReference(cChannel* channel)
 
 cString cXVDRClient::CreateLogoURL(cChannel* channel)
 {
-  if((const char*)XVDRServerConfig.PiconsURL == NULL || strlen((const char*)XVDRServerConfig.PiconsURL) == 0)
+  const char* url = (const char*)XVDRServerConfig.PiconsURL;
+
+  if(url == NULL || strlen(url) == 0)
     return "";
 
-  cString url = AddDirectory(XVDRServerConfig.PiconsURL, (const char*)CreateServiceReference(channel));
-  return cString::sprintf("%s.png", (const char*)url);
+  std::string filename = (const char*)CreateServiceReference(channel);
+
+  if(strlen(url) > 4 && strncmp(url, "http", 4) == 0) {
+    filename = url_encode(filename);
+  }
+
+  cString piconurl = AddDirectory(XVDRServerConfig.PiconsURL, filename.c_str());
+  return cString::sprintf("%s.png", (const char*)piconurl);
 }
 
 void cXVDRClient::PutTimer(cTimer* timer, MsgPacket* p)
