@@ -337,19 +337,25 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
   // get cached demuxer data
   cChannelCache cache = cChannelCache::GetFromCache(m_uid);
 
+  // channel already in cache
+  if(cache.size() != 0) {
+    INFOLOG("Channel information found in cache");
+  }
   // channel not found in cache -> add it from vdr
-  if(cache.size() == 0) {
+  else {
     INFOLOG("adding channel to cache");
     cChannelCache::AddToCache(channel);
     cache = cChannelCache::GetFromCache(m_uid);
   }
 
-  // channel already in cache
-  else {
-    INFOLOG("Channel information found in cache");
+  // recheck cache item
+  cChannelCache currentitem = cChannelCache::ItemFromChannel(channel);
+  if(!currentitem.ismetaof(cache)) {
+    INFOLOG("current channel differs from cache item - updating");
+    cache = currentitem;
+    cChannelCache::AddToCache(m_uid, cache);
   }
 
-  // recheck cache item
   if(cache.size() != 0) {
     INFOLOG("Creating demuxers");
     cache.CreateDemuxers(this);

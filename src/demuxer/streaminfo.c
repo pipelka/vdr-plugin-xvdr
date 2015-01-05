@@ -109,7 +109,15 @@ bool cStreamInfo::operator ==(const cStreamInfo& rhs) const {
 }
 
 bool cStreamInfo::ismetaof(const cStreamInfo& rhs) const {
-  return (m_pid == rhs.m_pid && m_type == rhs.m_type && m_content == rhs.m_content);
+  if(m_content != rhs.m_content) {
+    return false;
+  }
+
+  if(m_type != rhs.m_type && (m_type != stAC3 && rhs.m_type != stEAC3)) {
+    return false;
+  }
+
+  return (m_pid == rhs.m_pid);
 }
 
 bool cStreamInfo::operator !=(const cStreamInfo& rhs) const {
