@@ -40,7 +40,8 @@ public:
     scVIDEO,
     scAUDIO,
     scSUBTITLE,
-    scTELETEXT
+    scTELETEXT,
+    scSTREAMINFO
   };
 
   enum Type

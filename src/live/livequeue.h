@@ -27,6 +27,7 @@
 
 #include <queue>
 #include <vdr/thread.h>
+#include "demuxer/streaminfo.h"
 
 class MsgPacket;
 
@@ -38,7 +39,7 @@ public:
 
   virtual ~cLiveQueue();
 
-  bool Add(MsgPacket* p);
+  bool Add(MsgPacket* p, cStreamInfo::Content content);
 
   void Request();
 
@@ -75,6 +76,8 @@ protected:
   cCondWait m_cond;
 
   cString m_storage;
+
+  int m_queuesize;
 
   static cString TimeShiftDir;
 

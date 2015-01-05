@@ -33,7 +33,7 @@
 cString cLiveQueue::TimeShiftDir = "/video";
 uint64_t cLiveQueue::BufferSize = 1024*1024*1024;
 
-cLiveQueue::cLiveQueue(int sock) : m_socket(sock), m_readfd(-1), m_writefd(-1)
+cLiveQueue::cLiveQueue(int sock) : m_socket(sock), m_readfd(-1), m_writefd(-1), m_queuesize(400)
 {
   m_pause = false;
 }
@@ -98,7 +98,7 @@ bool cLiveQueue::TimeShiftMode()
   return (m_pause || (!m_pause && m_writefd != -1));
 }
 
-bool cLiveQueue::Add(MsgPacket* p)
+bool cLiveQueue::Add(MsgPacket* p, cStreamInfo::Content content)
 {
   cMutexLock lock(&m_lock);
 
@@ -125,11 +125,20 @@ bool cLiveQueue::Add(MsgPacket* p)
     return true;
   }
 
+  // discard teletext / signalinfo packets if the buffer fills up, ...
+  if(size() > (m_queuesize / 2)) {
+    if(content == cStreamInfo::scTELETEXT || content == cStreamInfo::scNONE) {
+      delete p;
+      m_cond.Signal();
+      return true;
+    }
+  }
+
   // add packet to queue
   push(p);
 
   // queue too long ?
-  while (size() > 100) {
+  while (size() > m_queuesize) {
     p = front();
     pop();
   }

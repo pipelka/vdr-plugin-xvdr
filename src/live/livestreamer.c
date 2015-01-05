@@ -473,7 +473,7 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
   packet->put_U32(pkt->size);
   packet->put_Blob(pkt->data, pkt->size);
 
-  m_Queue->Add(packet);
+  m_Queue->Add(packet, pkt->content);
   m_last_tick.Set(0);
 }
 
@@ -553,7 +553,7 @@ void cLiveStreamer::sendStreamChange()
 
   m_FilterMutex.Unlock();
 
-  m_Queue->Add(resp);
+  m_Queue->Add(resp, cStreamInfo::scSTREAMINFO);
   m_requestStreamChange = false;
 }
 
@@ -645,7 +645,7 @@ void cLiveStreamer::RequestSignalInfo()
   }
 
   DEBUGLOG("RequestSignalInfo");
-  m_Queue->Add(resp);
+  m_Queue->Add(resp, cStreamInfo::scNONE);
 }
 
 void cLiveStreamer::reorderStreams(int lang, cStreamInfo::Type type)
