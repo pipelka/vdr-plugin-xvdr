@@ -376,12 +376,18 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
 
     m_Streamer->m_FilterMutex.Lock();
 
-    // create new stream demuxers
+    // do not restart the receiver (detach / attach) for VDR >= 2.1.6
+    // VDR's ChannelChange notification will trigger the detach / attach procedure
+    // and also recreate the demuxers
+
+#if VDRVERSNUM < 20106 // VDR VERSION < 2.1.6
     if(m_Streamer->IsAttached()) {
       m_Streamer->Detach();
     }
 
+    // create new stream demuxers
     cache.CreateDemuxers(m_Streamer);
+#endif
 
     m_Streamer->m_ready = false;
     INFOLOG("Currently unknown new streams found, requesting stream change");
@@ -395,7 +401,9 @@ void cLivePatFilter::Process(u_short Pid, u_char Tid, const u_char *Data, int Le
       cChannelCache::AddToCache(CreateChannelUID(m_Channel), m_ChannelCache);
     }
 
+#if VDRVERSNUM < 20106 // VDR VERSION < 2.1.6
     m_Streamer->Attach();
+#endif
 
     m_Streamer->m_FilterMutex.Unlock();
   }
