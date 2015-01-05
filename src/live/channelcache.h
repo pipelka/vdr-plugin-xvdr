@@ -66,6 +66,8 @@ public:
 
   static cChannelCache GetFromCache(uint32_t channeluid);
 
+  static cChannelCache ItemFromChannel(const cChannel* channel);
+
   static void gc();
 
 private:

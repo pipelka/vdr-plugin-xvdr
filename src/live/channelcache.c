@@ -143,25 +143,7 @@ void cChannelCache::AddToCache(uint32_t channeluid, const cChannelCache& channel
   Unlock();
 }
 
-void cChannelCache::AddToCache(const cChannel* channel) {
-  cMutexLock lock(&m_access);
-
-  uint32_t uid = CreateChannelUID(channel);
-
-  // ignore invalid channels
-  if(uid == 0)
-    return;
-
-  std::map<uint32_t, cChannelCache>::iterator i = m_cache.find(uid);
-
-  // valid channel already in cache
-  if(i != m_cache.end()) {
-    if(i->second.size() != 0) {
-      return;
-    }
-  }
-
-  // create new cache item
+cChannelCache cChannelCache::ItemFromChannel(const cChannel* channel) {
   cChannelCache item;
 
   // add video stream
@@ -203,6 +185,31 @@ void cChannelCache::AddToCache(const cChannel* channel) {
 
    item.AddStream(stream);
   }
+
+  return item;
+}
+
+
+void cChannelCache::AddToCache(const cChannel* channel) {
+  cMutexLock lock(&m_access);
+
+  uint32_t uid = CreateChannelUID(channel);
+
+  // ignore invalid channels
+  if(uid == 0)
+    return;
+
+  std::map<uint32_t, cChannelCache>::iterator i = m_cache.find(uid);
+
+  // valid channel already in cache
+  if(i != m_cache.end()) {
+    if(i->second.size() != 0) {
+      return;
+    }
+  }
+
+  // create new cache item
+  cChannelCache item = ItemFromChannel(channel);
 
   AddToCache(uid, item);
 }
