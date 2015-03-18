@@ -27,17 +27,6 @@
 #include "vdr/tools.h"
 #include "ac3common.h"
 
-static const uint8_t EAC3Blocks[4] = {
-  1, 2, 3, 6
-};
-
-typedef enum {
-  EAC3_FRAME_TYPE_INDEPENDENT = 0,
-  EAC3_FRAME_TYPE_DEPENDENT,
-  EAC3_FRAME_TYPE_AC3_CONVERT,
-  EAC3_FRAME_TYPE_RESERVED
-} EAC3FrameType;
-
 cParserEAC3::cParserEAC3(cTSDemuxer *demuxer) : cParser(demuxer, 64 * 1024, 4096)
 {
   m_headersize = AC3_HEADER_SIZE;
