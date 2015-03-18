@@ -45,10 +45,7 @@ bool cParserAC3::CheckAlignmentHeader(unsigned char* buffer, int& framesize) {
   if (fscod == 3 || frmsizcod > 37)
     return false;
 
-  int bsid = bs.GetBits(5); // bsid
-
-  if(bsid > 8)
-    return false;
+  bs.GetBits(5); // bsid
 
   framesize = AC3FrameSizeTable[frmsizcod][fscod] * 2;
   return true;
@@ -63,10 +60,7 @@ void cParserAC3::ParsePayload(unsigned char* payload, int length) {
   bs.SkipBits(16); // CRC
   int fscod = bs.GetBits(2);
   int frmsizecod = bs.GetBits(6);
-  int bsid = bs.GetBits(5); // bsid
-
-  if(bsid > 8)
-    return;
+  bs.GetBits(5); // bsid
 
   bs.SkipBits(3); // bitstream mode
   int acmod = bs.GetBits(3);
