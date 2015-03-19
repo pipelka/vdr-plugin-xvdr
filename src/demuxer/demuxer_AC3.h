@@ -40,6 +40,8 @@ protected:
 
   bool CheckAlignmentHeader(unsigned char* buffer, int& framesize);
 
+  bool m_enhanced;
+  
 };
 
 #endif // XVDR_DEMUXER_AC3_H
