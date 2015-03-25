@@ -64,7 +64,6 @@ OBJS = \
 	src/demuxer/demuxer_ADTS.o \
 	src/demuxer/demuxer_LATM.o \
 	src/demuxer/demuxer_AC3.o \
-	src/demuxer/demuxer_EAC3.o \
 	src/demuxer/demuxer_H264.o \
 	src/demuxer/demuxer_MPEGAudio.o \
 	src/demuxer/demuxer_MPEGVideo.o \

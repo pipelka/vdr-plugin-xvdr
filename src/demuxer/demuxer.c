@@ -33,7 +33,6 @@
 #include "demuxer_LATM.h"
 #include "demuxer_ADTS.h"
 #include "demuxer_AC3.h"
-#include "demuxer_EAC3.h"
 #include "demuxer_H264.h"
 #include "demuxer_MPEGAudio.h"
 #include "demuxer_MPEGVideo.h"
@@ -65,9 +64,8 @@ cParser* cTSDemuxer::CreateParser(cStreamInfo::Type type) {
     case stLATM:
       return new cParserLATM(this);
     case stAC3:
-      return new cParserAC3(this);
     case stEAC3:
-      return new cParserEAC3(this);
+      return new cParserAC3(this);
     case stTELETEXT:
       m_parsed = true;
       return new cParserPES(this);
