@@ -125,7 +125,7 @@ private:
   std::map<std::string, ChannelGroup> m_channelgroups[2];
 
   void PutTimer(cTimer* timer, MsgPacket* p);
-  bool IsChannelWanted(cChannel* channel, bool radio = false);
+  bool IsChannelWanted(cChannel* channel, int type = 0);
   int  ChannelsCount();
   cString CreateLogoURL(cChannel* channel);
   cString CreateServiceReference(cChannel* channel);
