@@ -90,12 +90,8 @@ int64_t cTSDemuxer::Rescale(int64_t a)
 {
   uint64_t b = DVD_TIME_BASE;
   uint64_t c = 90000;
-  uint64_t r = c/2;
 
-  if (a<=INT_MAX)
-    return (a * b + r)/c;
-
-  return a/c*b + (a%c*b + r)/c;
+  return (a * b)/c;
 }
 
 void cTSDemuxer::SendPacket(sStreamPacket *pkt)
