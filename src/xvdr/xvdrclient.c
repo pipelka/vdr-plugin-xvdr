@@ -151,8 +151,6 @@ void cXVDRClient::PutTimer(cTimer* timer, MsgPacket* p)
   p->put_String(m_toUTF8.Convert(timer->File()));
 }
 
-cMutex cXVDRClient::m_timerLock;
-
 cXVDRClient::cXVDRClient(int fd, unsigned int id)
 {
   m_Id                      = id;
@@ -813,8 +811,6 @@ bool cXVDRClient::process_ChannelFilter()
 
 bool cXVDRClient::processChannelStream_Open() /* OPCODE 20 */
 {
-  cMutexLock lock(&m_timerLock);
-
   // only root may change the priority
   if(geteuid() == 0) {
     SetPriority(-15);
@@ -1183,8 +1179,6 @@ void cXVDRClient::CreateChannelGroups(bool automatic)
 
 bool cXVDRClient::processTIMER_GetCount() /* OPCODE 80 */
 {
-  cMutexLock lock(&m_timerLock);
-
   int count = Timers.Count();
 
   m_resp->put_U32(count);
@@ -1194,8 +1188,6 @@ bool cXVDRClient::processTIMER_GetCount() /* OPCODE 80 */
 
 bool cXVDRClient::processTIMER_Get() /* OPCODE 81 */
 {
-  cMutexLock lock(&m_timerLock);
-
   uint32_t number = m_req->get_U32();
 
   if (Timers.Count() == 0)
@@ -1219,8 +1211,6 @@ bool cXVDRClient::processTIMER_Get() /* OPCODE 81 */
 
 bool cXVDRClient::processTIMER_GetList() /* OPCODE 82 */
 {
-  cMutexLock lock(&m_timerLock);
-
   if (Timers.BeingEdited())
   {
     ERRORLOG("Unable to delete timer - timers being edited at VDR");
@@ -1247,8 +1237,6 @@ bool cXVDRClient::processTIMER_GetList() /* OPCODE 82 */
 
 bool cXVDRClient::processTIMER_Add() /* OPCODE 83 */
 {
-  cMutexLock lock(&m_timerLock);
-
   if (Timers.BeingEdited())
   {
     ERRORLOG("Unable to add timer - timers being edited at VDR");
@@ -1321,8 +1309,6 @@ bool cXVDRClient::processTIMER_Add() /* OPCODE 83 */
 
 bool cXVDRClient::processTIMER_Delete() /* OPCODE 84 */
 {
-  cMutexLock lock(&m_timerLock);
-
   uint32_t uid = m_req->get_U32();
   bool     force  = m_req->get_U32();
 
@@ -1361,8 +1347,6 @@ bool cXVDRClient::processTIMER_Delete() /* OPCODE 84 */
 
 bool cXVDRClient::processTIMER_Update() /* OPCODE 85 */
 {
-  cMutexLock lock(&m_timerLock);
-
   uint32_t uid = m_req->get_U32();
   bool active = m_req->get_U32();
 
@@ -1457,7 +1441,6 @@ bool cXVDRClient::processRECORDINGS_GetCount() /* OPCODE 101 */
 
 bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
 {
-  cMutexLock lock(&m_timerLock);
   cRecordingsCache& reccache = cRecordingsCache::GetInstance();
 
   for (cRecording *recording = Recordings.First(); recording; recording = Recordings.Next(recording))
