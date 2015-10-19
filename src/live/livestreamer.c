@@ -93,11 +93,10 @@ cLiveStreamer::~cLiveStreamer()
   Cancel(5);
   DEBUGLOG("Done.");
 
-  cMutexLock lock(&m_FilterMutex);
-
   DEBUGLOG("Detaching");
 
   if(m_PatFilter != NULL && m_Device != NULL) {
+    cMutexLock lock(&m_DeviceMutex);
     m_Device->Detach(m_PatFilter);
     delete m_PatFilter;
     m_PatFilter = NULL;
@@ -203,7 +202,6 @@ void cLiveStreamer::Action(void)
 
     // try to switch channel if we aren't attached yet
     {
-      cMutexLock lock(&m_FilterMutex);
       if (!IsAttached()) {
         TryChannelSwitch();
       }
@@ -216,8 +214,8 @@ void cLiveStreamer::Action(void)
       m_SignalLost = true;
 
       // retune to restore
-      cMutexLock lock(&m_FilterMutex);
       if(m_PatFilter != NULL && m_Device != NULL) {
+        cMutexLock lock(&m_DeviceMutex);
         m_Device->Detach(m_PatFilter);
         delete m_PatFilter;
         m_PatFilter = NULL;
@@ -279,6 +277,7 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
   }
 
   if(m_PatFilter != NULL && m_Device != NULL) {
+    cMutexLock lock(&m_DeviceMutex);
     m_Device->Detach(m_PatFilter);
     delete m_PatFilter;
     m_PatFilter = NULL;
@@ -383,7 +382,11 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
   INFOLOG("Starting PAT scanner");
   m_PatFilter = new cLivePatFilter(this);
   m_PatFilter->SetChannel(channel);
-  m_Device->AttachFilter(m_PatFilter);
+  
+  {
+    cMutexLock lock(&m_DeviceMutex);
+    m_Device->AttachFilter(m_PatFilter);
+  }
 
   INFOLOG("done switching.");
   return XVDR_RET_OK;
@@ -400,6 +403,8 @@ cTSDemuxer *cLiveStreamer::FindStreamDemuxer(int Pid)
 
 bool cLiveStreamer::Attach(void)
 {
+  cMutexLock lock(&m_DeviceMutex);
+  
   if (m_Device == NULL) {
     return false;
   }
@@ -409,6 +414,8 @@ bool cLiveStreamer::Attach(void)
 
 void cLiveStreamer::Detach(void)
 {
+  cMutexLock lock(&m_DeviceMutex);
+
   if (m_Device) {
     m_Device->Detach(this);
   }
