@@ -43,6 +43,7 @@
 
 cTSDemuxer::cTSDemuxer(cLiveStreamer *streamer, const cStreamInfo& info) : cStreamInfo(info), m_Streamer(streamer) {
   m_pesParser = CreateParser(m_type);
+  mTransportError = false;
   SetContent();
 }
 
@@ -112,7 +113,7 @@ void cTSDemuxer::SendPacket(sStreamPacket *pkt)
 
 bool cTSDemuxer::ProcessTSPacket(unsigned char *data)
 {
-  if (data == NULL)
+  if (data == NULL || m_pesParser == NULL)
     return false;
 
   bool pusi  = TsPayloadStart(data);
@@ -129,6 +130,7 @@ bool cTSDemuxer::ProcessTSPacket(unsigned char *data)
   if (TsError(data))
   {
     ERRORLOG("transport error");
+    mTransportError = true;
     return false;
   }
 
@@ -145,10 +147,18 @@ bool cTSDemuxer::ProcessTSPacket(unsigned char *data)
   if (pusi && !PesIsHeader(data))
     return false;
 
-  /* Parse the data */
-  if (m_pesParser)
-    m_pesParser->Parse(data, bytes, pusi);
+  // reset transport error on next packet
+  if(pusi && mTransportError) {
+    m_pesParser->Clear();
+    mTransportError = false;
+  }
 
+  if (mTransportError) {
+    return false;
+  }
+
+  /* Parse the data */
+  m_pesParser->Parse(data, bytes, pusi);
   return true;
 }
 

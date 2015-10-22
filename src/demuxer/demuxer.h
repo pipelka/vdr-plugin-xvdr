@@ -101,7 +101,8 @@ public:
 private:
 
   cParser* CreateParser(cStreamInfo::Type type);
-
+  
+  bool mTransportError;
 };
 
 #endif // XVDR_DEMUXER_H
