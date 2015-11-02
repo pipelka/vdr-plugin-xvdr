@@ -796,7 +796,11 @@ void cLiveStreamer::RequestPacket()
   m_Queue->Request();
 }
 
+#if VDRVERSNUM < 20300
 void cLiveStreamer::Receive(uchar *Data, int Length)
+#else
+void cLiveStreamer::Receive(const uchar *Data, int Length)
+#endif
 {
   int p = Put(Data, Length);
 

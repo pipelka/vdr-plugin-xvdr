@@ -85,7 +85,12 @@ private:
 
 protected:
   void Action(void);
+
+#if VDRVERSNUM < 20300
   void Receive(uchar *Data, int Length);
+#else
+  void Receive(const uchar *Data, int Length);
+#endif
 
   void RequestStreamChange();
 
