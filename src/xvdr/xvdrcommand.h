@@ -85,6 +85,7 @@
 #define XVDR_RECORDINGS_SETPOSITION  106
 #define XVDR_RECORDINGS_GETPOSITION  107
 #define XVDR_RECORDINGS_GETMARKS     108
+#define XVDR_RECORDINGS_SETURLS      109
 
 /* OPCODE 120 - 139: XVDR network functions for epg access and manipulating */
 #define XVDR_EPG_GETFORCHANNEL     120

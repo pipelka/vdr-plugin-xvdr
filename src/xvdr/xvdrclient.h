@@ -172,6 +172,7 @@ private:
   bool processRECORDINGS_SetPosition();
   bool processRECORDINGS_GetPosition();
   bool processRECORDINGS_GetMarks();
+  bool processRECORDINGS_SetUrls();
 
   bool processEPG_GetForChannel();
 

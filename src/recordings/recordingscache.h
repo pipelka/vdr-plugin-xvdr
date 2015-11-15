@@ -55,6 +55,16 @@ public:
 
   uint64_t GetLastPlayedPosition(uint32_t uid);
 
+  void SetPosterUrl(uint32_t uid, const char* url);
+
+  void SetBackgroundUrl(uint32_t uid, const char* url);
+
+  void SetMovieID(uint32_t uid, const char* id);
+
+  const char* GetPosterUrl(uint32_t uid);
+
+  const char* GetBackgroundUrl(uint32_t uid);
+
   void LoadResumeData();
 
   void SaveResumeData();
@@ -72,10 +82,13 @@ protected:
 private:
 
   struct RecEntry {
-    RecEntry() : playcount(0), lastplayedposition(0) {}
+    RecEntry() : playcount(0), lastplayedposition(0), posterUrl(""), backgroundUrl(""), movieId("") {}
     cString filename;
     int playcount;
     uint64_t lastplayedposition;
+    cString posterUrl;
+    cString backgroundUrl;
+    cString movieId;
   };
 
   std::map<uint32_t, struct RecEntry> m_recordings;

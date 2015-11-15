@@ -112,6 +112,39 @@ void cRecordingsCache::SetLastPlayedPosition(uint32_t uid, uint64_t position)
   m_recordings[uid].lastplayedposition = position;
 }
 
+void cRecordingsCache::SetPosterUrl(uint32_t uid, const char* url)
+{
+  cMutexLock lock(&m_mutex);
+
+  if(m_recordings.find(uid) == m_recordings.end())
+    return;
+
+  DEBUGLOG("%s - Set Poster URL: %s", (const char*)m_recordings[uid].filename, url);
+  m_recordings[uid].posterUrl = url;
+}
+
+void cRecordingsCache::SetBackgroundUrl(uint32_t uid, const char* url)
+{
+  cMutexLock lock(&m_mutex);
+
+  if(m_recordings.find(uid) == m_recordings.end())
+    return;
+
+  DEBUGLOG("%s - Set Background URL: %s", (const char*)m_recordings[uid].filename, url);
+  m_recordings[uid].backgroundUrl = url;
+}
+
+void cRecordingsCache::SetMovieID(uint32_t uid, const char* id)
+{
+  cMutexLock lock(&m_mutex);
+
+  if(m_recordings.find(uid) == m_recordings.end())
+    return;
+
+  DEBUGLOG("%s - Set movie id: %s", (const char*)m_recordings[uid].filename, id);
+  m_recordings[uid].movieId = id;
+}
+
 int cRecordingsCache::GetPlayCount(uint32_t uid)
 {
   cMutexLock lock(&m_mutex);
@@ -122,6 +155,26 @@ int cRecordingsCache::GetPlayCount(uint32_t uid)
   //DEBUGLOG("%s - Get Playcount: %i", (const char*)m_recordings[uid].filename, m_recordings[uid].playcount]);
 
   return m_recordings[uid].playcount;
+}
+
+const char* cRecordingsCache::GetPosterUrl(uint32_t uid)
+{
+  cMutexLock lock(&m_mutex);
+
+  if(m_recordings.find(uid) == m_recordings.end())
+    return 0;
+
+  return (const char*)m_recordings[uid].posterUrl;
+}
+
+const char* cRecordingsCache::GetBackgroundUrl(uint32_t uid)
+{
+  cMutexLock lock(&m_mutex);
+
+  if(m_recordings.find(uid) == m_recordings.end())
+    return 0;
+
+  return (const char*)m_recordings[uid].backgroundUrl;
 }
 
 uint64_t cRecordingsCache::GetLastPlayedPosition(uint32_t uid)
@@ -152,14 +205,28 @@ void cRecordingsCache::LoadResumeData()
   uint64_t pos = 0;
   int count = 0;
 
-  while(fscanf(f, "%08x = %"PRIu64", %i", &uid, &pos, &count) != EOF)
+  char* posterUrl = NULL;
+  char* backgroundUrl = NULL;
+  char* movieId = NULL;
+
+  while(fscanf(f, "%08x = %llu, %i, %m[^,], %m[^,], %m", &uid, &pos, &count, &posterUrl, &backgroundUrl, &movieId) > 0)
   {
     m_recordings[uid].lastplayedposition = pos;
     m_recordings[uid].playcount = count;
+    m_recordings[uid].posterUrl = posterUrl;
+    m_recordings[uid].backgroundUrl = backgroundUrl;
+    m_recordings[uid].movieId = movieId;
+
+    free(posterUrl);
+    free(backgroundUrl);
+    free(movieId);
 
     uid = 0;
     pos = 0;
     count = 0;
+    posterUrl = NULL;
+    backgroundUrl = NULL;
+    movieId = NULL;
   }
 
   fclose(f);
@@ -182,8 +249,15 @@ void cRecordingsCache::SaveResumeData()
   std::map<uint32_t, struct RecEntry>::iterator i;
   for(i = m_recordings.begin(); i != m_recordings.end(); i++)
   {
-    if(i->second.lastplayedposition != 0 || i->second.playcount != 0)
-      fprintf(f, "%08x = %"PRIu64", %i\n", i->first, i->second.lastplayedposition, i->second.playcount);
+    //if(i->second.lastplayedposition != 0 || i->second.playcount != 0)
+      fprintf(
+        f, "%08x = %llu, %i, %s, %s, %s\n",
+        i->first,
+        i->second.lastplayedposition,
+        i->second.playcount,
+        (const char*)i->second.posterUrl,
+        (const char*)i->second.backgroundUrl,
+        (const char*)i->second.movieId);
   }
 
   fclose(f);
