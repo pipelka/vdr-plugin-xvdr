@@ -82,6 +82,7 @@ private:
   uint32_t          m_protocolVersion;
   bool              m_waitforiframe;
   cXVDRClient*      m_parent;
+  bool              m_rawPTS;
 
 protected:
   void Action(void);
@@ -101,7 +102,7 @@ private:
   void TryChannelSwitch();
 
 public:
-  cLiveStreamer(cXVDRClient* parent, const cChannel *channel, int priority);
+  cLiveStreamer(cXVDRClient* parent, const cChannel *channel, int priority, bool rawPTS = false);
   virtual ~cLiveStreamer();
 
   bool IsReady();

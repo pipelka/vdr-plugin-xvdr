@@ -49,6 +49,8 @@ struct sStreamPacket
   int64_t   pid;
   int64_t   dts;
   int64_t   pts;
+  int64_t   rawdts;
+  int64_t   rawpts;  
   int       duration;
 
   uint8_t  *data;

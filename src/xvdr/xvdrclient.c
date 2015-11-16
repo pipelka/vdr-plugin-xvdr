@@ -253,11 +253,11 @@ void cXVDRClient::Action(void)
   StopChannelStreaming();
 }
 
-int cXVDRClient::StartChannelStreaming(const cChannel *channel, uint32_t timeout, int32_t priority, bool waitforiframe)
+int cXVDRClient::StartChannelStreaming(const cChannel *channel, uint32_t timeout, int32_t priority, bool waitforiframe, bool rawPTS)
 {
   cMutexLock lock(&m_streamerLock);
 
-  m_Streamer = new cLiveStreamer(this, channel, priority);
+  m_Streamer = new cLiveStreamer(this, channel, priority, rawPTS);
   m_Streamer->SetLanguage(m_LanguageIndex, m_LangStreamType);
   m_Streamer->SetTimeout(timeout);
   m_Streamer->SetProtocolVersion(m_protocolVersion);
@@ -823,6 +823,7 @@ bool cXVDRClient::processChannelStream_Open() /* OPCODE 20 */
   uint32_t uid = m_req->get_U32();
   int32_t priority = 50;
   bool waitforiframe = false;
+  bool rawPTS = false;
 
   if(!m_req->eop()) {
     priority = m_req->get_S32();
@@ -830,6 +831,10 @@ bool cXVDRClient::processChannelStream_Open() /* OPCODE 20 */
 
   if(!m_req->eop()) {
     waitforiframe = m_req->get_U8();
+  }
+
+  if(!m_req->eop()) {
+    rawPTS = m_req->get_U8();
   }
 
   uint32_t timeout = XVDRServerConfig.stream_timeout;
@@ -854,7 +859,7 @@ bool cXVDRClient::processChannelStream_Open() /* OPCODE 20 */
   }
   else
   {
-    int status = StartChannelStreaming(channel, timeout, priority, waitforiframe);
+    int status = StartChannelStreaming(channel, timeout, priority, waitforiframe, rawPTS);
 
     if (status == XVDR_RET_OK) {
       INFOLOG("--------------------------------------");

@@ -97,6 +97,10 @@ int64_t cTSDemuxer::Rescale(int64_t a)
 
 void cTSDemuxer::SendPacket(sStreamPacket *pkt)
 {
+  // raw pts/dts
+  pkt->rawdts = pkt->dts;
+  pkt->rawpts = pkt->pts;
+
   int64_t dts = (pkt->dts == DVD_NOPTS_VALUE) ? pkt->dts : Rescale(pkt->dts);
   int64_t pts = (pkt->pts == DVD_NOPTS_VALUE) ? pkt->pts : Rescale(pkt->pts);
 

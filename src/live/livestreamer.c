@@ -50,7 +50,7 @@
 #include "livequeue.h"
 #include "channelcache.h"
 
-cLiveStreamer::cLiveStreamer(cXVDRClient* parent, const cChannel *channel, int priority)
+cLiveStreamer::cLiveStreamer(cXVDRClient* parent, const cChannel *channel, int priority, bool rawPTS)
  : cThread("cLiveStreamer stream processor")
  , cRingBufferLinear(MEGABYTE(10), TS_SIZE * 2, true)
  , cReceiver(NULL, priority)
@@ -68,7 +68,7 @@ cLiveStreamer::cLiveStreamer(cXVDRClient* parent, const cChannel *channel, int p
   m_protocolVersion = XVDR_PROTOCOLVERSION;
   m_waitforiframe   = false;
   m_PatFilter       = NULL;
-
+  m_rawPTS          = rawPTS;
 
   m_requestStreamChange = false;
 
@@ -472,8 +472,16 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
 
   // write stream data
   packet->put_U16(pkt->pid);
-  packet->put_S64(pkt->pts);
-  packet->put_S64(pkt->dts);
+
+  if(m_rawPTS) {
+    packet->put_S64(pkt->rawpts);
+    packet->put_S64(pkt->rawdts);
+  }
+  else {
+    packet->put_S64(pkt->pts);
+    packet->put_S64(pkt->dts);
+  }
+  
   if(m_protocolVersion >= 5) {
     packet->put_U32(pkt->duration);
   }
