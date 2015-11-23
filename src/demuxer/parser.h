@@ -66,6 +66,9 @@ protected:
 
 private:
 
+  int64_t m_lastPTS;
+  int64_t m_lastDTS;
+
   void PutData(unsigned char *data, int size, bool pusi);
 
   int FindAlignmentOffset(unsigned char* buffer, int buffersize, int startoffset, int& framesize);

@@ -38,6 +38,9 @@ cParser::cParser(cTSDemuxer *demuxer, int buffersize, int packetsize) : cRingBuf
 
   m_curPTS = DVD_NOPTS_VALUE;
   m_curDTS = DVD_NOPTS_VALUE;
+
+  m_lastPTS = DVD_NOPTS_VALUE;
+  m_lastDTS = DVD_NOPTS_VALUE;
 }
 
 cParser::~cParser()
@@ -56,8 +59,8 @@ int cParser::ParsePESHeader(uint8_t *buf, size_t len)
   if (dts == DVD_NOPTS_VALUE)
    dts = pts;
 
-  if(pts != 0) m_curDTS = dts;
-  if(dts != 0) m_curPTS = pts;
+  if(m_curDTS == DVD_NOPTS_VALUE) m_curDTS = dts;
+  if(m_curPTS == DVD_NOPTS_VALUE) m_curPTS = pts;
 
   return hdr_len;
 }
@@ -78,17 +81,10 @@ void cParser::SendPayload(unsigned char* payload, int length)
 void cParser::PutData(unsigned char* data, int length, bool pusi)
 {
   // get PTS / DTS on PES start
-  if (pusi)
-  {
-    int64_t pts = m_curPTS;
-    int64_t dts = m_curDTS;
-
+  if (pusi) {
     int offset = ParsePESHeader(data, length);
     data += offset;
     length -= offset;
-
-    if(pts > m_curPTS) m_curPTS = pts;
-    if(dts > m_curDTS) m_curDTS = dts;
 
     m_startup = false;
   }
@@ -116,13 +112,21 @@ void cParser::Parse(unsigned char *data, int datasize, bool pusi)
   int framesize = 0;
   if(length > m_headersize && buffer != NULL && CheckAlignmentHeader(buffer, framesize))
   {
-    if(framesize > 0 && length >= framesize)
-    {
+    if(framesize > 0 && length >= framesize) {
+      // check if we should extrapolate the timestamps
+      if(m_curPTS == DVD_NOPTS_VALUE) m_curPTS = PtsAdd(m_lastPTS, m_duration);
+      if(m_curDTS == DVD_NOPTS_VALUE) m_curDTS = PtsAdd(m_lastDTS, m_duration);
+
       ParsePayload(buffer, framesize);
       SendPayload(buffer, framesize);
 
-      m_curPTS = PtsAdd(m_curPTS, m_duration);
-      m_curDTS = PtsAdd(m_curDTS, m_duration);
+      // keep last timestamp
+      m_lastPTS = m_curPTS;
+      m_lastDTS = m_curDTS;
+
+      // reset timestamps
+      m_curPTS = DVD_NOPTS_VALUE;
+      m_curDTS = DVD_NOPTS_VALUE;
 
       Del(framesize);
     }
