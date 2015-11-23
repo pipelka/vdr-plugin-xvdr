@@ -24,9 +24,13 @@ CFGDIR  = $(call PKGCFG,configdir)/plugins/$(PLUGIN)
 #
 TMPDIR ?= /tmp
 
+### The SQLITE compile options:
+
+export SQLITE_CFLAGS = -DHAVE_USLEEP -DSQLITE_THREADSAFE=1 -DSQLITE_ENABLE_FTS3 -DSQLITE_ENABLE_FTS3_PARENTHESIS -DSQLITE_ENABLE_ICU
+
 ### The compiler options:
 
-export CFLAGS   = $(call PKGCFG,cflags)
+export CFLAGS   = $(call PKGCFG,cflags)  $(SQLITE_CFLAGS)
 export CXXFLAGS = $(call PKGCFG,cxxflags)
 
 ### The version number of VDR's plugin API:
@@ -48,7 +52,7 @@ SOFILE = libvdr-$(PLUGIN).so
 
 ### Includes and Defines (add further entries here):
 
-INCLUDES += -I./src -I./src/vdr
+INCLUDES += -I./src -I./src/vdr -I./src/sqlite3
 
 ifdef DEBUG
 INCLUDES += -DDEBUG
@@ -80,6 +84,7 @@ OBJS = \
 	src/recordings/recordingscache.o \
 	src/recordings/recplayer.o \
 	src/scanner/wirbelscan.o \
+	src/sqlite3/sqlite3.co \
 	src/tools/hash.o \
 	src/tools/urlencode.o \
 	src/xvdr/timerconflicts.o \
@@ -96,6 +101,9 @@ all: $(SOFILE) i18n
 
 %.o: %.c
 	$(CXX) $(CXXFLAGS) -fPIC -c $(DEFINES) $(INCLUDES) -o $@ $<
+
+%.co: %.c
+	$(CC) $(CFLAGS) -fPIC -c $(DEFINES) $(INCLUDES) -o $@ $<
 
 ### Dependencies:
 
