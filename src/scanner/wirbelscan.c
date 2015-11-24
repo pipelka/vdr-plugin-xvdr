@@ -69,7 +69,7 @@ bool cWirbelScan::GetVersion(cWirbelscanInfo* info) {
     return false;
   }
 
-  return m_plugin->Service(SPlugin""SInfo, info);
+  return m_plugin->Service(SPlugin "" SInfo, info);
 }
 
 bool cWirbelScan::DoCmd(cWirbelscanCmd& cmd) {
@@ -77,7 +77,7 @@ bool cWirbelScan::DoCmd(cWirbelscanCmd& cmd) {
     return false;
   }
 
-  if(!m_plugin->Service(SPlugin""SCommand, &cmd)) {
+  if(!m_plugin->Service(SPlugin "" SCommand, &cmd)) {
     cmd.replycode = false;
   }
 
@@ -89,7 +89,7 @@ bool cWirbelScan::GetStatus(cWirbelscanStatus& status) {
     return false;
   }
 
-  return m_plugin->Service(SPlugin"Get"SStatus, &status);
+  return m_plugin->Service(SPlugin "Get" SStatus, &status);
 }
 
 bool cWirbelScan::GetSetup(cWirbelscanScanSetup& param) {
@@ -97,7 +97,7 @@ bool cWirbelScan::GetSetup(cWirbelscanScanSetup& param) {
     return false;
   }
 
-  return m_plugin->Service(SPlugin"Get"SSetup, &param);
+  return m_plugin->Service(SPlugin "Get" SSetup, &param);
 }
 
 bool cWirbelScan::SetSetup(cWirbelscanScanSetup& param) {
@@ -105,7 +105,7 @@ bool cWirbelScan::SetSetup(cWirbelscanScanSetup& param) {
     return false;
   }
 
-  return m_plugin->Service(SPlugin"Set"SSetup, &param);
+  return m_plugin->Service(SPlugin "Set" SSetup, &param);
 }
 
 bool cWirbelScan::GetCountry(cWirbelScan::List& list) {
@@ -113,17 +113,17 @@ bool cWirbelScan::GetCountry(cWirbelScan::List& list) {
     return false;
   }
 
-  if(!m_plugin->Service(SPlugin"Get"SCountry, NULL)) {
+  if(!m_plugin->Service(SPlugin "Get" SCountry, NULL)) {
     return false;
   }
 
   cPreAllocBuffer b = {0, 0, NULL};
-  m_plugin->Service(SPlugin"Get"SCountry, &b);
+  m_plugin->Service(SPlugin "Get" SCountry, &b);
 
   SListItem* buffer = new SListItem[b.size];
 
   b.buffer = buffer;
-  m_plugin->Service(SPlugin"Get"SCountry, &b);
+  m_plugin->Service(SPlugin "Get" SCountry, &b);
 
   list.clear();
   for(uint32_t i = 0; i < b.count; i++) {
@@ -138,17 +138,17 @@ bool cWirbelScan::GetSat(cWirbelScan::List& list) {
     return false;
   }
 
-  if(!m_plugin->Service(SPlugin"Get"SSat, NULL)) {
+  if(!m_plugin->Service(SPlugin "Get" SSat, NULL)) {
     return false;
   }
 
   cPreAllocBuffer b = {0, 0, NULL};
-  m_plugin->Service(SPlugin"Get"SSat, &b);
+  m_plugin->Service(SPlugin "Get" SSat, &b);
 
   SListItem* buffer = new SListItem[b.size];
 
   b.buffer = buffer;
-  m_plugin->Service(SPlugin"Get"SSat, &b);
+  m_plugin->Service(SPlugin "Get" SSat, &b);
 
   list.clear();
   for(uint32_t i = 0; i < b.count; i++) {

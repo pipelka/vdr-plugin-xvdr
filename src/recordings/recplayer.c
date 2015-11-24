@@ -99,7 +99,7 @@ void cRecPlayer::scan()
   }
 
   if(len != m_totalLength) {
-    INFOLOG("recording scan: %"PRIu64" bytes", m_totalLength);
+    INFOLOG("recording scan: %llu bytes", m_totalLength);
   }
 }
 
@@ -205,7 +205,7 @@ int cRecPlayer::getBlock(unsigned char* buffer, uint64_t position, int amount)
 
   // seek to position
   if(lseek(m_file, filePosition, SEEK_SET) == -1) {
-    ERRORLOG("unable to seek to position: %"PRIu64, filePosition);
+    ERRORLOG("unable to seek to position: %llu", filePosition);
     return 0;
   }
 
