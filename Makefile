@@ -30,8 +30,8 @@ export SQLITE_CFLAGS = -DHAVE_USLEEP -DSQLITE_THREADSAFE=1 -DSQLITE_ENABLE_FTS3 
 
 ### The compiler options:
 
-export CFLAGS   = $(call PKGCFG,cflags)  $(SQLITE_CFLAGS)
-export CXXFLAGS = $(call PKGCFG,cxxflags)
+export CFLAGS   = $(call PKGCFG,cflags) $(SQLITE_CFLAGS)
+export CXXFLAGS = $(call PKGCFG,cxxflags) -std=gnu++11
 
 ### The version number of VDR's plugin API:
 
@@ -64,6 +64,8 @@ DEFINES += -DPLUGIN_NAME_I18N='"$(PLUGIN)"' -DXVDR_VERSION='"$(VERSION)"'
 
 OBJS = \
 	src/config/config.o \
+	src/db/database.o \
+	src/db/sqlite3.co \
 	src/demuxer/demuxer.o \
 	src/demuxer/demuxer_ADTS.o \
 	src/demuxer/demuxer_LATM.o \
@@ -91,6 +93,9 @@ OBJS = \
 	src/xvdr/xvdrclient.o \
 	src/xvdr/xvdrserver.o \
 	src/xvdr/xvdrchannels.o
+
+LIBS = \
+	-licui18n -licuuc
 
 ### The main target:
 
@@ -142,7 +147,7 @@ install-i18n: $(I18Nmsgs)
 ### Targets:
 
 $(SOFILE): $(OBJS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $(OBJS) -o $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $(OBJS) $(LIBS) -o $@
 
 install-lib: $(SOFILE)
 	install -D $^ $(DESTDIR)$(LIBDIR)/$^.$(APIVERSION)
