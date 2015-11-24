@@ -173,7 +173,6 @@ void cLiveQueue::Action()
     if(size() > 0)
     {
       p = front();
-      pop();
     }
 
     m_lock.Unlock();
@@ -185,8 +184,8 @@ void cLiveQueue::Action()
       continue;
     }
     // send packet
-    else {
-      p->write(m_socket, 500);
+    else if(p->write(m_socket, 500)) {
+      pop();    
       delete p;
     }
 
@@ -247,10 +246,10 @@ bool cLiveQueue::Pause(bool on)
   {
     MsgPacket* p = front();
 
-    p->write(m_writefd, 1000);
-    delete p;
-
-    pop();
+    if(p->write(m_writefd, 1000)) {
+      delete p;
+      pop();
+    }
   }
 
   return true;
