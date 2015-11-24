@@ -34,7 +34,6 @@
 #include "config.h"
 #include "live/channelcache.h"
 #include "live/livequeue.h"
-#include "recordings/recordingscache.h"
 
 cXVDRServerConfig::cXVDRServerConfig()
 {
@@ -50,7 +49,6 @@ void cXVDRServerConfig::Load() {
 #else
   cLiveQueue::SetTimeShiftDir(VideoDirectory);
 #endif
-  cRecordingsCache::GetInstance().LoadResumeData();
 
   if(!cConfig<cSetupLine>::Load(AddDirectory(ConfigDirectory, GENERAL_CONFIG_FILE), true, false))
     return;

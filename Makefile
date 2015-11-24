@@ -66,6 +66,7 @@ OBJS = \
 	src/config/config.o \
 	src/db/database.o \
 	src/db/sqlite3.co \
+	src/db/storage.o \
 	src/demuxer/demuxer.o \
 	src/demuxer/demuxer_ADTS.o \
 	src/demuxer/demuxer_LATM.o \

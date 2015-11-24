@@ -1,7 +1,7 @@
 /*
  *      vdr-plugin-xvdr - XVDR server plugin for VDR
  *
- *      Copyright (C) 2011 Alexander Pipelka
+ *      Copyright (C) 2015 Alexander Pipelka
  *
  *      https://github.com/pipelka/vdr-plugin-xvdr
  *
@@ -29,9 +29,11 @@
 #include "config/config.h"
 #include "recordingscache.h"
 #include "tools/hash.h"
+#include <string>
 
-cRecordingsCache::cRecordingsCache() : m_changed(false) {
-  cMutexLock lock(&m_mutex);
+cRecordingsCache::cRecordingsCache() : m_storage(XVDR::Storage::getInstance()) {
+  // create db schema
+  CreateDB();
 
   // initialize cache
   Update();
@@ -39,7 +41,7 @@ cRecordingsCache::cRecordingsCache() : m_changed(false) {
 
 void cRecordingsCache::Update() {
   for (cRecording *recording = Recordings.First(); recording; recording = Recordings.Next(recording)) {
-    RegisterNoLock(recording);
+    Register(recording);
   }
 }
 
@@ -52,29 +54,34 @@ cRecordingsCache& cRecordingsCache::GetInstance() {
 }
 
 uint32_t cRecordingsCache::Register(cRecording* recording) {
-  cMutexLock lock(&m_mutex);
-
-  return RegisterNoLock(recording);
-}
-
-uint32_t cRecordingsCache::RegisterNoLock(cRecording* recording) {
   cString filename = recording->FileName();
   uint32_t uid = CreateStringHash(filename);
 
-  m_recordings[uid].filename = filename;
+  // try to update existing record
+  m_storage.Exec(
+    "INSERT OR IGNORE INTO recordings(recid, filename) VALUES(%u, %Q);",
+    uid,
+    (const char*)filename);
+
   return uid;
 }
 
 cRecording* cRecordingsCache::Lookup(uint32_t uid) {
-  cMutexLock lock(&m_mutex);
   DEBUGLOG("%s - lookup uid: %08x", __FUNCTION__, uid);
 
-  if(m_recordings.find(uid) == m_recordings.end()) {
+  sqlite3_stmt* s = m_storage.Query("SELECT filename FROM recordings WHERE recid=%lu;", uid);
+
+  if(s == NULL) {
     DEBUGLOG("%s - not found !", __FUNCTION__);
     return NULL;
   }
 
-  cString filename = m_recordings[uid].filename;
+  cString filename;
+  if(sqlite3_step(s) == SQLITE_ROW) {
+    filename = (const char*)sqlite3_column_text(s, 0);
+  }
+
+  sqlite3_finalize(s);
 
   if(isempty(filename)) {
     DEBUGLOG("%s - empty filename for uid: %08x !", __FUNCTION__, uid);
@@ -91,203 +98,152 @@ cRecording* cRecordingsCache::Lookup(uint32_t uid) {
 
 void cRecordingsCache::SetPlayCount(uint32_t uid, int count)
 {
-  cMutexLock lock(&m_mutex);
-
-  if(m_recordings.find(uid) == m_recordings.end())
-    return;
-
-  DEBUGLOG("%s - Set Playcount: %i", (const char*)m_recordings[uid].filename, count);
-  m_recordings[uid].playcount = count;
-  m_changed = true;
+  m_storage.Exec(
+    "UPDATE recordings SET playcount=%i WHERE recid=%llu;",
+    count,
+    uid);
 }
 
 void cRecordingsCache::SetLastPlayedPosition(uint32_t uid, uint64_t position)
 {
-  cMutexLock lock(&m_mutex);
-
-  if(m_recordings.find(uid) == m_recordings.end())
-    return;
-
-  DEBUGLOG("%s - Set Position: %llu", (const char*)m_recordings[uid].filename, position);
-  m_recordings[uid].lastplayedposition = position;
+  m_storage.Exec(
+    "UPDATE recordings SET position=%llu WHERE recid=%llu;",
+    position,
+    uid);
 }
 
 void cRecordingsCache::SetPosterUrl(uint32_t uid, const char* url)
 {
-  cMutexLock lock(&m_mutex);
-
-  if(m_recordings.find(uid) == m_recordings.end())
-    return;
-
-  DEBUGLOG("%s - Set Poster URL: %s", (const char*)m_recordings[uid].filename, url);
-  m_recordings[uid].posterUrl = url;
+  m_storage.Exec(
+    "UPDATE recordings SET posterurl=%Q WHERE recid=%llu;",
+    url,
+    uid);
 }
 
 void cRecordingsCache::SetBackgroundUrl(uint32_t uid, const char* url)
 {
-  cMutexLock lock(&m_mutex);
-
-  if(m_recordings.find(uid) == m_recordings.end())
-    return;
-
-  DEBUGLOG("%s - Set Background URL: %s", (const char*)m_recordings[uid].filename, url);
-  m_recordings[uid].backgroundUrl = url;
+  m_storage.Exec(
+    "UPDATE recordings SET backgroundurl=%Q WHERE recid=%llu;",
+    url,
+    uid);
 }
 
-void cRecordingsCache::SetMovieID(uint32_t uid, const char* id)
+void cRecordingsCache::SetMovieID(uint32_t uid, uint32_t id)
 {
-  cMutexLock lock(&m_mutex);
-
-  if(m_recordings.find(uid) == m_recordings.end())
-    return;
-
-  DEBUGLOG("%s - Set movie id: %s", (const char*)m_recordings[uid].filename, id);
-  m_recordings[uid].movieId = id;
+  m_storage.Exec(
+    "UPDATE recordings SET externalid=%u WHERE recid=%llu;",
+    id,
+    uid);
 }
 
 int cRecordingsCache::GetPlayCount(uint32_t uid)
 {
-  cMutexLock lock(&m_mutex);
+  sqlite3_stmt* s = m_storage.Query("SELECT playcount FROM recordings WHERE recid=%lu;", uid);
 
-  if(m_recordings.find(uid) == m_recordings.end())
+  if(s == NULL) {
     return 0;
+  }
 
-  //DEBUGLOG("%s - Get Playcount: %i", (const char*)m_recordings[uid].filename, m_recordings[uid].playcount]);
+  int count;
+  if(sqlite3_step(s) == SQLITE_ROW) {
+    count = sqlite3_column_int(s, 0);
+  }
 
-  return m_recordings[uid].playcount;
+  sqlite3_finalize(s);
+  return count;
 }
 
-const char* cRecordingsCache::GetPosterUrl(uint32_t uid)
+cString cRecordingsCache::GetPosterUrl(uint32_t uid)
 {
-  cMutexLock lock(&m_mutex);
+  cString url;
+  sqlite3_stmt* s = m_storage.Query("SELECT posterurl FROM recordings WHERE recid=%lu;", uid);
 
-  if(m_recordings.find(uid) == m_recordings.end())
-    return 0;
+  if(s == NULL) {
+    return url;
+  }
 
-  return (const char*)m_recordings[uid].posterUrl;
+  if(sqlite3_step(s) == SQLITE_ROW) {
+    url = (const char*)sqlite3_column_int(s, 0);
+  }
+
+  sqlite3_finalize(s);
+  return url;
 }
 
-const char* cRecordingsCache::GetBackgroundUrl(uint32_t uid)
+cString cRecordingsCache::GetBackgroundUrl(uint32_t uid)
 {
-  cMutexLock lock(&m_mutex);
+  cString url;
+  sqlite3_stmt* s = m_storage.Query("SELECT backgroundurl FROM recordings WHERE recid=%lu;", uid);
 
-  if(m_recordings.find(uid) == m_recordings.end())
-    return 0;
+  if(s == NULL) {
+    return url;
+  }
 
-  return (const char*)m_recordings[uid].backgroundUrl;
+  if(sqlite3_step(s) == SQLITE_ROW) {
+    url = (const char*)sqlite3_column_int(s, 0);
+  }
+
+  sqlite3_finalize(s);
+  return url;
 }
 
 uint64_t cRecordingsCache::GetLastPlayedPosition(uint32_t uid)
 {
-  cMutexLock lock(&m_mutex);
+  sqlite3_stmt* s = m_storage.Query("SELECT position FROM recordings WHERE recid=%lu;", uid);
 
-  if(m_recordings.find(uid) == m_recordings.end())
+  if(s == NULL) {
     return 0;
-
-  DEBUGLOG("%s - Get Position: %llu", (const char*)m_recordings[uid].filename, m_recordings[uid].lastplayedposition);
-  return m_recordings[uid].lastplayedposition;
-}
-
-void cRecordingsCache::LoadResumeData()
-{
-  cMutexLock lock(&m_mutex);
-
-  cString filename = AddDirectory(XVDRServerConfig.ConfigDirectory, RESUME_DATA_FILE);
-  FILE* f = fopen((const char*)filename, "r");
-
-  if(f == NULL)
-  {
-    ERRORLOG("unable to open resume data: %s", (const char*)filename);
-    return;
   }
 
-  uint32_t uid = 0;
-  uint64_t pos = 0;
-  int count = 0;
-
-  char* posterUrl = NULL;
-  char* backgroundUrl = NULL;
-  char* movieId = NULL;
-
-  while(fscanf(f, "%08x = %llu, %i, %m[^,], %m[^,], %m", &uid, &pos, &count, &posterUrl, &backgroundUrl, &movieId) > 0)
-  {
-    m_recordings[uid].lastplayedposition = pos;
-    m_recordings[uid].playcount = count;
-    m_recordings[uid].posterUrl = posterUrl;
-    m_recordings[uid].backgroundUrl = backgroundUrl;
-    m_recordings[uid].movieId = movieId;
-
-    free(posterUrl);
-    free(backgroundUrl);
-    free(movieId);
-
-    uid = 0;
-    pos = 0;
-    count = 0;
-    posterUrl = NULL;
-    backgroundUrl = NULL;
-    movieId = NULL;
+  uint64_t position;
+  if(sqlite3_step(s) == SQLITE_ROW) {
+    position = sqlite3_column_int64(s, 0);
   }
 
-  fclose(f);
-  return;
-}
-
-void cRecordingsCache::SaveResumeData()
-{
-  cMutexLock lock(&m_mutex);
-
-  cString filename = AddDirectory(XVDRServerConfig.ConfigDirectory, RESUME_DATA_FILE);
-  FILE* f = fopen((const char*)filename, "w");
-
-  if(f == NULL)
-  {
-    ERRORLOG("unable to create resume data: %s", (const char*)filename);
-    return;
-  }
-
-  std::map<uint32_t, struct RecEntry>::iterator i;
-  for(i = m_recordings.begin(); i != m_recordings.end(); i++)
-  {
-    //if(i->second.lastplayedposition != 0 || i->second.playcount != 0)
-      fprintf(
-        f, "%08x = %llu, %i, %s, %s, %s\n",
-        i->first,
-        i->second.lastplayedposition,
-        i->second.playcount,
-        (const char*)i->second.posterUrl,
-        (const char*)i->second.backgroundUrl,
-        (const char*)i->second.movieId);
-  }
-
-  fclose(f);
-  return;
-}
-
-bool cRecordingsCache::Changed() {
-  cMutexLock lock(&m_mutex);
-
-  bool rc = m_changed;
-  m_changed = false;
-
-  return rc;
+  sqlite3_finalize(s);
+  return position;
 }
 
 void cRecordingsCache::gc() {
-  cMutexLock lock(&m_mutex);
-
   Update();
 
-  std::map<uint32_t, struct RecEntry>::iterator i = m_recordings.begin();
+  sqlite3_stmt* s = m_storage.Query("SELECT recid, filename FROM recordings;");
 
-  while(i != m_recordings.end()) {
-    if(!isempty(i->second.filename) && Recordings.GetByName(i->second.filename) == NULL) {
-      INFOLOG("removing outdated recording (%08x) '%s' from cache", i->first, (const char*)i->second.filename);
-      std::map<uint32_t, struct RecEntry>::iterator n = i++;
-      m_recordings.erase(n);
-    }
-    else {
-      i++;
+  if(s == NULL) {
+    return;
+  }
+
+  // check all recordings in the cache
+
+  while(sqlite3_step(s) == SQLITE_ROW) {
+    uint32_t recid = (uint32_t)sqlite3_column_int(s, 0);
+    const char* filename = (const char*)sqlite3_column_text(s, 1);
+
+    // remove orphaned entry
+    if(Recordings.GetByName(filename) == NULL) {
+      INFOLOG("removing outdated recording '%s' from cache", filename);
+      m_storage.Exec("DELETE FROM recordings WHERE recid=%u;", recid);
     }
   }
+
+  sqlite3_finalize(s);
+}
+
+void cRecordingsCache::CreateDB() {
+    std::string schema =
+	"CREATE TABLE IF NOT EXISTS recordings (\n"
+	"  recid INTEGER PRIMARY KEY,\n"
+	"  filename TEXT NOT NULL,\n"
+	"  position BIGINT DEFAULT 0,\n"
+	"  playcount INTEGER DEFAULT 0,\n"
+	"  posterurl TEXT,\n"
+	"  backgroundurl TEXT,\n"
+	"  externalid INTEGER\n"
+	");\n"
+	"CREATE INDEX IF NOT EXISTS recordings_externalid on recordings(externalid);\n"
+	"CREATE UNIQUE INDEX IF NOT EXISTS recordings_filename on recordings(filename);\n";
+
+    if(m_storage.Exec(schema) != SQLITE_OK) {
+	ERRORLOG("Unable to create database schema for recordings");
+    }
 }

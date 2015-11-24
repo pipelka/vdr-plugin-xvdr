@@ -30,6 +30,7 @@
 #include <vdr/thread.h>
 #include <vdr/tools.h>
 #include <vdr/recording.h>
+#include "db/storage.h"
 
 class cRecordingsCache
 {
@@ -59,17 +60,11 @@ public:
 
   void SetBackgroundUrl(uint32_t uid, const char* url);
 
-  void SetMovieID(uint32_t uid, const char* id);
+  void SetMovieID(uint32_t uid, uint32_t id);
 
-  const char* GetPosterUrl(uint32_t uid);
+  cString GetPosterUrl(uint32_t uid);
 
-  const char* GetBackgroundUrl(uint32_t uid);
-
-  void LoadResumeData();
-
-  void SaveResumeData();
-
-  bool Changed();
+  cString GetBackgroundUrl(uint32_t uid);
 
   void gc();
 
@@ -77,25 +72,11 @@ protected:
 
   void Update();
 
-  uint32_t RegisterNoLock(cRecording* recording);
+  void CreateDB();
 
 private:
 
-  struct RecEntry {
-    RecEntry() : playcount(0), lastplayedposition(0), posterUrl(""), backgroundUrl(""), movieId("") {}
-    cString filename;
-    int playcount;
-    uint64_t lastplayedposition;
-    cString posterUrl;
-    cString backgroundUrl;
-    cString movieId;
-  };
-
-  std::map<uint32_t, struct RecEntry> m_recordings;
-
-  cMutex m_mutex;
-
-  bool m_changed;
+  XVDR::Storage& m_storage;
 };
 
 

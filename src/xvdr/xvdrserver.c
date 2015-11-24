@@ -324,13 +324,11 @@ void cXVDRServer::Action(void)
       }
 
       // update recordings
-      if((recordingReloadTrigger && recordingReloadTimer.TimedOut()) || cRecordingsCache::GetInstance().Changed()) {
+      if((recordingReloadTrigger && recordingReloadTimer.TimedOut())) {
 
-        // start gc if reload was triggered
-        if(!cRecordingsCache::GetInstance().Changed()) {
-          INFOLOG("Starting garbage collection in recordings cache");
-          cRecordingsCache::GetInstance().gc();
-        }
+        // start gc
+        INFOLOG("Starting garbage collection in recordings cache");
+        cRecordingsCache::GetInstance().gc();
 
         // request clients to reload recordings
         if(!m_clients.empty()) {

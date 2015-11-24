@@ -1669,7 +1669,6 @@ bool cXVDRClient::processRECORDINGS_SetPlayCount()
 
   uint32_t uid = recid2uid(recid);
   cRecordingsCache::GetInstance().SetPlayCount(uid, count);
-  cRecordingsCache::GetInstance().SaveResumeData();
 
   return true;
 }
@@ -1681,7 +1680,6 @@ bool cXVDRClient::processRECORDINGS_SetPosition()
 
   uint32_t uid = recid2uid(recid);
   cRecordingsCache::GetInstance().SetLastPlayedPosition(uid, position);
-  cRecordingsCache::GetInstance().SaveResumeData();
 
   return true;
 }
@@ -1691,13 +1689,12 @@ bool cXVDRClient::processRECORDINGS_SetUrls()
   const char* recid = m_req->get_String();
   const char* poster = m_req->get_String();
   const char* background = m_req->get_String();
-  const char* id = m_req->get_String();
+  uint32_t id = m_req->get_U32();
 
   uint32_t uid = recid2uid(recid);
   cRecordingsCache::GetInstance().SetPosterUrl(uid, poster);
   cRecordingsCache::GetInstance().SetBackgroundUrl(uid, background);
   cRecordingsCache::GetInstance().SetMovieID(uid, id);
-  cRecordingsCache::GetInstance().SaveResumeData();
 
   return true;
 }

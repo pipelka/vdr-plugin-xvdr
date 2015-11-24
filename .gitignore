@@ -5,3 +5,4 @@ libvdr-vnsiserver.so*
 po/*.mo
 tools/serviceref
 po/xvdr.pot
+src/db/sqlite3.co

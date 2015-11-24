@@ -34,19 +34,19 @@
 // log output configuration
 
 #ifdef CONSOLEDEBUG
-#define DEBUGLOG(format, ...) printf("XVDR: " #format, ##__VA_ARGS__)
+#define DEBUGLOG(format, ...) printf("XVDR: " format, ##__VA_ARGS__)
 #elif defined  DEBUG
-#define DEBUGLOG(format, ...) dsyslog("XVDR: " #format, ##__VA_ARGS__)
+#define DEBUGLOG(format, ...) dsyslog("XVDR: " format, ##__VA_ARGS__)
 #else
 #define DEBUGLOG(format, ...)
 #endif
 
 #ifdef CONSOLEDEBUG
-#define INFOLOG(format, ...) printf("XVDR: " #format, ##__VA_ARGS__)
-#define ERRORLOG(format, ...) printf("XVDR-Error: " #format, ##__VA_ARGS__)
+#define INFOLOG(format, ...) printf("XVDR: " format, ##__VA_ARGS__)
+#define ERRORLOG(format, ...) printf("XVDR-Error: " format, ##__VA_ARGS__)
 #else
-#define INFOLOG(format, ...) isyslog("XVDR: " #format, ##__VA_ARGS__)
-#define ERRORLOG(format, ...) esyslog("XVDR-Error: " #format, ##__VA_ARGS__)
+#define INFOLOG(format, ...) isyslog("XVDR: " format, ##__VA_ARGS__)
+#define ERRORLOG(format, ...) esyslog("XVDR-Error: " format, ##__VA_ARGS__)
 #endif
 
 // default settings
@@ -56,6 +56,7 @@
 #define GENERAL_CONFIG_FILE "xvdr.conf"
 #define RESUME_DATA_FILE    "resume.data"
 #define CHANNEL_CACHE_FILE  "channelcache.data"
+#define STORAGE_DB_FILE     "storage.db"
 
 #define LISTEN_PORT       34891
 #define LISTEN_PORT_S    "34891"
