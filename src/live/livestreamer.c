@@ -46,7 +46,6 @@
 #include "tools/hash.h"
 
 #include "livestreamer.h"
-#include "livepatfilter.h"
 #include "livequeue.h"
 #include "channelcache.h"
 
@@ -67,7 +66,6 @@ cLiveStreamer::cLiveStreamer(cXVDRClient* parent, const cChannel *channel, int p
   m_ready           = false;
   m_protocolVersion = XVDR_PROTOCOLVERSION;
   m_waitforiframe   = false;
-  m_PatFilter       = NULL;
   m_rawPTS          = rawPTS;
 
   m_requestStreamChange = false;
@@ -94,13 +92,6 @@ cLiveStreamer::~cLiveStreamer()
   DEBUGLOG("Done.");
 
   DEBUGLOG("Detaching");
-
-  if(m_PatFilter != NULL && m_Device != NULL) {
-    cMutexLock lock(&m_DeviceMutex);
-    m_Device->Detach(m_PatFilter);
-    delete m_PatFilter;
-    m_PatFilter = NULL;
-  }
 
   if (IsAttached()) {
     Detach();
@@ -213,14 +204,6 @@ void cLiveStreamer::Action(void)
       sendStatus(XVDR_STREAM_STATUS_SIGNALLOST);
       m_SignalLost = true;
 
-      // retune to restore
-      if(m_PatFilter != NULL && m_Device != NULL) {
-        cMutexLock lock(&m_DeviceMutex);
-        m_Device->Detach(m_PatFilter);
-        delete m_PatFilter;
-        m_PatFilter = NULL;
-      }
-
       if(IsAttached()) {
         Detach();
       }
@@ -274,13 +257,6 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
 {
   if (channel == NULL) {
     return XVDR_RET_ERROR;
-  }
-
-  if(m_PatFilter != NULL && m_Device != NULL) {
-    cMutexLock lock(&m_DeviceMutex);
-    m_Device->Detach(m_PatFilter);
-    delete m_PatFilter;
-    m_PatFilter = NULL;
   }
 
   if(IsAttached()) {
@@ -377,15 +353,6 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
   if(!Attach()) {
     INFOLOG("Unable to attach receiver !");
     return XVDR_RET_DATALOCKED;
-  }
-
-  INFOLOG("Starting PAT scanner");
-  m_PatFilter = new cLivePatFilter(this);
-  m_PatFilter->SetChannel(channel);
-  
-  {
-    cMutexLock lock(&m_DeviceMutex);
-    m_Device->AttachFilter(m_PatFilter);
   }
 
   INFOLOG("done switching.");

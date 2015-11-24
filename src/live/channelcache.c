@@ -154,7 +154,12 @@ cChannelCache cChannelCache::ItemFromChannel(const cChannel* channel) {
 
   // add AC3 streams
   for(int i=0; channel->Dpid(i) != 0; i++) {
-    item.AddStream(cStreamInfo(channel->Dpid(i), cStreamInfo::stAC3, channel->Dlang(i)));
+    int dtype = channel->Dtype(i);
+    item.AddStream(cStreamInfo(channel->Dpid(i), 
+      dtype == 0x6A ? cStreamInfo::stAC3 :
+      dtype == 0x7A ? cStreamInfo::stEAC3 :
+      cStreamInfo::stNONE,
+      channel->Dlang(i)));
   }
 
   // add audio streams

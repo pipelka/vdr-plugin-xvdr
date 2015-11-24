@@ -79,7 +79,6 @@ OBJS = \
 	src/demuxer/parser.o \
 	src/demuxer/streaminfo.o \
 	src/live/channelcache.o \
-	src/live/livepatfilter.o \
 	src/live/livequeue.o \
 	src/live/livestreamer.o \
 	src/net/msgpacket.o \

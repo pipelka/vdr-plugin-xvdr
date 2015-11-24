@@ -40,7 +40,6 @@
 class cChannel;
 class cTSDemuxer;
 class MsgPacket;
-class cLivePatFilter;
 class cLiveQueue;
 class cXVDRClient;
 
@@ -50,7 +49,6 @@ class cLiveStreamer : public cThread
 {
 private:
   friend class cTSDemuxer;
-  friend class cLivePatFilter;
   friend class cChannelCache;
 
   void Detach(void);
@@ -65,7 +63,6 @@ private:
   void sendDetach();
 
   cDevice          *m_Device;                       /*!> The receiving device the channel depents to */
-  cLivePatFilter   *m_PatFilter;                    /*!> Filter processor to get changed pid's */
   std::list<cTSDemuxer*> m_Demuxers;
   bool              m_startup;
   bool              m_requestStreamChange;
