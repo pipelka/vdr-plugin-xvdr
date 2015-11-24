@@ -84,7 +84,6 @@ OBJS = \
 	src/recordings/recordingscache.o \
 	src/recordings/recplayer.o \
 	src/scanner/wirbelscan.o \
-	src/sqlite3/sqlite3.co \
 	src/tools/hash.o \
 	src/tools/urlencode.o \
 	src/xvdr/timerconflicts.o \
