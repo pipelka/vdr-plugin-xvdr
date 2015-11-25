@@ -155,7 +155,7 @@ int cRecordingsCache::GetPlayCount(uint32_t uid)
 
 cString cRecordingsCache::GetPosterUrl(uint32_t uid)
 {
-  cString url;
+  cString url = "";
   sqlite3_stmt* s = m_storage.Query("SELECT posterurl FROM recordings WHERE recid=%lu;", uid);
 
   if(s == NULL) {
@@ -163,7 +163,10 @@ cString cRecordingsCache::GetPosterUrl(uint32_t uid)
   }
 
   if(sqlite3_step(s) == SQLITE_ROW) {
-    url = (const char*)sqlite3_column_int(s, 0);
+    const char* u = (const char*)sqlite3_column_int(s, 0);
+    if(u != NULL) {
+      url = u;
+    }
   }
 
   sqlite3_finalize(s);
@@ -172,7 +175,7 @@ cString cRecordingsCache::GetPosterUrl(uint32_t uid)
 
 cString cRecordingsCache::GetBackgroundUrl(uint32_t uid)
 {
-  cString url;
+  cString url = "";
   sqlite3_stmt* s = m_storage.Query("SELECT backgroundurl FROM recordings WHERE recid=%lu;", uid);
 
   if(s == NULL) {
@@ -180,7 +183,10 @@ cString cRecordingsCache::GetBackgroundUrl(uint32_t uid)
   }
 
   if(sqlite3_step(s) == SQLITE_ROW) {
-    url = (const char*)sqlite3_column_int(s, 0);
+    const char* u = (const char*)sqlite3_column_int(s, 0);
+    if(u != NULL) {
+      url = u;
+    }
   }
 
   sqlite3_finalize(s);
