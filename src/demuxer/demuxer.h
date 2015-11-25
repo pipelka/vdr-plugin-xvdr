@@ -59,16 +59,29 @@ struct sStreamPacket
 
 class cTSDemuxer : public cStreamInfo
 {
+public:
+
+  class Listener {
+  public:
+
+    virtual ~Listener() {};
+
+    virtual void sendStreamPacket(sStreamPacket* p) = 0;
+
+    virtual void RequestStreamChange() = 0;
+
+  };
+
 private:
 
-  cLiveStreamer* m_Streamer;
+  Listener* m_Streamer;
   cParser* m_pesParser;
 
   int64_t Rescale(int64_t a);
 
 public:
-  cTSDemuxer(cLiveStreamer *streamer, cStreamInfo::Type type, int pid);
-  cTSDemuxer(cLiveStreamer *streamer, const cStreamInfo& info);
+  cTSDemuxer(Listener *streamer, cStreamInfo::Type type, int pid);
+  cTSDemuxer(Listener *streamer, const cStreamInfo& info);
   virtual ~cTSDemuxer();
 
   bool ProcessTSPacket(unsigned char *data);

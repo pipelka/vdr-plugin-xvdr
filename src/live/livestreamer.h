@@ -47,6 +47,7 @@ class cXVDRClient;
 class cLiveStreamer : public cThread
                     , public cRingBufferLinear
                     , public cReceiver
+                    , public cTSDemuxer::Listener
 {
 private:
   friend class cTSDemuxer;
@@ -58,7 +59,6 @@ private:
 
   void reorderStreams(int lang, cStreamInfo::Type type);
 
-  void sendStreamPacket(sStreamPacket *pkt);
   void sendStreamChange();
   void sendStatus(int status);
   void sendDetach();
@@ -91,8 +91,6 @@ protected:
   void Receive(const uchar *Data, int Length);
 #endif
 
-  void RequestStreamChange();
-
   int SwitchChannel(const cChannel *channel);
 
 private:
@@ -120,6 +118,9 @@ public:
   void RequestSignalInfo();
 
   void ChannelChange(const cChannel* Channel);
+  void sendStreamPacket(sStreamPacket *pkt);
+  void RequestStreamChange();
+
 };
 
 #endif  // XVDR_RECEIVER_H

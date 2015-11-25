@@ -41,12 +41,12 @@
 
 #define DVD_TIME_BASE 1000000
 
-cTSDemuxer::cTSDemuxer(cLiveStreamer *streamer, const cStreamInfo& info) : cStreamInfo(info), m_Streamer(streamer) {
+cTSDemuxer::cTSDemuxer(cTSDemuxer::Listener* streamer, const cStreamInfo& info) : cStreamInfo(info), m_Streamer(streamer) {
   m_pesParser = CreateParser(m_type);
   SetContent();
 }
 
-cTSDemuxer::cTSDemuxer(cLiveStreamer *streamer, cStreamInfo::Type type, int pid) : cStreamInfo(pid, type), m_Streamer(streamer) {
+cTSDemuxer::cTSDemuxer(cTSDemuxer::Listener* streamer, cStreamInfo::Type type, int pid) : cStreamInfo(pid, type), m_Streamer(streamer) {
   m_pesParser = CreateParser(m_type);
 }
 
