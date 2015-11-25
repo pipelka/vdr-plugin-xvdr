@@ -69,7 +69,7 @@ uint32_t cRecordingsCache::Register(cRecording* recording) {
 cRecording* cRecordingsCache::Lookup(uint32_t uid) {
   DEBUGLOG("%s - lookup uid: %08x", __FUNCTION__, uid);
 
-  sqlite3_stmt* s = m_storage.Query("SELECT filename FROM recordings WHERE recid=%lu;", uid);
+  sqlite3_stmt* s = m_storage.Query("SELECT filename FROM recordings WHERE recid=%u;", uid);
 
   if(s == NULL) {
     DEBUGLOG("%s - not found !", __FUNCTION__);
@@ -99,7 +99,7 @@ cRecording* cRecordingsCache::Lookup(uint32_t uid) {
 void cRecordingsCache::SetPlayCount(uint32_t uid, int count)
 {
   m_storage.Exec(
-    "UPDATE recordings SET playcount=%i WHERE recid=%llu;",
+    "UPDATE recordings SET playcount=%i WHERE recid=%u;",
     count,
     uid);
 }
@@ -107,7 +107,7 @@ void cRecordingsCache::SetPlayCount(uint32_t uid, int count)
 void cRecordingsCache::SetLastPlayedPosition(uint32_t uid, uint64_t position)
 {
   m_storage.Exec(
-    "UPDATE recordings SET position=%llu WHERE recid=%llu;",
+    "UPDATE recordings SET position=%llu WHERE recid=%u;",
     position,
     uid);
 }
@@ -115,7 +115,7 @@ void cRecordingsCache::SetLastPlayedPosition(uint32_t uid, uint64_t position)
 void cRecordingsCache::SetPosterUrl(uint32_t uid, const char* url)
 {
   m_storage.Exec(
-    "UPDATE recordings SET posterurl=%Q WHERE recid=%llu;",
+    "UPDATE recordings SET posterurl=%Q WHERE recid=%u;",
     url,
     uid);
 }
@@ -123,7 +123,7 @@ void cRecordingsCache::SetPosterUrl(uint32_t uid, const char* url)
 void cRecordingsCache::SetBackgroundUrl(uint32_t uid, const char* url)
 {
   m_storage.Exec(
-    "UPDATE recordings SET backgroundurl=%Q WHERE recid=%llu;",
+    "UPDATE recordings SET backgroundurl=%Q WHERE recid=%u;",
     url,
     uid);
 }
@@ -131,14 +131,14 @@ void cRecordingsCache::SetBackgroundUrl(uint32_t uid, const char* url)
 void cRecordingsCache::SetMovieID(uint32_t uid, uint32_t id)
 {
   m_storage.Exec(
-    "UPDATE recordings SET externalid=%u WHERE recid=%llu;",
+    "UPDATE recordings SET externalid=%u WHERE recid=%u;",
     id,
     uid);
 }
 
 int cRecordingsCache::GetPlayCount(uint32_t uid)
 {
-  sqlite3_stmt* s = m_storage.Query("SELECT playcount FROM recordings WHERE recid=%lu;", uid);
+  sqlite3_stmt* s = m_storage.Query("SELECT playcount FROM recordings WHERE recid=%u;", uid);
 
   if(s == NULL) {
     return 0;
@@ -156,7 +156,7 @@ int cRecordingsCache::GetPlayCount(uint32_t uid)
 cString cRecordingsCache::GetPosterUrl(uint32_t uid)
 {
   cString url = "";
-  sqlite3_stmt* s = m_storage.Query("SELECT posterurl FROM recordings WHERE recid=%lu;", uid);
+  sqlite3_stmt* s = m_storage.Query("SELECT posterurl FROM recordings WHERE recid=%u;", uid);
 
   if(s == NULL) {
     return url;
@@ -176,7 +176,7 @@ cString cRecordingsCache::GetPosterUrl(uint32_t uid)
 cString cRecordingsCache::GetBackgroundUrl(uint32_t uid)
 {
   cString url = "";
-  sqlite3_stmt* s = m_storage.Query("SELECT backgroundurl FROM recordings WHERE recid=%lu;", uid);
+  sqlite3_stmt* s = m_storage.Query("SELECT backgroundurl FROM recordings WHERE recid=%u;", uid);
 
   if(s == NULL) {
     return url;
@@ -195,7 +195,7 @@ cString cRecordingsCache::GetBackgroundUrl(uint32_t uid)
 
 uint64_t cRecordingsCache::GetLastPlayedPosition(uint32_t uid)
 {
-  sqlite3_stmt* s = m_storage.Query("SELECT position FROM recordings WHERE recid=%lu;", uid);
+  sqlite3_stmt* s = m_storage.Query("SELECT position FROM recordings WHERE recid=%u;", uid);
 
   if(s == NULL) {
     return 0;
