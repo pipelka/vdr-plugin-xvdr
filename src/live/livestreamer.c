@@ -310,30 +310,30 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
   }
 
   // get cached demuxer data
-  cChannelCache cache = cChannelCache::GetFromCache(m_uid);
+  cStreamBundle bundle = cChannelCache::GetFromCache(m_uid);
 
   // channel already in cache
-  if(cache.size() != 0) {
+  if(bundle.size() != 0) {
     INFOLOG("Channel information found in cache");
   }
   // channel not found in cache -> add it from vdr
   else {
     INFOLOG("adding channel to cache");
     cChannelCache::AddToCache(channel);
-    cache = cChannelCache::GetFromCache(m_uid);
+    bundle = cChannelCache::GetFromCache(m_uid);
   }
 
   // recheck cache item
-  cChannelCache currentitem = cChannelCache::ItemFromChannel(channel);
-  if(!currentitem.ismetaof(cache)) {
+  cStreamBundle currentitem = cStreamBundle::FromChannel(channel);
+  if(!currentitem.ismetaof(bundle)) {
     INFOLOG("current channel differs from cache item - updating");
-    cache = currentitem;
-    cChannelCache::AddToCache(m_uid, cache);
+    bundle = currentitem;
+    cChannelCache::AddToCache(m_uid, bundle);
   }
 
-  if(cache.size() != 0) {
+  if(bundle.size() != 0) {
     INFOLOG("Creating demuxers");
-    cache.CreateDemuxers(this);
+    CreateDemuxers(&bundle);
   }
 
   RequestStreamChange();
@@ -476,7 +476,7 @@ void cLiveStreamer::sendStreamChange()
 
   DEBUGLOG("sendStreamChange");
 
-  cChannelCache cache;
+  cStreamBundle cache;
   INFOLOG("Stored channel information in cache:");
   for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++) {
     cache.AddStream(*(*i));
@@ -793,4 +793,35 @@ void cLiveStreamer::ChannelChange(const cChannel* channel) {
   INFOLOG("ChannelChange()");
 
   SwitchChannel(channel);
+}
+
+void cLiveStreamer::CreateDemuxers(cStreamBundle* bundle) {
+  cStreamBundle old;
+
+  // remove old demuxers
+  for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++) {
+    old.AddStream(*(*i));
+    delete *i;
+  }
+
+  m_Demuxers.clear();
+  SetPids(NULL);
+
+  // create new stream demuxers
+  for (cStreamBundle::iterator i = bundle->begin(); i != bundle->end(); i++) {
+    cStreamInfo& infonew = i->second;
+    cStreamInfo& infoold = old[i->first];
+
+    // reuse previous stream information
+    if(infonew.GetPID() == infoold.GetPID() && infonew.GetType() == infoold.GetType()) {
+      infonew = infoold;
+    }
+
+    cTSDemuxer* dmx = new cTSDemuxer(this, infonew);
+    if (dmx != NULL) {
+      dmx->info();
+      m_Demuxers.push_back(dmx);
+      AddPid(infonew.GetPID());
+    }
+  }
 }

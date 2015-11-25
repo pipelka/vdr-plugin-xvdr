@@ -33,6 +33,7 @@
 #include <vdr/ringbuffer.h>
 
 #include "demuxer/demuxer.h"
+#include "demuxer/streambundle.h"
 #include "xvdr/xvdrcommand.h"
 
 #include <list>
@@ -97,6 +98,8 @@ protected:
 private:
 
   void TryChannelSwitch();
+
+  void CreateDemuxers(cStreamBundle* bundle);
 
 public:
   cLiveStreamer(cXVDRClient* parent, const cChannel *channel, int priority, bool rawPTS = false);

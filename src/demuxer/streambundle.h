@@ -1,7 +1,7 @@
 /*
  *      vdr-plugin-xvdr - XVDR server plugin for VDR
  *
- *      Copyright (C) 2011 Alexander Pipelka
+ *      Copyright (C) 2015 Alexander Pipelka
  *
  *      https://github.com/pipelka/vdr-plugin-xvdr
  *
@@ -22,37 +22,39 @@
  *
  */
 
-#ifndef XVDR_CHANNELCACHE_H
-#define XVDR_CHANNELCACHE_H
+#ifndef XVDR_STREAMBUNDLE_H
+#define XVDR_STREAMBUNDLE_H
 
-#include "vdr/thread.h"
-#include "demuxer/streambundle.h"
+#include "demuxer/streaminfo.h"
+#include "vdr/channels.h"
+#include <map>
 
-class cChannelCache {
+class cStreamBundle : public std::map<int, cStreamInfo> {
 public:
 
-  static void LoadChannelCacheData();
+  cStreamBundle();
 
-  static void SaveChannelCacheData();
+  void AddStream(const cStreamInfo& s);
 
-  static void AddToCache(uint32_t channeluid, const cStreamBundle& channel);
+  bool operator ==(const cStreamBundle& c) const;
 
-  static void AddToCache(const cChannel* channel);
+  bool ismetaof(const cStreamBundle& c) const;
 
-  static cStreamBundle GetFromCache(uint32_t channeluid);
+  bool contains(const cStreamInfo& s) const;
 
-  static void gc();
+  bool changed() const { return m_bChanged; }
+
+  bool IsParsed();
+
+  static cStreamBundle FromChannel(const cChannel* channel);
 
 private:
 
-  static void Lock() { m_access.Lock(); }
-
-  static void Unlock() { m_access.Unlock(); }
-
-  static std::map<uint32_t, cStreamBundle> m_cache;
-
-  static cMutex m_access;
+  bool m_bChanged;
 
 };
 
-#endif // XVDR_CHANNELCACHE_H
+MsgPacket& operator<< (MsgPacket& lhs, const cStreamBundle& rhs);
+MsgPacket& operator>> (MsgPacket& lhs, cStreamBundle& rhs);
+
+#endif // XVDR_STREAMBUNDLE_H

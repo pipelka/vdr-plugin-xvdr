@@ -77,6 +77,7 @@ OBJS = \
 	src/demuxer/demuxer_PES.o \
 	src/demuxer/demuxer_Subtitle.o \
 	src/demuxer/parser.o \
+	src/demuxer/streambundle.o \
 	src/demuxer/streaminfo.o \
 	src/live/channelcache.o \
 	src/live/livequeue.o \
