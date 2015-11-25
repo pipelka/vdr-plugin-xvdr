@@ -97,7 +97,7 @@ cLiveStreamer::~cLiveStreamer()
     Detach();
   }
 
-  for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++) {
+  for (auto i = m_Demuxers.begin(); i != m_Demuxers.end(); i++) {
     if ((*i) != NULL) {
       DEBUGLOG("Deleting stream demuxer for pid=%i and type=%i", (*i)->GetPID(), (*i)->GetType());
       delete (*i);
@@ -361,7 +361,7 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
 
 cTSDemuxer *cLiveStreamer::FindStreamDemuxer(int Pid)
 {
-  for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++)
+  for (auto i = m_Demuxers.begin(); i != m_Demuxers.end(); i++)
     if ((*i) != NULL && (*i)->GetPID() == Pid)
       return (*i);
 
@@ -478,7 +478,7 @@ void cLiveStreamer::sendStreamChange()
 
   cStreamBundle cache;
   INFOLOG("Stored channel information in cache:");
-  for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++) {
+  for (auto i = m_Demuxers.begin(); i != m_Demuxers.end(); i++) {
     cache.AddStream(*(*i));
     (*i)->info();
   }
@@ -489,7 +489,7 @@ void cLiveStreamer::sendStreamChange()
   // reorder streams as preferred
   reorderStreams(m_LanguageIndex, m_LangStreamType);
 
-  for (std::list<cTSDemuxer*>::iterator idx = m_Demuxers.begin(); idx != m_Demuxers.end(); idx++)
+  for (auto idx = m_Demuxers.begin(); idx != m_Demuxers.end(); idx++)
   {
     cTSDemuxer* stream = (*idx);
 
@@ -641,7 +641,7 @@ void cLiveStreamer::reorderStreams(int lang, cStreamInfo::Type type)
 
   // compute weights
   int i = 0;
-  for (std::list<cTSDemuxer*>::iterator idx = m_Demuxers.begin(); idx != m_Demuxers.end(); idx++, i++)
+  for (auto idx = m_Demuxers.begin(); idx != m_Demuxers.end(); idx++, i++)
   {
     cTSDemuxer* stream = (*idx);
     if (stream == NULL)
@@ -728,7 +728,7 @@ bool cLiveStreamer::IsReady()
 
   cMutexLock lock(&m_FilterMutex);
 
-  for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++)
+  for (auto i = m_Demuxers.begin(); i != m_Demuxers.end(); i++)
   {
     if (!(*i)->IsParsed()) {
       DEBUGLOG("Stream with PID %i not parsed", (*i)->GetPID());
@@ -799,7 +799,7 @@ void cLiveStreamer::CreateDemuxers(cStreamBundle* bundle) {
   cStreamBundle old;
 
   // remove old demuxers
-  for (std::list<cTSDemuxer*>::iterator i = m_Demuxers.begin(); i != m_Demuxers.end(); i++) {
+  for (auto i = m_Demuxers.begin(); i != m_Demuxers.end(); i++) {
     old.AddStream(*(*i));
     delete *i;
   }

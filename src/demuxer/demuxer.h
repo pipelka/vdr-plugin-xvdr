@@ -27,9 +27,9 @@
 #define XVDR_DEMUXER_H
 
 #include <stdint.h>
+#include <list>
 #include "streaminfo.h"
 
-class cLiveStreamer;
 class cParser;
 
 #define DVD_NOPTS_VALUE    (-1LL<<52) // should be possible to represent in both double and __int64

@@ -34,6 +34,7 @@
 
 #include "demuxer/demuxer.h"
 #include "demuxer/streambundle.h"
+#include "demuxer/demuxerbundle.h"
 #include "xvdr/xvdrcommand.h"
 
 #include <list>
@@ -64,7 +65,7 @@ private:
   void sendDetach();
 
   cDevice          *m_Device;                       /*!> The receiving device the channel depents to */
-  std::list<cTSDemuxer*> m_Demuxers;
+  cDemuxerBundle    m_Demuxers;
   bool              m_startup;
   bool              m_requestStreamChange;
   uint32_t          m_scanTimeout;                  /*!> Channel scanning timeout (in seconds) */
