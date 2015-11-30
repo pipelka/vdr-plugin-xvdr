@@ -1570,10 +1570,10 @@ bool cXVDRClient::processRECORDINGS_GetList() /* OPCODE 102 */
       m_resp->put_U32(0);
 
     // thumbnail url - for future use
-    m_resp->put_String(reccache.GetPosterUrl(uid));
+    m_resp->put_String((const char*)reccache.GetPosterUrl(uid));
 
     // icon url - for future use
-    m_resp->put_String(reccache.GetBackgroundUrl(uid));
+    m_resp->put_String((const char*)reccache.GetBackgroundUrl(uid));
 
     free(fullname);
   }
