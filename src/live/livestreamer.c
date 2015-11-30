@@ -63,7 +63,6 @@ cLiveStreamer::cLiveStreamer(cXVDRClient* parent, const cChannel *channel, int p
   m_LangStreamType  = cStreamInfo::stMPEG2AUDIO;
   m_LanguageIndex   = -1;
   m_uid             = CreateChannelUID(channel);
-  m_ready           = false;
   m_protocolVersion = XVDR_PROTOCOLVERSION;
   m_waitforiframe   = false;
   m_rawPTS          = rawPTS;
@@ -448,7 +447,7 @@ void cLiveStreamer::sendStreamPacket(sStreamPacket *pkt)
     packet->put_S64(pkt->pts);
     packet->put_S64(pkt->dts);
   }
-  
+
   if(m_protocolVersion >= 5) {
     packet->put_U32(pkt->duration);
   }
@@ -520,6 +519,25 @@ void cLiveStreamer::sendStreamChange()
         resp->put_U32(stream->GetHeight());
         resp->put_U32(stream->GetWidth());
         resp->put_S64(stream->GetAspect() * 10000.0);
+
+        // send decoder specific data SPS / PPS / VPS ... (Protocol Version 6)
+        if(m_protocolVersion >= 6) {
+          int length = 0;
+
+          // put SPS
+          uint8_t* sps = stream->GetVideoDecoderSPS(length);
+          resp->put_U8(length);
+          if(sps != NULL) {
+            resp->put_Blob(sps, length);
+          }
+
+          // put PPS
+          uint8_t* pps = stream->GetVideoDecoderPPS(length);
+          resp->put_U8(length);
+          if(pps != NULL) {
+            resp->put_Blob(pps, length);
+          }
+        }
         break;
 
       case cStreamInfo::scSUBTITLE:
@@ -723,9 +741,6 @@ void cLiveStreamer::SetLanguage(int lang, cStreamInfo::Type streamtype)
 
 bool cLiveStreamer::IsReady()
 {
-  if(m_ready)
-    return true;
-
   cMutexLock lock(&m_FilterMutex);
 
   for (auto i = m_Demuxers.begin(); i != m_Demuxers.end(); i++)
@@ -736,7 +751,6 @@ bool cLiveStreamer::IsReady()
     }
   }
 
-  m_ready = true;
   return true;
 }
 
@@ -791,7 +805,6 @@ void cLiveStreamer::ChannelChange(const cChannel* channel) {
   }
 
   INFOLOG("ChannelChange()");
-
   SwitchChannel(channel);
 }
 

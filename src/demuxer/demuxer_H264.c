@@ -44,7 +44,9 @@ const struct cParserH264::pixel_aspect_t cParserH264::m_aspect_ratios[] = {
 
 // NAL SPS ID
 #define NAL_SLH 0x01
+#define NAL_SEI 0x06
 #define NAL_SPS 0x07
+#define NAL_PPS 0x08
 
 // golomb decoding
 uint32_t read_golomb_ue(cBitStream* bs)
@@ -101,6 +103,7 @@ uint8_t* cParserH264::ExtractNAL(uint8_t* packet, int length, int nal_offset, in
 void cParserH264::ParsePayload(unsigned char* data, int length) {
   int o = 0;
   int sps_start = -1;
+  int pps_start = -1;
   int nal_len = 0;
 
   if(length < 4) {
@@ -113,8 +116,10 @@ void cParserH264::ParsePayload(unsigned char* data, int length) {
     if(o >= length)
       return;
 
+    uint8_t nal_type = data[o] & 0x1F;
+
     // NAL_SLH
-    if((data[o] & 0x1F) == NAL_SLH && length - o > 1) {
+    if(nal_type == NAL_SLH && length - o > 1) {
       o++;
       uint8_t* nal_data = ExtractNAL(data, length, o, nal_len);
 
@@ -124,21 +129,47 @@ void cParserH264::ParsePayload(unsigned char* data, int length) {
       }
     }
 
+    // NAL_PPS
+    else if(nal_type == NAL_PPS && length - o > 1) {
+      o++;
+      pps_start = o;
+    }
+
     // NAL_SPS
-    else if((data[o] & 0x1F) == NAL_SPS && length - o > 1) {
+    else if(nal_type == NAL_SPS && length - o > 1) {
       o++;
       sps_start = o;
     }
+
+    // remove filler data
+    else if(nal_type == 0x0C && length - o > 1) {
+      INFOLOG("H264: removed %i filler bytes", length - (o - 4));
+      length = o - 4;
+    }
   }
 
+  // extract and register PPS data (decoder specific data)
+  if(pps_start != -1) {
+    uint8_t* pps_data = ExtractNAL(data, length, pps_start, nal_len);
+    if(pps_data != NULL) {
+      m_demuxer->SetVideoDecoderData(NULL, 0, pps_data, nal_len);
+      delete[] pps_data;
+    }
+  }
+
+  // exit if we do not have SPS data
   if(sps_start == -1)
     return;
 
+  // extract SPS
   uint8_t* nal_data = ExtractNAL(data, length, sps_start, nal_len);
 
   if(nal_data == NULL) {
     return;
   }
+
+  // register SPS data (decoder specific data)
+  m_demuxer->SetVideoDecoderData(nal_data, nal_len, NULL, 0);
 
   int width = 0;
   int height = 0;

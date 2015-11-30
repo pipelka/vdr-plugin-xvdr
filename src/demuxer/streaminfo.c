@@ -49,7 +49,13 @@ cStreamInfo::cStreamInfo(int pid, Type type, const char* lang) {
   if(lang != NULL)
     strncpy(m_language, lang, 4);
 
+  memchr(m_sps, 0, sizeof(m_sps));
+  memchr(m_pps, 0, sizeof(m_pps));
+
   SetContent();
+}
+
+cStreamInfo::~cStreamInfo() {
 }
 
 void cStreamInfo::Initialize() {
@@ -72,6 +78,9 @@ void cStreamInfo::Initialize() {
   m_type              = stNONE;
   m_content           = scNONE;
   m_parsed            = false;
+  m_spsLength         = 0;
+  m_ppsLength         = 0;
+  m_vpsLength         = 0;
 }
 
 bool cStreamInfo::operator ==(const cStreamInfo& rhs) const {
@@ -167,7 +176,7 @@ void cStreamInfo::info() const {
   }
 
   if(m_content == scAUDIO) snprintf(buffer, sizeof(buffer), "%i Hz, %i channels, Lang: %s", m_samplerate, m_channels, m_language);
-  else if (m_content == scVIDEO) snprintf(buffer, sizeof(buffer), "%ix%i DAR: %.2f FPS: %.3f", m_width, m_height , m_aspect, (double)m_fpsrate / (double)scale);
+  else if (m_content == scVIDEO) snprintf(buffer, sizeof(buffer), "%ix%i DAR: %.2f FPS: %.3f SPS/PPS: %i/%i bytes", m_width, m_height , m_aspect, (double)m_fpsrate / (double)scale, m_spsLength, m_ppsLength);
   else if (m_content == scSUBTITLE) snprintf(buffer, sizeof(buffer), "Lang: %s", m_language);
   else if (m_content == scTELETEXT) snprintf(buffer, sizeof(buffer), "TXT");
   else if (m_content == scNONE) snprintf(buffer, sizeof(buffer), "None");
@@ -213,6 +222,18 @@ MsgPacket& operator<< (MsgPacket& lhs, const cStreamInfo& rhs) {
       lhs.put_U16(rhs.m_height);
       lhs.put_U16(rhs.m_width);
       lhs.put_U64((unsigned long long)(rhs.m_aspect * 1000000000));
+      lhs.put_U8(rhs.m_spsLength);
+      if(rhs.m_spsLength > 0) {
+        lhs.put_Blob((uint8_t*)rhs.m_sps, rhs.m_spsLength);
+      }
+      lhs.put_U8(rhs.m_ppsLength);
+      if(rhs.m_ppsLength > 0) {
+        lhs.put_Blob((uint8_t*)rhs.m_pps, rhs.m_ppsLength);
+      }
+      lhs.put_U8(rhs.m_vpsLength);
+      if(rhs.m_vpsLength > 0) {
+        lhs.put_Blob((uint8_t*)rhs.m_vps, rhs.m_vpsLength);
+      }
       break;
     case cStreamInfo::scSUBTITLE:
       lhs.put_String(lang);
@@ -264,6 +285,18 @@ MsgPacket& operator>> (MsgPacket& lhs, cStreamInfo& rhs) {
       rhs.m_height = lhs.get_U16();
       rhs.m_width = lhs.get_U16();
       rhs.m_aspect = (double)lhs.get_U64() / 1000000000.0;
+      rhs.m_spsLength = lhs.get_U8();
+      if(rhs.m_spsLength > 0) {
+        lhs.get_Blob(rhs.m_sps, rhs.m_spsLength);
+      }
+      rhs.m_ppsLength = lhs.get_U8();
+      if(rhs.m_ppsLength > 0) {
+        lhs.get_Blob(rhs.m_pps, rhs.m_ppsLength);
+      }
+      rhs.m_vpsLength = lhs.get_U8();
+      if(rhs.m_vpsLength > 0) {
+        lhs.get_Blob(rhs.m_vps, rhs.m_vpsLength);
+      }
       break;
     case cStreamInfo::scSUBTITLE:
       lang = lhs.get_String();

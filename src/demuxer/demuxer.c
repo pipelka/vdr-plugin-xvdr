@@ -228,3 +228,24 @@ void cTSDemuxer::SetAudioInformation(int Channels, int SampleRate, int BitRate, 
   m_Streamer->RequestStreamChange();
 }
 
+void cTSDemuxer::SetVideoDecoderData(uint8_t* sps, int spsLength, uint8_t* pps, int ppsLength) {
+  if(sps != NULL) {
+    m_spsLength = spsLength;
+    memcpy(m_sps, sps, spsLength);
+  }
+
+  if(pps != NULL) {
+    m_ppsLength = ppsLength;
+    memcpy(m_pps, pps, ppsLength);
+  }
+}
+
+uint8_t* cTSDemuxer::GetVideoDecoderSPS(int& length) {
+  length = m_spsLength;
+  return m_spsLength == 0 ? NULL : m_sps;
+}
+
+uint8_t* cTSDemuxer::GetVideoDecoderPPS(int& length) {
+  length = m_ppsLength;
+  return m_ppsLength == 0 ? NULL : m_pps;
+}

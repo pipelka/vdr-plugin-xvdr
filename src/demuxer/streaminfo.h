@@ -72,6 +72,8 @@ public:
 
   cStreamInfo(int pid, Type type, const char* lang = NULL);
 
+  virtual ~cStreamInfo();
+
   bool operator ==(const cStreamInfo& rhs) const;
 
   bool ismetaof(const cStreamInfo& rhs) const;
@@ -127,7 +129,14 @@ protected:
   uint16_t m_compositionpageid;   // composition page id
   uint16_t m_ancillarypageid;     // ancillary page id
 
-  friend class cLivePatFilter;
+  // decoder data
+  uint8_t m_sps[128];  // SPS data (for decoder)
+  uint8_t m_pps[128];  // PPS data (for decoder)
+  uint8_t m_vps[128];  // VPS data (for decoder)
+
+  int m_spsLength;     // SPS length
+  int m_ppsLength;     // PPS length
+  int m_vpsLength;     // VPS length
 
   friend MsgPacket& operator<< (MsgPacket& lhs, const cStreamInfo& rhs);
   friend MsgPacket& operator>> (MsgPacket& lhs, cStreamInfo& rhs);
