@@ -112,37 +112,47 @@ void cParser::Parse(unsigned char *data, int datasize, bool pusi)
   int framesize = 0;
   if(length > m_headersize && buffer != NULL && CheckAlignmentHeader(buffer, framesize))
   {
-    if(framesize > 0 && length >= framesize) {
-      // check if we should extrapolate the timestamps
-      if(m_curPTS == DVD_NOPTS_VALUE) m_curPTS = PtsAdd(m_lastPTS, m_duration);
-      if(m_curDTS == DVD_NOPTS_VALUE) m_curDTS = PtsAdd(m_lastDTS, m_duration);
+    // valid framesize ?
+    if(framesize > 0 && length >= framesize + m_headersize) {
+    
+      // check for the next frame (eliminate false positive header checks)
+      int next_framesize = 0;
+      if(!CheckAlignmentHeader(&buffer[framesize], next_framesize)) {
+        ERRORLOG("next frame not found on expected position, searching ...");
+      }
+      else {
+        // check if we should extrapolate the timestamps
+        if(m_curPTS == DVD_NOPTS_VALUE) m_curPTS = PtsAdd(m_lastPTS, m_duration);
+        if(m_curDTS == DVD_NOPTS_VALUE) m_curDTS = PtsAdd(m_lastDTS, m_duration);
 
-      ParsePayload(buffer, framesize);
-      SendPayload(buffer, framesize);
+        ParsePayload(buffer, framesize);
+        SendPayload(buffer, framesize);
 
-      // keep last timestamp
-      m_lastPTS = m_curPTS;
-      m_lastDTS = m_curDTS;
+        // keep last timestamp
+        m_lastPTS = m_curPTS;
+        m_lastDTS = m_curDTS;
 
-      // reset timestamps
-      m_curPTS = DVD_NOPTS_VALUE;
-      m_curDTS = DVD_NOPTS_VALUE;
+        // reset timestamps
+        m_curPTS = DVD_NOPTS_VALUE;
+        m_curDTS = DVD_NOPTS_VALUE;
 
-      Del(framesize);
+        Del(framesize);
+        PutData(data, datasize, pusi);
+        return;
+      }      
     }
 
-    PutData(data, datasize, pusi);
-    return;
   }
 
   // try to find sync
   int offset = FindAlignmentOffset(buffer, length, 1, framesize);
-  if(offset != -1)
-  {
+  if(offset != -1) {
     INFOLOG("sync found at offset %i (streamtype: %s / %i bytes in buffer / framesize: %i bytes)", offset, m_demuxer->TypeName(), Available(), framesize);
     Del(offset);
   }
-
+  else if(length > m_headersize) {
+    Del(length - m_headersize);
+  }
   PutData(data, datasize, pusi);
 }
 
