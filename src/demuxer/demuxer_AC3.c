@@ -66,30 +66,30 @@ bool cParserAC3::CheckAlignmentHeader(unsigned char* buffer, int& framesize) {
   return true;
 }
 
-void cParserAC3::ParsePayload(unsigned char* payload, int length) {
+int cParserAC3::ParsePayload(unsigned char* payload, int length) {
   cBitStream bs(payload, AC3_HEADER_SIZE * 8);
 
   if (bs.GetBits(16) != 0x0B77)
-    return;
+    return length;
 
   // EAC-3
   if(m_enhanced) {
     int frametype = bs.GetBits(2);
     if (frametype == EAC3_FRAME_TYPE_RESERVED)
-      return;
+      return length;
 
     bs.SkipBits(3);
 
     int framesize = (bs.GetBits(11) + 1) << 1;
     if (framesize < AC3_HEADER_SIZE)
-      return;
+      return length;
 
     int numBlocks = 6;
     int sr_code = bs.GetBits(2);
     if (sr_code == 3) {
       int sr_code2 = bs.GetBits(2);
       if (sr_code2 == 3)
-        return;
+        return length;
 
       m_samplerate = AC3SampleRateTable[sr_code2] / 2;
     }
@@ -117,7 +117,7 @@ void cParserAC3::ParsePayload(unsigned char* payload, int length) {
     int acmod = bs.GetBits(3);
 
     if (fscod == 3 || frmsizecod > 37)
-      return;
+      return length;
 
     if (acmod == AC3_CHMODE_STEREO) {
       bs.SkipBits(2); // skip dsurmod
@@ -140,4 +140,5 @@ void cParserAC3::ParsePayload(unsigned char* payload, int length) {
   }
   
   m_demuxer->SetAudioInformation(m_channels, m_samplerate, m_bitrate, 0, 0);
+  return length;
 }

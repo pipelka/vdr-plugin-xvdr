@@ -98,21 +98,21 @@ uint8_t* cParserH264::ExtractNAL(uint8_t* packet, int length, int nal_offset, in
   return nal_data;
 }
 
-void cParserH264::ParsePayload(unsigned char* data, int length) {
+int cParserH264::ParsePayload(unsigned char* data, int length) {
   int o = 0;
   int sps_start = -1;
   int pps_start = -1;
   int nal_len = 0;
 
   if(length < 4) {
-    return;
+    return length;
   }
 
   // iterate through all NAL units
   while((o = FindStartCode(data, length, o, 0x00000001)) >= 0) {
     o += 4;
     if(o >= length)
-      return;
+      return length;
 
     uint8_t nal_type = data[o] & 0x1F;
 
@@ -140,7 +140,7 @@ void cParserH264::ParsePayload(unsigned char* data, int length) {
     }
 
     // remove filler data
-    else if(nal_type == 0x0C && length - o > 1) {
+    else if(nal_type == 0x0C) {
       INFOLOG("H264: removed %i filler bytes", length - (o - 4));
       length = o - 4;
     }
@@ -157,13 +157,13 @@ void cParserH264::ParsePayload(unsigned char* data, int length) {
 
   // exit if we do not have SPS data
   if(sps_start == -1)
-    return;
+    return length;
 
   // extract SPS
   uint8_t* nal_data = ExtractNAL(data, length, sps_start, nal_len);
 
   if(nal_data == NULL) {
-    return;
+    return length;
   }
 
   // register SPS data (decoder specific data)
@@ -177,12 +177,13 @@ void cParserH264::ParsePayload(unsigned char* data, int length) {
   delete[] nal_data;
 
   if(!rc)
-    return;
+    return length;
 
   double PAR = (double)pixelaspect.num/(double)pixelaspect.den;
   double DAR = (PAR * width) / height;
 
   m_demuxer->SetVideoInformation(m_scale, m_rate, height, width, DAR, pixelaspect.num, pixelaspect.den);
+  return length;
 }
 
 int cParserH264::nalUnescape(uint8_t *dst, const uint8_t *src, int len)

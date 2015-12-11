@@ -100,7 +100,7 @@ cStreamInfo::FrameType cParserMPEG2Video::ParsePicture(unsigned char* data, int 
   return ConvertFrameType(frametype);
 }
 
-void cParserMPEG2Video::ParsePayload(unsigned char* data, int length) {
+int cParserMPEG2Video::ParsePayload(unsigned char* data, int length) {
   // lookup sequence start code
   int o = FindStartCode(data, length, 0, MPEG2_SEQUENCE_START);
   if (o >= 0) {
@@ -113,14 +113,14 @@ void cParserMPEG2Video::ParsePayload(unsigned char* data, int length) {
 
   // just to be sure, exit if there's isn't any duration
   if(m_duration == 0)
-    return;
+    return length;
 
   // check for picture start codes
   int s = FindStartCode(data, length, 0, MPEG2_PICTURE_START);
 
   // abort if there isn't any picture information
   if(s == -1) {
-    return;
+    return length;
   }
 
   int e = FindStartCode(data, length, s + 4, MPEG2_PICTURE_START);
@@ -147,6 +147,8 @@ void cParserMPEG2Video::ParsePayload(unsigned char* data, int length) {
   // append last part
   m_frametype = ParsePicture(data + o, length - o);
   cParser::SendPayload(data + s, length - s);
+
+  return length;
 }
 
 void cParserMPEG2Video::SendPayload(unsigned char* payload, int length) {

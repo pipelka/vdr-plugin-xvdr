@@ -114,13 +114,14 @@ bool cParserMPEG2Audio::CheckAlignmentHeader(unsigned char* buffer, int& framesi
   return ParseAudioHeader(buffer, channels, samplerate, bitrate, framesize);
 }
 
-void cParserMPEG2Audio::ParsePayload(unsigned char* payload, int length) {
+int cParserMPEG2Audio::ParsePayload(unsigned char* payload, int length) {
   int framesize = 0;
 
   if(!ParseAudioHeader(payload, m_channels, m_samplerate, m_bitrate, framesize))
-    return;
+    return length;
 
   m_duration = (framesize * 8 * 1000 * 90) / m_bitrate;
 
   m_demuxer->SetAudioInformation(m_channels, m_samplerate, m_bitrate, 0, 0);
+  return length;
 }

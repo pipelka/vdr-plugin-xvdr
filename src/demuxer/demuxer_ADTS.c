@@ -73,11 +73,12 @@ bool cParserADTS::CheckAlignmentHeader(unsigned char* buffer, int& framesize) {
   return ParseAudioHeader(buffer, channels, samplerate, framesize);
 }
 
-void cParserADTS::ParsePayload(unsigned char* payload, int length) {
+int cParserADTS::ParsePayload(unsigned char* payload, int length) {
   int framesize = 0;
 
   if(!ParseAudioHeader(payload, m_channels, m_samplerate, framesize))
-    return;
+    return length;
 
   m_demuxer->SetAudioInformation(m_channels, m_samplerate, 0, 0, 0);
+  return length;
 }

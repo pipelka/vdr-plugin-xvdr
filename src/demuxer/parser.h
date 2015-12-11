@@ -44,7 +44,7 @@ protected:
 
   virtual void SendPayload(unsigned char* payload, int length);
 
-  virtual void ParsePayload(unsigned char* payload, int length);
+  virtual int ParsePayload(unsigned char* payload, int length);
 
   virtual bool CheckAlignmentHeader(unsigned char* buffer, int& framesize);
 

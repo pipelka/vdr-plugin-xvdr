@@ -42,10 +42,10 @@ void cParserPES::Parse(unsigned char *data, int size, bool pusi) {
         m_length = Available();
 
       // parse payload
-      ParsePayload(buffer, m_length);
+      int len = ParsePayload(buffer, m_length);
 
       // send payload data
-      SendPayload(buffer, m_length);
+      SendPayload(buffer, len);
 
       m_curDTS = DVD_NOPTS_VALUE;
       m_curPTS = DVD_NOPTS_VALUE;

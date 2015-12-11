@@ -39,7 +39,7 @@ cParserH265::cParserH265(cTSDemuxer *demuxer) : cParserH264(demuxer)
 {
 }
 
-void cParserH265::ParsePayload(unsigned char* data, int length) {
+int cParserH265::ParsePayload(unsigned char* data, int length) {
   int o = 0;
   int sps_start = -1;
   int nal_len = 0;
@@ -47,14 +47,14 @@ void cParserH265::ParsePayload(unsigned char* data, int length) {
   m_frametype = cStreamInfo::ftUNKNOWN;
 
   if(length < 4) {
-    return;
+    return length;
   }
 
   // iterate through all NAL units
   while((o = FindStartCode(data, length, o, 0x00000001)) >= 0) {
     o += 4;
     if(o >= length)
-      return;
+      return length;
 
     uint8_t nal_type = (data[o] & 0x7E) >> 1;
 
@@ -95,13 +95,13 @@ void cParserH265::ParsePayload(unsigned char* data, int length) {
 
   // exit if we do not have SPS data
   if(sps_start == -1)
-    return;
+    return length;
 
   // extract SPS
   uint8_t* nal_data = ExtractNAL(data, length, sps_start, nal_len);
 
   if(nal_data == NULL) {
-    return;
+    return length;
   }
 
   // register SPS data (decoder specific data)
@@ -115,7 +115,7 @@ void cParserH265::ParsePayload(unsigned char* data, int length) {
   delete[] nal_data;
 
   if(!rc)
-    return;
+    return length;
 
   double PAR = (double)pixelaspect.num/(double)pixelaspect.den;
   double DAR = (PAR * width) / height;
@@ -124,6 +124,7 @@ void cParserH265::ParsePayload(unsigned char* data, int length) {
   m_scale = 1;
   
   m_demuxer->SetVideoInformation(m_scale, m_rate, height, width, DAR, pixelaspect.num, pixelaspect.den);
+  return length;
 }
 
 void cParserH265::skipScalingList(cBitStream& bs) {

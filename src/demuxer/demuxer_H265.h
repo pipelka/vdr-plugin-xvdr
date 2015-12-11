@@ -33,7 +33,7 @@ public:
 
   cParserH265(cTSDemuxer *demuxer);
 
-  void ParsePayload(unsigned char *data, int length);
+  int ParsePayload(unsigned char *data, int length);
 
 private:
 

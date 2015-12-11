@@ -67,7 +67,7 @@ bool cParserLATM::CheckAlignmentHeader(unsigned char* buffer, int& framesize) {
 void cParserLATM::SendPayload(unsigned char* payload, int length) {
 }
 
-void cParserLATM::ParsePayload(unsigned char* data, int len) {
+int cParserLATM::ParsePayload(unsigned char* data, int len) {
   cBitStream bs(data, len * 8);
 
   bs.SkipBits(24); // skip header
@@ -84,10 +84,10 @@ void cParserLATM::ParsePayload(unsigned char* data, int len) {
   } while (tmp == 255);
 
   if (slotLen * 8 > (bs.Length() - (unsigned)bs.Index()))
-    return;
+    return len;
 
   if (m_curDTS == DVD_NOPTS_VALUE)
-    return;
+    return len;
 
   // buffer for converted payload data
   int payloadlength = slotLen + 7;
@@ -122,7 +122,7 @@ void cParserLATM::ParsePayload(unsigned char* data, int len) {
   // free payload buffer
   free(payload);
 
-  return;
+  return len;
 }
 
 void cParserLATM::ReadStreamMuxConfig(cBitStream *bs) {

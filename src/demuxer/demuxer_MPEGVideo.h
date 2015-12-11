@@ -37,7 +37,7 @@ public:
 
 protected:
 
-  void ParsePayload(unsigned char *data, int length);
+  int ParsePayload(unsigned char *data, int length);
 
   void SendPayload(unsigned char* payload, int length);
 

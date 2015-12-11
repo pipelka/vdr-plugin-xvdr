@@ -125,8 +125,8 @@ void cParser::Parse(unsigned char *data, int datasize, bool pusi)
         if(m_curPTS == DVD_NOPTS_VALUE) m_curPTS = PtsAdd(m_lastPTS, m_duration);
         if(m_curDTS == DVD_NOPTS_VALUE) m_curDTS = PtsAdd(m_lastDTS, m_duration);
 
-        ParsePayload(buffer, framesize);
-        SendPayload(buffer, framesize);
+        int length = ParsePayload(buffer, framesize);
+        SendPayload(buffer, length);
 
         // keep last timestamp
         m_lastPTS = m_curPTS;
@@ -156,8 +156,9 @@ void cParser::Parse(unsigned char *data, int datasize, bool pusi)
   PutData(data, datasize, pusi);
 }
 
-void cParser::ParsePayload(unsigned char* payload, int length)
+int cParser::ParsePayload(unsigned char* payload, int length)
 {
+  return length;
 }
 
 int cParser::FindAlignmentOffset(unsigned char* buffer, int buffersize, int o, int& framesize) {

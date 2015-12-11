@@ -34,7 +34,7 @@ public:
 
   cParserH264(cTSDemuxer *demuxer);
 
-  void ParsePayload(unsigned char *data, int length);
+  int ParsePayload(unsigned char *data, int length);
 
 protected:
 
