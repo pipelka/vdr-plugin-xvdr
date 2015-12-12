@@ -114,9 +114,10 @@ public:
   uint16_t AncillaryPageId() const { return m_ancillarypageid; }
 
   /* Decoder specific data */
-  void SetVideoDecoderData(uint8_t* sps, int spsLength, uint8_t* pps, int ppsLength);
+  void SetVideoDecoderData(uint8_t* sps, int spsLength, uint8_t* pps, int ppsLength, uint8_t* vps = NULL, int vpsLength = 0);
   uint8_t* GetVideoDecoderSPS(int& length);
   uint8_t* GetVideoDecoderPPS(int& length);
+  uint8_t* GetVideoDecoderVPS(int& length);
 
 private:
 

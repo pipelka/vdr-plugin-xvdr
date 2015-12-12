@@ -513,6 +513,7 @@ void cLiveStreamer::sendStreamChange()
         break;
 
       case cStreamInfo::scVIDEO:
+        // H265 is supported on protocol version 6 or higher, ...
         resp->put_String(stream->TypeName());
         resp->put_U32(stream->GetFpsScale());
         resp->put_U32(stream->GetFpsRate());
@@ -536,6 +537,13 @@ void cLiveStreamer::sendStreamChange()
           resp->put_U8(length);
           if(pps != NULL) {
             resp->put_Blob(pps, length);
+          }
+
+          // put VPS
+          uint8_t* vps = stream->GetVideoDecoderVPS(length);
+          resp->put_U8(length);
+          if(pps != NULL) {
+            resp->put_Blob(vps, length);
           }
         }
         break;

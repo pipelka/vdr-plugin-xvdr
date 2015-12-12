@@ -56,6 +56,7 @@ public:
     stH264,
     stDVBSUB,
     stTELETEXT,
+    stH265
   };
 
   enum FrameType{

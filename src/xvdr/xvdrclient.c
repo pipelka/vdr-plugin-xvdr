@@ -415,8 +415,8 @@ bool cXVDRClient::IsChannelWanted(cChannel* channel, int type)
   if((type == 1) && !IsRadio(channel))
     return false;
 
-  // HD channels
-  if((type == 2) && (channel->Vtype() != 27))
+  // (U)HD channels
+  if((type == 2) && (channel->Vtype() != 27 && channel->Vtype() != 36))
     return false;
 
   // skip channels witout SID

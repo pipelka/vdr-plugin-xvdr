@@ -1,7 +1,7 @@
 /*
  *      vdr-plugin-xvdr - XVDR server plugin for VDR
  *
- *      Copyright (C) 2012 Alexander Pipelka
+ *      Copyright (C) 2015 Alexander Pipelka
  *
  *      https://github.com/pipelka/vdr-plugin-xvdr
  *
@@ -22,49 +22,28 @@
  *
  */
 
-#ifndef XVDR_DEMUXER_H264_H
-#define XVDR_DEMUXER_H264_H
+#ifndef XVDR_DEMUXER_H265_H
+#define XVDR_DEMUXER_H265_H
 
-#include "demuxer_PES.h"
-#include "vdr/tools.h"
+#include "demuxer_H264.h"
 
-class cParserH264 : public cParserPES
+class cParserH265 : public cParserH264
 {
 public:
 
-  cParserH264(cTSDemuxer *demuxer);
+  cParserH265(cTSDemuxer *demuxer);
 
   void ParsePayload(unsigned char *data, int length);
 
-protected:
-
-  typedef struct {
-    int num;
-    int den;
-  } pixel_aspect_t;
-
-  // pixel aspect ratios
-  static const pixel_aspect_t m_aspect_ratios[17];
-
-  uint8_t* ExtractNAL(uint8_t* packet, int length, int nal_offset, int& nal_len);
-
-  int nalUnescape(uint8_t *dst, const uint8_t *src, int len);
-
-  uint32_t read_golomb_ue(cBitStream* bs);
-
-  int32_t read_golomb_se(cBitStream* bs);
-
-  int m_scale;
-
-  int m_rate;
-
 private:
 
-  bool Parse_SPS(uint8_t *buf, int len, pixel_aspect_t& pixel_aspect, int& width, int& height);
+  void skipScalingList(cBitStream& bs);
+  
+  void skipShortTermRefPicSets(cBitStream& bs);
 
-  void Parse_SLH(uint8_t *buf, int len);
+  bool Parse_SPS(uint8_t *buf, int len, pixel_aspect_t& pixel_aspect, int& width, int& height);
 
 };
 
 
-#endif // XVDR_DEMUXER_H264_H
+#endif // XVDR_DEMUXER_H265_H

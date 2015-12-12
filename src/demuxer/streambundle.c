@@ -100,7 +100,11 @@ cStreamBundle cStreamBundle::FromChannel(const cChannel* channel) {
   int vpid = channel->Vpid();
   int vtype = channel->Vtype();
 
-  item.AddStream(cStreamInfo(vpid, vtype == 0x02 ? cStreamInfo::stMPEG2VIDEO : vtype == 0x1b ? cStreamInfo::stH264 : cStreamInfo::stNONE));
+  item.AddStream(cStreamInfo(vpid, 
+    vtype == 0x02 ? cStreamInfo::stMPEG2VIDEO : 
+    vtype == 0x1b ? cStreamInfo::stH264 : 
+    vtype == 0x24 ? cStreamInfo::stH265 : 
+    cStreamInfo::stNONE));
 
   // add (E)AC3 streams
   for(int i=0; channel->Dpid(i) != 0; i++) {

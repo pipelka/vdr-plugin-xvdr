@@ -34,6 +34,7 @@
 #include "demuxer_ADTS.h"
 #include "demuxer_AC3.h"
 #include "demuxer_H264.h"
+#include "demuxer_H265.h"
 #include "demuxer_MPEGAudio.h"
 #include "demuxer_MPEGVideo.h"
 #include "demuxer_PES.h"
@@ -57,6 +58,8 @@ cParser* cTSDemuxer::CreateParser(cStreamInfo::Type type) {
       return new cParserMPEG2Video(this);
     case stH264:
       return new cParserH264(this);
+    case stH265:
+      return new cParserH265(this);
     case stMPEG2AUDIO:
       return new cParserMPEG2Audio(this);
     case stAAC:
@@ -228,7 +231,7 @@ void cTSDemuxer::SetAudioInformation(int Channels, int SampleRate, int BitRate, 
   m_Streamer->RequestStreamChange();
 }
 
-void cTSDemuxer::SetVideoDecoderData(uint8_t* sps, int spsLength, uint8_t* pps, int ppsLength) {
+void cTSDemuxer::SetVideoDecoderData(uint8_t* sps, int spsLength, uint8_t* pps, int ppsLength, uint8_t* vps, int vpsLength) {
   if(sps != NULL) {
     m_spsLength = spsLength;
     memcpy(m_sps, sps, spsLength);
@@ -237,6 +240,11 @@ void cTSDemuxer::SetVideoDecoderData(uint8_t* sps, int spsLength, uint8_t* pps, 
   if(pps != NULL) {
     m_ppsLength = ppsLength;
     memcpy(m_pps, pps, ppsLength);
+  }
+  
+  if(vps != NULL) {
+    m_vpsLength = vpsLength;
+    memcpy(m_vps, vps, vpsLength);
   }
 }
 
@@ -248,4 +256,9 @@ uint8_t* cTSDemuxer::GetVideoDecoderSPS(int& length) {
 uint8_t* cTSDemuxer::GetVideoDecoderPPS(int& length) {
   length = m_ppsLength;
   return m_ppsLength == 0 ? NULL : m_pps;
+}
+
+uint8_t* cTSDemuxer::GetVideoDecoderVPS(int& length) {
+  length = m_vpsLength;
+  return m_vpsLength == 0 ? NULL : m_vps;
 }

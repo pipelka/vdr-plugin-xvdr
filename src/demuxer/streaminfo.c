@@ -31,7 +31,7 @@ static const char* contentnames[] = {
 };
 
 static const char* typenames[] = {
-  "NONE", "MPEG2AUDIO", "AC3", "EAC3", "AAC", "AAC", "MPEG2VIDEO", "H264", "DVBSUB", "TELETEXT"
+  "NONE", "MPEG2AUDIO", "AC3", "EAC3", "AAC", "AAC", "MPEG2VIDEO", "H264", "DVBSUB", "TELETEXT", "H265"
 };
 
 
@@ -141,7 +141,7 @@ const cStreamInfo::Content cStreamInfo::GetContent(Type type) {
   if(type == stMPEG2AUDIO || type == stAC3 || type == stEAC3  || type == stAAC || type == stLATM) {
     return scAUDIO;
   }
-  else if(type == stMPEG2VIDEO || type == stH264) {
+  else if(type == stMPEG2VIDEO || type == stH264 || type == stH265) {
     return scVIDEO;
   }
   else if(type == stDVBSUB) {
@@ -176,7 +176,7 @@ void cStreamInfo::info() const {
   }
 
   if(m_content == scAUDIO) snprintf(buffer, sizeof(buffer), "%i Hz, %i channels, Lang: %s", m_samplerate, m_channels, m_language);
-  else if (m_content == scVIDEO) snprintf(buffer, sizeof(buffer), "%ix%i DAR: %.2f FPS: %.3f SPS/PPS: %i/%i bytes", m_width, m_height , m_aspect, (double)m_fpsrate / (double)scale, m_spsLength, m_ppsLength);
+  else if (m_content == scVIDEO) snprintf(buffer, sizeof(buffer), "%ix%i DAR: %.2f FPS: %.3f SPS/PPS/VPS: %i/%i/%i bytes", m_width, m_height , m_aspect, (double)m_fpsrate / (double)scale, m_spsLength, m_ppsLength, m_vpsLength);
   else if (m_content == scSUBTITLE) snprintf(buffer, sizeof(buffer), "Lang: %s", m_language);
   else if (m_content == scTELETEXT) snprintf(buffer, sizeof(buffer), "TXT");
   else if (m_content == scNONE) snprintf(buffer, sizeof(buffer), "None");

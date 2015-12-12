@@ -23,14 +23,7 @@
  */
 
 #include "config/config.h"
-#include "vdr/tools.h"
 #include "demuxer_H264.h"
-
-// pixel aspect ratios
-const struct cParserH264::pixel_aspect_t cParserH264::m_aspect_ratios[] = {
-  {0, 1}, { 1,  1}, {12, 11}, {10, 11}, {16, 11}, { 40, 33}, {24, 11}, {20, 11}, {32, 11},
-  {80, 33}, {18, 11}, {15, 11}, {64, 33}, {160, 99}, { 4,  3}, { 3,  2}, { 2,  1}
-};
 
 // H264 profiles
 #define PROFILE_BASELINE  66
@@ -48,8 +41,13 @@ const struct cParserH264::pixel_aspect_t cParserH264::m_aspect_ratios[] = {
 #define NAL_SPS 0x07
 #define NAL_PPS 0x08
 
+const cParserH264::pixel_aspect_t cParserH264::m_aspect_ratios[17] = {
+  {0, 1}, { 1,  1}, {12, 11}, {10, 11}, {16, 11}, { 40, 33}, {24, 11}, {20, 11}, {32, 11},
+  {80, 33}, {18, 11}, {15, 11}, {64, 33}, {160, 99}, { 4,  3}, { 3,  2}, { 2,  1}
+};
+
 // golomb decoding
-uint32_t read_golomb_ue(cBitStream* bs)
+uint32_t cParserH264::read_golomb_ue(cBitStream* bs)
 {
   int leadingZeroBits = -1;
 
@@ -59,7 +57,7 @@ uint32_t read_golomb_ue(cBitStream* bs)
   return ((1 << leadingZeroBits) - 1) + bs->GetBits(leadingZeroBits);
 }
 
-int32_t read_golomb_se(cBitStream* bs)
+int32_t cParserH264::read_golomb_se(cBitStream* bs)
 {
   int32_t v = read_golomb_ue(bs);
   if(v == 0)
@@ -173,7 +171,7 @@ void cParserH264::ParsePayload(unsigned char* data, int length) {
 
   int width = 0;
   int height = 0;
-  struct pixel_aspect_t pixelaspect = { 1, 1 };
+  pixel_aspect_t pixelaspect = { 1, 1 };
 
   bool rc = Parse_SPS(nal_data, nal_len, pixelaspect, width, height);
   delete[] nal_data;
@@ -233,7 +231,7 @@ void cParserH264::Parse_SLH(uint8_t *buf, int len) {
   return;
 }
 
-bool cParserH264::Parse_SPS(uint8_t *buf, int len, struct pixel_aspect_t& pixelaspect, int& width, int& height)
+bool cParserH264::Parse_SPS(uint8_t *buf, int len, pixel_aspect_t& pixelaspect, int& width, int& height)
 {
   bool seq_scaling_matrix_present = false;
   cBitStream bs(buf, len * 8);
@@ -359,7 +357,7 @@ bool cParserH264::Parse_SPS(uint8_t *buf, int len, struct pixel_aspect_t& pixela
         pixelaspect.num = bs.GetBits(16); // sar width
         pixelaspect.den = bs.GetBits(16); // sar height
       }
-      else if (aspect_ratio_idc < sizeof(m_aspect_ratios)/sizeof(struct pixel_aspect_t))
+      else if (aspect_ratio_idc < sizeof(m_aspect_ratios)/sizeof(pixel_aspect_t))
           pixelaspect = m_aspect_ratios[aspect_ratio_idc];
     }
     // overscan info

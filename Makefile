@@ -72,6 +72,7 @@ OBJS = \
 	src/demuxer/demuxer_LATM.o \
 	src/demuxer/demuxer_AC3.o \
 	src/demuxer/demuxer_H264.o \
+	src/demuxer/demuxer_H265.o \
 	src/demuxer/demuxer_MPEGAudio.o \
 	src/demuxer/demuxer_MPEGVideo.o \
 	src/demuxer/demuxer_PES.o \
