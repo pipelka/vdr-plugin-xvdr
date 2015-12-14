@@ -117,6 +117,7 @@
 #define XVDR_STATUS_CHANNELCHANGE    4
 #define XVDR_STATUS_RECORDINGSCHANGE 5
 #define XVDR_STATUS_CHANNELSCAN      6
+#define XVDR_STATUS_CHANNELCHANGED   7
 
 /** Packet return codes */
 #define XVDR_RET_OK              0

@@ -79,7 +79,22 @@ static uint32_t recid2uid(const char* recid)
   return uid;
 }
 
-cString cXVDRClient::CreateServiceReference(cChannel* channel)
+void cXVDRClient::addChannelToPacket(const cChannel* channel, MsgPacket* p) {
+    p->put_U32(channel->Number());
+    p->put_String(m_toUTF8.Convert(channel->Name()));
+    p->put_U32(CreateChannelUID(channel));
+    p->put_U32(channel->Ca());
+
+    // logo url
+    p->put_String((const char*)CreateLogoURL(channel));
+
+    // service reference
+    if(m_protocolVersion > 4) {
+      p->put_String((const char*)CreateServiceReference(channel));
+    }
+}
+
+cString cXVDRClient::CreateServiceReference(const cChannel* channel)
 {
   int hash = 0;
 
@@ -118,7 +133,7 @@ cString cXVDRClient::CreateServiceReference(cChannel* channel)
   return serviceref;
 }
 
-cString cXVDRClient::CreateLogoURL(cChannel* channel)
+cString cXVDRClient::CreateLogoURL(const cChannel* channel)
 {
   const char* url = (const char*)XVDRServerConfig.PiconsURL;
 
@@ -287,11 +302,19 @@ void cXVDRClient::TimerChange(const cTimer *Timer, eTimerChange Change)
 void cXVDRClient::ChannelChange(const cChannel *Channel) {
   cMutexLock lock(&m_streamerLock);
 
-  if(m_Streamer == NULL) {
-    return;
+  INFOLOG("ChannelChange: %i - %s", Channel->Number(), Channel->ShortName());
+
+  if(m_Streamer != NULL) {
+    m_Streamer->ChannelChange(Channel);
   }
 
-  m_Streamer->ChannelChange(Channel);
+  cMutexLock msgLock(&m_msgLock);
+
+  if (m_StatusInterfaceEnabled && m_protocolVersion >= 6) {
+    MsgPacket* resp = new MsgPacket(XVDR_STATUS_CHANNELCHANGED, XVDR_CHANNEL_STATUS);
+    addChannelToPacket(Channel, resp);
+    QueueMessage(resp);
+  }
 }
 
 void cXVDRClient::TimerChange()

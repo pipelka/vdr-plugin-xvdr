@@ -126,8 +126,9 @@ private:
   void PutTimer(cTimer* timer, MsgPacket* p);
   bool IsChannelWanted(cChannel* channel, int type = 0);
   int  ChannelsCount();
-  cString CreateLogoURL(cChannel* channel);
-  cString CreateServiceReference(cChannel* channel);
+  cString CreateLogoURL(const cChannel* channel);
+  cString CreateServiceReference(const cChannel* channel);
+  void addChannelToPacket(const cChannel*, MsgPacket*);
 
   bool process_Login();
   bool process_GetTime();
