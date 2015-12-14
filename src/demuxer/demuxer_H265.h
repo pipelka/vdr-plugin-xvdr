@@ -38,7 +38,7 @@ public:
 private:
 
   void skipScalingList(cBitStream& bs);
-  
+
   void skipShortTermRefPicSets(cBitStream& bs);
 
   bool Parse_SPS(uint8_t *buf, int len, pixel_aspect_t& pixel_aspect, int& width, int& height);

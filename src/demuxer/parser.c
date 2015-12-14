@@ -187,7 +187,7 @@ int cParser::FindStartCode(unsigned char* buffer, int buffersize, int offset, ui
 
     sc = (sc << 8) | buffer[offset++];
 
-    if(sc == startcode)
+    if((uint32_t)(sc & mask) == startcode)
       return offset - 4;
   }
 

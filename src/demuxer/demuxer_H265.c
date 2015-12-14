@@ -32,6 +32,8 @@
 #define VPS_NUT  32
 #define SPS_NUT  33
 #define PPS_NUT  34
+#define AUD_NUT  35
+
 #define PREFIX_SEI_NUT 39
 #define SUFFIX_SEI_NUT 40
 
@@ -51,7 +53,7 @@ int cParserH265::ParsePayload(unsigned char* data, int length) {
   }
 
   // iterate through all NAL units
-  while((o = FindStartCode(data, length, o, 0x00000001)) >= 0) {
+  while((o = FindStartCode(data, length, o, 0x00000001, 0x00FFFFFF)) >= 0) {
     o += 4;
     if(o >= length)
       return length;
@@ -62,12 +64,12 @@ int cParserH265::ParsePayload(unsigned char* data, int length) {
     if(nal_type >= BLA_W_LP && nal_type <= CRA_NUT) {
       m_frametype = cStreamInfo::ftIFRAME;
     }
-    
+
     // PPS_NUT
     if(nal_type == PPS_NUT && length - o > 1) {
       o++;
       uint8_t* pps_data = ExtractNAL(data, length, o, nal_len);
-      
+
       if(pps_data != NULL) {
         m_demuxer->SetVideoDecoderData(NULL, 0, pps_data, nal_len);
         delete[] pps_data;
@@ -78,7 +80,7 @@ int cParserH265::ParsePayload(unsigned char* data, int length) {
     else if(nal_type == VPS_NUT && length - o > 1) {
       o++;
       uint8_t* vps_data = ExtractNAL(data, length, o, nal_len);
-      
+
       if(vps_data != NULL) {
         m_demuxer->SetVideoDecoderData(NULL, 0, NULL, 0, vps_data, nal_len);
         delete[] vps_data;
@@ -90,7 +92,6 @@ int cParserH265::ParsePayload(unsigned char* data, int length) {
       o++;
       sps_start = o;
     }
-
   }
 
   // exit if we do not have SPS data
@@ -122,7 +123,7 @@ int cParserH265::ParsePayload(unsigned char* data, int length) {
 
   m_rate = 50;
   m_scale = 1;
-  
+
   m_demuxer->SetVideoInformation(m_scale, m_rate, height, width, DAR, pixelaspect.num, pixelaspect.den);
   return length;
 }
