@@ -9,6 +9,10 @@
 class cDemuxerBundle : public std::list<cTSDemuxer*> {
 public:
 
+  cDemuxerBundle(cTSDemuxer::Listener* listener);
+  
+  virtual ~cDemuxerBundle();
+  
   void clear();
 
   cTSDemuxer* findDemuxer(int pid);
@@ -17,7 +21,13 @@ public:
 
   bool isReady();
 
-  void updateFrom(cStreamBundle* bundle, cTSDemuxer::Listener* listener);
+  void updateFrom(cStreamBundle* bundle);
+  
+  bool processTsPacket(uint8_t* packet);
+
+protected:
+  
+  cTSDemuxer::Listener* m_listener = NULL;
 
 };
 

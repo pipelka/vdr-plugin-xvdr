@@ -2,6 +2,15 @@
 #include "demuxerbundle.h"
 
 #include <map>
+#include <vdr/remux.h>
+
+cDemuxerBundle::cDemuxerBundle(cTSDemuxer::Listener* listener) : m_listener(listener) {
+}
+
+cDemuxerBundle::~cDemuxerBundle() {
+    clear();
+}
+
 
 void cDemuxerBundle::clear() {
   for (auto i = begin(); i != end(); i++) {
@@ -110,7 +119,7 @@ bool cDemuxerBundle::isReady() {
   return true;
 }
 
-void cDemuxerBundle::updateFrom(cStreamBundle* bundle, cTSDemuxer::Listener* listener) {
+void cDemuxerBundle::updateFrom(cStreamBundle* bundle) {
   cStreamBundle old;
 
   // remove old demuxers
@@ -131,9 +140,20 @@ void cDemuxerBundle::updateFrom(cStreamBundle* bundle, cTSDemuxer::Listener* lis
       infonew = infoold;
     }
 
-    cTSDemuxer* dmx = new cTSDemuxer(listener, infonew);
+    cTSDemuxer* dmx = new cTSDemuxer(m_listener, infonew);
     if (dmx != NULL) {
       push_back(dmx);
     }
   }
+}
+
+bool cDemuxerBundle::processTsPacket(uint8_t* packet) {
+  unsigned int ts_pid = TsPid(packet);
+  cTSDemuxer* demuxer = findDemuxer(ts_pid);
+
+  if(demuxer == NULL) {
+    return false;
+  }
+
+  return demuxer->ProcessTSPacket(packet);
 }

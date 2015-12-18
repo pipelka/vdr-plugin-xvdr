@@ -93,6 +93,62 @@ bool cStreamBundle::contains(const cStreamInfo& s) const {
   return (i->second == s);
 }
 
+cStreamBundle cStreamBundle::FromPatPmt(const cPatPmtParser* patpmt) {
+  cStreamBundle item;
+  int patVersion = 0;
+  int pmtVersion = 0;
+  
+  if(!patpmt->GetVersions(patVersion, pmtVersion)) {
+    return item;
+  }
+  
+  // add video stream
+  int vpid = patpmt->Vpid();
+  int vtype = patpmt->Vtype();
+
+  item.AddStream(cStreamInfo(vpid, 
+    vtype == 0x02 ? cStreamInfo::stMPEG2VIDEO : 
+    vtype == 0x1b ? cStreamInfo::stH264 : 
+    vtype == 0x24 ? cStreamInfo::stH265 : 
+    cStreamInfo::stNONE));
+
+  // add (E)AC3 streams
+  for(int i=0; patpmt->Dpid(i) != 0; i++) {
+    int dtype = patpmt->Dtype(i);
+    item.AddStream(cStreamInfo(patpmt->Dpid(i), 
+      dtype == 0x6A ? cStreamInfo::stAC3 :
+      dtype == 0x7A ? cStreamInfo::stEAC3 :
+      cStreamInfo::stNONE,
+      patpmt->Dlang(i)));
+  }
+
+  // add audio streams
+  for(int i=0; patpmt->Apid(i) != 0; i++) {
+    int atype = patpmt->Atype(i);
+    item.AddStream(cStreamInfo(patpmt->Apid(i), 
+      atype == 0x04 ? cStreamInfo::stMPEG2AUDIO :
+      atype == 0x03 ? cStreamInfo::stMPEG2AUDIO :
+      atype == 0x0f ? cStreamInfo::stAAC :
+      atype == 0x11 ? cStreamInfo::stLATM :
+      cStreamInfo::stNONE,
+      patpmt->Alang(i)));
+  }
+
+  // add subtitle streams
+  for(int i=0; patpmt->Spid(i) != 0; i++) {
+   cStreamInfo stream(patpmt->Spid(i), cStreamInfo::stDVBSUB, patpmt->Slang(i));
+
+   stream.SetSubtitlingDescriptor(
+     patpmt->SubtitlingType(i),
+     patpmt->CompositionPageId(i),
+     patpmt->AncillaryPageId(i));
+
+   item.AddStream(stream);
+  }
+
+  return item;
+}
+
 cStreamBundle cStreamBundle::FromChannel(const cChannel* channel) {
   cStreamBundle item;
 

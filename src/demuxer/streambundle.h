@@ -27,6 +27,7 @@
 
 #include "demuxer/streaminfo.h"
 #include "vdr/channels.h"
+#include "vdr/remux.h"
 #include <map>
 
 class cStreamBundle : public std::map<int, cStreamInfo> {
@@ -47,6 +48,8 @@ public:
   bool IsParsed();
 
   static cStreamBundle FromChannel(const cChannel* channel);
+
+  static cStreamBundle FromPatPmt(const cPatPmtParser* patpmt);
 
 private:
 

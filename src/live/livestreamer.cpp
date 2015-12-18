@@ -53,6 +53,7 @@ cLiveStreamer::cLiveStreamer(cXVDRClient* parent, const cChannel *channel, int p
  : cThread("cLiveStreamer stream processor")
  , cRingBufferLinear(MEGABYTE(10), TS_SIZE * 2, true)
  , cReceiver(NULL, priority)
+ , m_Demuxers(this)
  , m_scanTimeout(10)
  , m_parent(parent)
 {
@@ -227,15 +228,7 @@ void cLiveStreamer::Action(void)
       if (buf[0] != TS_SYNC_BYTE)
         break;
 
-      unsigned int ts_pid = TsPid(buf);
-
-      {
-        cMutexLock lock(&m_FilterMutex);
-        cTSDemuxer *demuxer = m_Demuxers.findDemuxer(ts_pid);
-
-        if (demuxer)
-          demuxer->ProcessTSPacket(buf);
-      }
+      m_Demuxers.processTsPacket(buf);
 
       buf += TS_SIZE;
       size -= TS_SIZE;
@@ -711,7 +704,7 @@ void cLiveStreamer::ChannelChange(const cChannel* channel) {
 
 void cLiveStreamer::CreateDemuxers(cStreamBundle* bundle) {
   // update demuxers
-  m_Demuxers.updateFrom(bundle, this);
+  m_Demuxers.updateFrom(bundle);
 
   // update pids
   SetPids(NULL);
