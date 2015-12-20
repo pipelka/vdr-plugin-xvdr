@@ -87,6 +87,7 @@ OBJS = \
 	src/net/msgpacket.o \
 	src/net/os-config.o \
 	src/recordings/recordingscache.o \
+	src/recordings/packetplayer.o \
 	src/recordings/recplayer.o \
 	src/scanner/wirbelscan.o \
 	src/tools/hash.o \

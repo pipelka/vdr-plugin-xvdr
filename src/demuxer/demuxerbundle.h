@@ -3,6 +3,8 @@
 
 #include "demuxer/demuxer.h"
 #include "demuxer/streambundle.h"
+#include "net/msgpacket.h"
+#include "xvdr/xvdrcommand.h"
 
 #include <list>
 
@@ -25,6 +27,8 @@ public:
   
   bool processTsPacket(uint8_t* packet);
 
+  MsgPacket* createStreamChangePacket(int protocolVersion = XVDR_PROTOCOLVERSION);
+  
 protected:
   
   cTSDemuxer::Listener* m_listener = NULL;

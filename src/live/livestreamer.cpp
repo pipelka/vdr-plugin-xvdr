@@ -449,8 +449,6 @@ void cLiveStreamer::sendDetach() {
 
 void cLiveStreamer::sendStreamChange()
 {
-  MsgPacket* resp = new MsgPacket(XVDR_STREAM_CHANGE, XVDR_CHANNEL_STREAM);
-
   DEBUGLOG("sendStreamChange");
 
   cStreamBundle cache;
@@ -461,90 +459,12 @@ void cLiveStreamer::sendStreamChange()
   }
   cChannelCache::AddToCache(m_uid, cache);
 
-  m_FilterMutex.Lock();
-
   // reorder streams as preferred
   m_Demuxers.reorderStreams(m_LanguageIndex, m_LangStreamType);
 
-  for (auto idx = m_Demuxers.begin(); idx != m_Demuxers.end(); idx++)
-  {
-    cTSDemuxer* stream = (*idx);
-
-    if (stream == NULL)
-      continue;
-
-    int streamid = stream->GetPID();
-    resp->put_U32(streamid);
-
-    switch(stream->GetContent())
-    {
-      case cStreamInfo::scAUDIO:
-        resp->put_String(stream->TypeName());
-        resp->put_String(stream->GetLanguage());
-        if(m_protocolVersion >= 5) {
-          resp->put_U32(stream->GetChannels());
-          resp->put_U32(stream->GetSampleRate());
-          resp->put_U32(stream->GetBlockAlign());
-          resp->put_U32(stream->GetBitRate());
-          resp->put_U32(stream->GetBitsPerSample());
-        }
-        break;
-
-      case cStreamInfo::scVIDEO:
-        // H265 is supported on protocol version 6 or higher, ...
-        resp->put_String(stream->TypeName());
-        resp->put_U32(stream->GetFpsScale());
-        resp->put_U32(stream->GetFpsRate());
-        resp->put_U32(stream->GetHeight());
-        resp->put_U32(stream->GetWidth());
-        resp->put_S64(stream->GetAspect() * 10000.0);
-
-        // send decoder specific data SPS / PPS / VPS ... (Protocol Version 6)
-        if(m_protocolVersion >= 6) {
-          int length = 0;
-
-          // put SPS
-          uint8_t* sps = stream->GetVideoDecoderSPS(length);
-          resp->put_U8(length);
-          if(sps != NULL) {
-            resp->put_Blob(sps, length);
-          }
-
-          // put PPS
-          uint8_t* pps = stream->GetVideoDecoderPPS(length);
-          resp->put_U8(length);
-          if(pps != NULL) {
-            resp->put_Blob(pps, length);
-          }
-
-          // put VPS
-          uint8_t* vps = stream->GetVideoDecoderVPS(length);
-          resp->put_U8(length);
-          if(pps != NULL) {
-            resp->put_Blob(vps, length);
-          }
-        }
-        break;
-
-      case cStreamInfo::scSUBTITLE:
-        resp->put_String(stream->TypeName());
-        resp->put_String(stream->GetLanguage());
-        resp->put_U32(stream->CompositionPageId());
-        resp->put_U32(stream->AncillaryPageId());
-        break;
-
-      case cStreamInfo::scTELETEXT:
-        resp->put_String(stream->TypeName());
-        break;
-
-      default:
-        break;
-    }
-  }
-
-  m_FilterMutex.Unlock();
-
+  MsgPacket* resp = m_Demuxers.createStreamChangePacket(m_protocolVersion);
   m_Queue->Add(resp, cStreamInfo::scSTREAMINFO);
+
   m_requestStreamChange = false;
 }
 
