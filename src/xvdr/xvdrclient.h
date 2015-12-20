@@ -44,7 +44,7 @@ class cChannel;
 class cDevice;
 class cLiveStreamer;
 class MsgPacket;
-class cRecPlayer;
+class cPacketPlayer;
 class cCmdControl;
 
 class cXVDRClient : public cThread
@@ -57,7 +57,7 @@ private:
   bool              m_loggedIn;
   bool              m_StatusInterfaceEnabled;
   cLiveStreamer    *m_Streamer;
-  cRecPlayer       *m_RecPlayer;
+  cPacketPlayer    *m_RecPlayer;
   MsgPacket        *m_req;
   MsgPacket        *m_resp;
   cCharSetConv      m_toUTF8;
@@ -145,6 +145,7 @@ private:
   bool processRecStream_Open();
   bool processRecStream_Close();
   bool processRecStream_GetBlock();
+  bool processRecStream_GetPacket();
   bool processRecStream_Update();
 
   bool processCHANNELS_GroupsCount();

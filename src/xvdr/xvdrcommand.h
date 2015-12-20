@@ -59,6 +59,7 @@
 #define XVDR_RECSTREAM_CLOSE       41
 #define XVDR_RECSTREAM_GETBLOCK    42
 #define XVDR_RECSTREAM_UPDATE      46
+#define XVDR_RECSTREAM_GETPACKET   47
 
 /* OPCODE 60 - 79: XVDR network functions for channel access */
 #define XVDR_CHANNELS_GETCOUNT     61

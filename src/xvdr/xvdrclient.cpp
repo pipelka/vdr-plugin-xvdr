@@ -45,7 +45,7 @@
 #include "live/livestreamer.h"
 #include "net/msgpacket.h"
 #include "recordings/recordingscache.h"
-#include "recordings/recplayer.h"
+#include "recordings/packetplayer.h"
 #include "tools/hash.h"
 #include "tools/urlencode.h"
 
@@ -576,6 +576,10 @@ bool cXVDRClient::processRequest()
       result = processRecStream_GetBlock();
       break;
 
+    case XVDR_RECSTREAM_GETPACKET:
+      result = processRecStream_GetPacket();
+      break;
+
     case XVDR_RECSTREAM_UPDATE:
       result = processRecStream_Update();
       break;
@@ -950,17 +954,17 @@ bool cXVDRClient::processRecStream_Open() /* OPCODE 40 */
 
   if (recording && m_RecPlayer == NULL)
   {
-    m_RecPlayer = new cRecPlayer(recording);
+    m_RecPlayer = new cPacketPlayer(recording);
 
     m_resp->put_U32(XVDR_RET_OK);
     m_resp->put_U32(0);
     m_resp->put_U64(m_RecPlayer->getLengthBytes());
-
 #if VDRVERSNUM < 10703
     m_resp->put_U8(true);//added for TS
 #else
     m_resp->put_U8(recording->IsPesRecording());//added for TS
 #endif
+    m_resp->put_U32(recording->LengthInSeconds());
   }
   else
   {
@@ -1013,6 +1017,20 @@ bool cXVDRClient::processRecStream_GetBlock() /* OPCODE 42 */
   // smaller chunk ?
   if(amountReceived < amount)
     m_resp->unreserve(amount - amountReceived);
+
+  return true;
+}
+
+bool cXVDRClient::processRecStream_GetPacket() {
+  if (!m_RecPlayer) {
+    ERRORLOG("Get packet called when no recording open");
+    return false;
+  }
+
+  MsgPacket* p = m_RecPlayer->getPacket();
+  if(p != NULL) {
+    QueueMessage(p);
+  }
 
   return true;
 }
@@ -1626,21 +1644,20 @@ bool cXVDRClient::processRECORDINGS_Rename() /* OPCODE 103 */
 
     // replace spaces in newtitle
     strreplace((char*)newtitle, ' ', '_');
-    char* filename_new = new char[512];
+    char filename_new[512];
     strncpy(filename_new, filename_old, 512);
     sep = strrchr(filename_new, '/');
     if(sep != NULL) {
       sep++;
       *sep = 0;
     }
-    strncat(filename_new, newtitle, 512);
+    strncat(filename_new, newtitle, sizeof(filename_new) - 1);
 
     INFOLOG("renaming recording '%s' to '%s'", filename_old, filename_new);
     r = rename(filename_old, filename_new);
     Recordings.Update();
 
     free(filename_old);
-    delete[] filename_new;
   }
 
   m_resp->put_U32(r);
