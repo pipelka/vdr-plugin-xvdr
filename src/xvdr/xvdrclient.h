@@ -147,6 +147,7 @@ private:
   bool processRecStream_GetBlock();
   bool processRecStream_GetPacket();
   bool processRecStream_Update();
+  bool processRecStream_Seek();
 
   bool processCHANNELS_GroupsCount();
   bool processCHANNELS_ChannelsCount();

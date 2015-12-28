@@ -584,7 +584,11 @@ bool cXVDRClient::processRequest()
       result = processRecStream_Update();
       break;
 
+    case XVDR_RECSTREAM_SEEK:
+      result = processRecStream_Seek();
+      break;
 
+      
     /** OPCODE 60 - 79: XVDR network functions for channel access */
     case XVDR_CHANNELS_GETCOUNT:
       result = processCHANNELS_ChannelsCount();
@@ -1023,7 +1027,6 @@ bool cXVDRClient::processRecStream_GetBlock() /* OPCODE 42 */
 
 bool cXVDRClient::processRecStream_GetPacket() {
   if (!m_RecPlayer) {
-    ERRORLOG("Get packet called when no recording open");
     return false;
   }
 
@@ -1031,6 +1034,17 @@ bool cXVDRClient::processRecStream_GetPacket() {
   if(p != NULL) {
     QueueMessage(p);
   }
+
+  return true;
+}
+
+bool cXVDRClient::processRecStream_Seek() {
+  if (!m_RecPlayer) {
+    return false;
+  }
+
+  uint64_t position = m_req->get_U64();
+  m_RecPlayer->seek(position);
 
   return true;
 }
