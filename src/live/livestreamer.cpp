@@ -51,7 +51,7 @@
 
 cLiveStreamer::cLiveStreamer(cXVDRClient* parent, const cChannel *channel, int priority, bool rawPTS)
  : cThread("cLiveStreamer stream processor")
- , cRingBufferLinear(MEGABYTE(10), TS_SIZE * 2, true)
+ , cRingBufferLinear(MEGABYTE(10), TS_SIZE, true)
  , cReceiver(NULL, priority)
  , m_Demuxers(this)
  , m_scanTimeout(10)
@@ -180,20 +180,16 @@ void cLiveStreamer::Action(void)
 
   INFOLOG("streamer thread started.");
 
-  while (Running())
-  {
+  while (Running()) {
     size = 0;
     buf = Get(size);
 
     // try to switch channel if we aren't attached yet
-    {
-      if (!IsAttached()) {
-        TryChannelSwitch();
-      }
+    if (!IsAttached()) {
+      TryChannelSwitch();
     }
 
-    if(!IsStarting() && (m_last_tick.Elapsed() > (uint64_t)(m_scanTimeout*1000)) && !m_SignalLost)
-    {
+    if(!IsStarting() && (m_last_tick.Elapsed() > (uint64_t)(m_scanTimeout*1000)) && !m_SignalLost) {
       INFOLOG("timeout. signal lost!");
       sendStatus(XVDR_STREAM_STATUS_SIGNALLOST);
       m_SignalLost = true;
@@ -203,30 +199,15 @@ void cLiveStreamer::Action(void)
       }
     }
 
-    // no data
-    if (buf == NULL || size <= TS_SIZE)
+    // not enough data
+    if (buf == NULL) {
       continue;
-
-    // Sync to TS packet
-    int used = 0;
-    while (size > TS_SIZE)
-    {
-      if (buf[0] == TS_SYNC_BYTE && buf[TS_SIZE] == TS_SYNC_BYTE)
-        break;
-      used++;
-      buf++;
-      size--;
     }
-    Del(used);
 
-    while (size >= TS_SIZE)
-    {
-      if(!Running())
+    while (size >= TS_SIZE) {
+      if(!Running()) {
         break;
-
-      // TS packet sync not found !
-      if (buf[0] != TS_SYNC_BYTE)
-        break;
+      }
 
       m_Demuxers.processTsPacket(buf);
 
