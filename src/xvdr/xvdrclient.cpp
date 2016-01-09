@@ -677,8 +677,15 @@ bool cXVDRClient::processRequest()
       result = processRECORDINGS_GetMarks();
       break;
 
+    case XVDR_ARTWORK_GET:
+      result = processArtwork_Get();
+      break;
 
-    /** OPCODE 120 - 139: XVDR network functions for epg access and manipulating */
+    case XVDR_ARTWORK_SET:
+      result = processArtwork_Set();
+      break;
+
+      /** OPCODE 120 - 139: XVDR network functions for epg access and manipulating */
     case XVDR_EPG_GETFORCHANNEL:
       result = processEPG_GetForChannel();
       break;
@@ -1753,6 +1760,37 @@ bool cXVDRClient::processRECORDINGS_SetUrls()
   return true;
 }
 
+bool cXVDRClient::processArtwork_Get() {
+  const char* title = m_req->get_String();
+  uint32_t content = m_req->get_U32();
+  
+  std::string poster;
+  std::string background;
+  
+  if(!m_artwork.get(content, title, poster, background)) {
+    poster = "x";
+    background = "x";
+  }
+  
+  m_resp->put_String(poster.c_str());
+  m_resp->put_String(background.c_str());
+  m_resp->put_U32(0); // TODO - externalId
+  
+  return true;
+}
+
+bool cXVDRClient::processArtwork_Set() {
+  const char* title = m_req->get_String();
+  uint32_t content = m_req->get_U32();
+  const char* poster = m_req->get_String();
+  const char* background = m_req->get_String();
+  uint32_t externalId = m_req->get_U32();
+  
+  INFOLOG("set artwork: %s (%i): %s", title, content, background);
+  m_artwork.set(content, title, poster, background, externalId);
+  return true;
+}
+
 bool cXVDRClient::processRECORDINGS_GetPosition()
 {
   const char* recid = m_req->get_String();
@@ -1911,6 +1949,21 @@ bool cXVDRClient::processEPG_GetForChannel() /* OPCODE 120 */
     m_resp->put_String(m_toUTF8.Convert(thisEventTitle));
     m_resp->put_String(m_toUTF8.Convert(thisEventSubTitle));
     m_resp->put_String(m_toUTF8.Convert(thisEventDescription));
+
+    // add epg artwork
+    if(m_protocolVersion >= 6) {
+      std::string posterUrl;
+      std::string backgroundUrl;
+      
+      if(m_artwork.get(thisEventContent, m_toUTF8.Convert(thisEventTitle), posterUrl, backgroundUrl)) {
+        m_resp->put_String(posterUrl.c_str());
+        m_resp->put_String(backgroundUrl.c_str());
+      }
+      else {
+        m_resp->put_String("x");
+        m_resp->put_String("x");
+      }
+    }
 
     atLeastOneEvent = true;
   }

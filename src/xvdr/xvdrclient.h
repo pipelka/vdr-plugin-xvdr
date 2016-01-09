@@ -39,6 +39,7 @@
 
 #include "demuxer/streaminfo.h"
 #include "scanner/wirbelscan.h"
+#include "recordings/artwork.h"
 
 class cChannel;
 class cDevice;
@@ -75,7 +76,8 @@ private:
   cWirbelScan       m_scanner;
   bool              m_scanSupported;
   std::string       m_clientName;
-
+  cArtwork          m_artwork;
+  
   std::queue<MsgPacket*> m_queue;
   cMutex                 m_queueLock;
 
@@ -177,6 +179,9 @@ private:
   bool processRECORDINGS_GetMarks();
   bool processRECORDINGS_SetUrls();
 
+  bool processArtwork_Get();
+  bool processArtwork_Set();
+  
   bool processEPG_GetForChannel();
 
   bool processSCAN_ScanSupported();

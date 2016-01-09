@@ -86,6 +86,7 @@ OBJS = \
 	src/live/livestreamer.o \
 	src/net/msgpacket.o \
 	src/net/os-config.o \
+	src/recordings/artwork.o \
 	src/recordings/recordingscache.o \
 	src/recordings/packetplayer.o \
 	src/recordings/recplayer.o \

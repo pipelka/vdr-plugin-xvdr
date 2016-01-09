@@ -89,6 +89,9 @@
 #define XVDR_RECORDINGS_GETMARKS     108
 #define XVDR_RECORDINGS_SETURLS      109
 
+#define XVDR_ARTWORK_SET             110
+#define XVDR_ARTWORK_GET             111
+
 /* OPCODE 120 - 139: XVDR network functions for epg access and manipulating */
 #define XVDR_EPG_GETFORCHANNEL     120
 
