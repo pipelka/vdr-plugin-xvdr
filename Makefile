@@ -26,7 +26,7 @@ TMPDIR ?= /tmp
 
 ### The SQLITE compile options:
 
-export SQLITE_CFLAGS = -DHAVE_USLEEP -DSQLITE_THREADSAFE=1 -DSQLITE_ENABLE_FTS3 -DSQLITE_ENABLE_FTS3_PARENTHESIS -DSQLITE_ENABLE_ICU
+export SQLITE_CFLAGS = -DHAVE_USLEEP -DSQLITE_THREADSAFE=1 -DSQLITE_ENABLE_FTS3 -DSQLITE_ENABLE_FTS3_PARENTHESIS
 
 ### The compiler options:
 
@@ -99,8 +99,7 @@ OBJS = \
 	src/xvdr/xvdrserver.o \
 	src/xvdr/xvdrchannels.o
 
-LIBS = \
-	-licui18n -licuuc
+LIBS =
 
 ### The main target:
 
