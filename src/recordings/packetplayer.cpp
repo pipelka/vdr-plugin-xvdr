@@ -36,7 +36,7 @@ cPacketPlayer::~cPacketPlayer() {
 
 void cPacketPlayer::sendStreamPacket(sStreamPacket* p) {
   // check if we've got a key frame
-  if(p->frametype == cStreamInfo::ftIFRAME && !m_firstKeyFrameSeen) {
+  if(p->content == cStreamInfo::scVIDEO && p->frametype == cStreamInfo::ftIFRAME && !m_firstKeyFrameSeen) {
     INFOLOG("got first key frame");
     m_firstKeyFrameSeen = true;
   }
@@ -65,8 +65,8 @@ void cPacketPlayer::sendStreamPacket(sStreamPacket* p) {
   packet->put_Blob(p->data, p->size);
   packet->put_U64(m_position);
   packet->put_U64(m_totalLength);
-  
-  m_queue.push(packet);
+
+  m_queue.push_back(packet);
 }
 
 void cPacketPlayer::RequestStreamChange() {
@@ -78,7 +78,7 @@ MsgPacket* cPacketPlayer::getNextPacket() {
   int pmtVersion = 0;
   int patVersion = 0;
   
-  int packet_count = 20;
+  int packet_count = 1;
   int packet_size = TS_SIZE * packet_count;
 
   unsigned char buffer[packet_size];
@@ -113,9 +113,14 @@ MsgPacket* cPacketPlayer::getNextPacket() {
     m_demuxers.processTsPacket(p);
     p += TS_SIZE;
   }
-  
+
   // stream change needed / requested
-  if(m_requestStreamChange && m_parser.GetVersions(patVersion, pmtVersion)) {   
+  if(m_requestStreamChange) {
+    // first we need valid PAT/PMT
+    if(!m_parser.GetVersions(patVersion, pmtVersion)) {
+      return NULL;
+    }
+
     // demuxers need to be ready
     if(!m_demuxers.isReady()) {
       return NULL;
@@ -130,26 +135,26 @@ MsgPacket* cPacketPlayer::getNextPacket() {
     m_requestStreamChange = false;
     return m_demuxers.createStreamChangePacket();
   }
-  
+
   // get next packet from queue (if any)
   if(m_queue.size() == 0) {
     return NULL;
   }
   
   MsgPacket* packet = m_queue.front();
-  m_queue.pop();
-  
+  m_queue.pop_front();
+
   return packet;
 }
 
 MsgPacket* cPacketPlayer::getPacket() {
   MsgPacket* p = NULL;
-  
+
   // process data until the next packet drops out
   while(p == NULL && m_position < m_totalLength) {
     p = getNextPacket();
   }
-  
+
   return p;
 }
 
@@ -158,31 +163,64 @@ void cPacketPlayer::clearQueue() {
 
   while(m_queue.size() > 0) {
     p = m_queue.front();
-    m_queue.pop();
+    m_queue.pop_front();
     delete p;
   }
 }
 
-bool cPacketPlayer::seek(uint64_t position) {
+void cPacketPlayer::reset() {
+  // reset parser
+  m_parser.Reset();
+  m_demuxers.clear();
+  m_requestStreamChange = true;
+  m_firstKeyFrameSeen = false;
+  m_patVersion = -1;
+  m_pmtVersion = -1;
+
+  // remove pending packets
+  clearQueue();
+}
+
+int64_t cPacketPlayer::seek(uint64_t position) {
   // adujst position to TS packet borders
   m_position = (position / TS_SIZE) * TS_SIZE;
-  
+
   // invalid position ?
   if(m_position >= m_totalLength) {
-    return false;
+    return -1;
   }
 
   INFOLOG("seek: %llu / %llu", m_position, m_totalLength);
 
   // reset parser
-  m_parser.Reset();
-  m_requestStreamChange = true;
-  m_firstKeyFrameSeen = false;
-  m_patVersion = -1;
-  m_pmtVersion = -1;
+  reset();
   
-  // remove pending packets
-  clearQueue();
+  // first check for next video packet (PTS) after seek
+  MsgPacket* p = NULL;
 
-  return true;
+  for(;;) {
+    p = getPacket();
+
+    // exit if we have no more packets
+    if(p == NULL) {
+      return -1;
+    }
+
+    // check for video pid
+    if(p->get_U16() == m_parser.Vpid()) {
+      break;
+    }
+
+    // delete packet
+    delete p;
+  }
+
+  // get PTS of video packet
+  int64_t pts = p->get_U64();
+
+    // reset again
+  reset();
+  m_position = (position / TS_SIZE) * TS_SIZE;
+
+  return pts;
 }

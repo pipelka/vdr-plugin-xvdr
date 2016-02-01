@@ -31,7 +31,7 @@
 #include "net/msgpacket.h"
 
 #include "vdr/remux.h"
-#include <queue>
+#include <deque>
 
 class cPacketPlayer : public cRecPlayer, protected cTSDemuxer::Listener {
 public:
@@ -41,19 +41,21 @@ public:
   virtual ~cPacketPlayer();
 
   MsgPacket* getPacket();
-  
-  bool seek(uint64_t position);
-  
+
+  int64_t seek(uint64_t position);
+
 protected:
-  
+
   MsgPacket* getNextPacket();
-  
+
   void sendStreamPacket(sStreamPacket* p);
 
   void RequestStreamChange();
 
   void clearQueue();
-  
+
+  void reset();
+
 private:
 
   cPatPmtParser m_parser;
@@ -63,15 +65,15 @@ private:
   uint64_t m_position = 0;
 
   bool m_requestStreamChange;
-  
+
   bool m_firstKeyFrameSeen;
-  
+
   int m_patVersion = -1;
-  
+
   int m_pmtVersion = -1;
 
-  std::queue<MsgPacket*> m_queue;
-  
+  std::deque<MsgPacket*> m_queue;
+
 };
 
 #endif	// XVDR_PACKETPLAYER_H

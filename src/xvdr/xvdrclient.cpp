@@ -1038,9 +1038,20 @@ bool cXVDRClient::processRecStream_GetPacket() {
   }
 
   MsgPacket* p = m_RecPlayer->getPacket();
-  if(p != NULL) {
-    QueueMessage(p);
+  if(p == NULL) {
+    return true;
   }
+
+  QueueMessage(p);
+
+  // taint response packet
+  /*p->setType(m_req->getType());
+  p->setUID(m_req->getUID());
+  p->setProtocolVersion(XVDR_PROTOCOLVERSION);
+
+  // inject new response
+  delete m_resp;
+  m_resp = p;*/
 
   return true;
 }
@@ -1051,7 +1062,9 @@ bool cXVDRClient::processRecStream_Seek() {
   }
 
   uint64_t position = m_req->get_U64();
-  m_RecPlayer->seek(position);
+  int64_t pts = m_RecPlayer->seek(position);
+
+  m_resp->put_U64(pts);
 
   return true;
 }
