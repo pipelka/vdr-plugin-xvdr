@@ -76,3 +76,10 @@ bool cArtwork::set(int contentType, const std::string& title, const std::string&
     contentType,
     title.c_str()) == SQLITE_OK;
 }
+
+void cArtwork::cleanup(int afterDays) {
+  m_storage.Exec(
+    "DELETE FROM artwork WHERE julianday('now') - julianday(timestamp) > %i AND backgroundurl=''",
+    afterDays
+    );
+}

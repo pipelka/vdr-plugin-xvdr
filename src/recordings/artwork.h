@@ -15,6 +15,8 @@ public:
   
   bool set(int contentType, const std::string& title, const std::string& posterUrl, const std::string& backdropUrl, int externalId);
 
+  void cleanup(int afterDays = 4);
+
 private:
 
   void CreateDB();

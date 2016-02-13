@@ -45,6 +45,7 @@
 #include "xvdrchannels.h"
 #include "live/channelcache.h"
 #include "recordings/recordingscache.h"
+#include "recordings/artwork.h"
 #include "net/os-config.h"
 
 //#define ENABLE_CHANNELTRIGGER 1
@@ -232,6 +233,13 @@ void cXVDRServer::Action(void)
 
   SetPriority(19);
 
+  // artwork
+  cArtwork artwork;
+  cTimeMs artworkCleanupTimer;
+
+  INFOLOG("removing outdated artwork");
+  artwork.cleanup();
+
   // get initial state of the recordings
   int recState = -1;
   int recStateOld = -1;
@@ -293,11 +301,19 @@ void cXVDRServer::Action(void)
           for (ClientList::iterator i = m_clients.begin(); i != m_clients.end(); i++)
             (*i)->ChannelsChanged();
           channelReloadTrigger = false;
+
           INFOLOG("Done.");
         }
 
         XVDRChannels.Unlock();
         channelsHash = hash;
+      }
+
+      // artwork cleanup (every 12 hours)
+      if(artworkCleanupTimer.Elapsed() >= 12 * 60 * 60 * 1000) {
+        INFOLOG("removing outdated artwork");
+        artwork.cleanup();
+        artworkCleanupTimer.Set(0);
       }
 
       // reset inactivity timeout as long as there are clients connected
