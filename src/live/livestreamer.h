@@ -38,6 +38,7 @@
 #include "xvdr/xvdrcommand.h"
 
 #include <list>
+#include <mutex>
 
 class cChannel;
 class cTSDemuxer;
@@ -71,8 +72,6 @@ private:
   uint32_t          m_scanTimeout;                  /*!> Channel scanning timeout (in seconds) */
   cTimeMs           m_last_tick;
   bool              m_SignalLost;
-  cMutex            m_FilterMutex;
-  cMutex            m_DeviceMutex;
   int               m_LanguageIndex;
   cStreamInfo::Type m_LangStreamType;
   cLiveQueue*       m_Queue;
@@ -83,7 +82,10 @@ private:
   cXVDRClient*      m_parent;
   bool              m_rawPTS;
 
+  std::mutex m_mutex;
+
 protected:
+
   void Action(void);
 
 #if VDRVERSNUM < 20300

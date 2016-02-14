@@ -102,11 +102,7 @@ cLiveStreamer::~cLiveStreamer()
   delete m_Queue;
 
   m_uid = 0;
-
-  {
-    cMutexLock lock(&m_DeviceMutex);
-    m_Device = NULL;
-  }
+  m_Device = NULL;
 
   DEBUGLOG("Finished to delete live streamer (took %llu ms)", t.Elapsed());
 }
@@ -129,6 +125,13 @@ void cLiveStreamer::RequestStreamChange()
 }
 
 void cLiveStreamer::TryChannelSwitch() {
+  std::lock_guard<std::mutex> lock(m_mutex);
+
+  // we're already attached to receiver ?  
+  if(IsAttached()) {
+    return;
+  }
+
   // find channel from uid
   const cChannel* channel = FindChannelByUID(m_uid);
 
@@ -185,18 +188,12 @@ void cLiveStreamer::Action(void)
     buf = Get(size);
 
     // try to switch channel if we aren't attached yet
-    if (!IsAttached()) {
-      TryChannelSwitch();
-    }
+    TryChannelSwitch();
 
     if(!IsStarting() && (m_last_tick.Elapsed() > (uint64_t)(m_scanTimeout*1000)) && !m_SignalLost) {
       INFOLOG("timeout. signal lost!");
       sendStatus(XVDR_STREAM_STATUS_SIGNALLOST);
       m_SignalLost = true;
-
-      if(IsAttached()) {
-        Detach();
-      }
     }
 
     // not enough data
@@ -220,8 +217,8 @@ void cLiveStreamer::Action(void)
   INFOLOG("streamer thread ended.");
 }
 
-int cLiveStreamer::SwitchChannel(const cChannel *channel)
-{
+int cLiveStreamer::SwitchChannel(const cChannel *channel) {
+
   if (channel == NULL) {
     return XVDR_RET_ERROR;
   }
@@ -249,10 +246,7 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
   }
 
   // get device for this channel
-  {
-    cMutexLock lock(&m_DeviceMutex);
-    m_Device = cDevice::GetDevice(channel, LIVEPRIORITY, false);
-  }
+  m_Device = cDevice::GetDevice(channel, LIVEPRIORITY, false);
 
   if (m_Device == NULL)
   {
@@ -328,8 +322,6 @@ int cLiveStreamer::SwitchChannel(const cChannel *channel)
 
 bool cLiveStreamer::Attach(void)
 {
-  cMutexLock lock(&m_DeviceMutex);
-  
   if (m_Device == NULL) {
     return false;
   }
@@ -339,8 +331,6 @@ bool cLiveStreamer::Attach(void)
 
 void cLiveStreamer::Detach(void)
 {
-  cMutexLock lock(&m_DeviceMutex);
-
   if (m_Device) {
     m_Device->Detach(this);
   }
@@ -458,8 +448,6 @@ void cLiveStreamer::sendStatus(int status)
 
 void cLiveStreamer::RequestSignalInfo()
 {
-  cMutexLock lock(&m_DeviceMutex);
-
   if(!Running() || m_Device == NULL) {
     return;
   }
@@ -593,7 +581,7 @@ void cLiveStreamer::Receive(const uchar *Data, int Length)
 }
 
 void cLiveStreamer::ChannelChange(const cChannel* channel) {
-  cMutexLock lock(&m_FilterMutex);
+  std::lock_guard<std::mutex> lock(m_mutex);
 
   if(CreateChannelUID(channel) != m_uid || !Running()) {
     return;
